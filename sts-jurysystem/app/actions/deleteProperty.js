@@ -15,7 +15,7 @@ async function deleteProperty(propertyId) {
 
   const { userId } = sessionUser;
 
-  const property = Property.findById(propertyId);
+  const property = await Property.findById(propertyId);
 
   if (!property) throw new Error('Property Not Found');
 
@@ -38,7 +38,6 @@ async function deleteProperty(propertyId) {
   }
 
   await property.deleteOne();
-
   revalidatePath('/', 'layout');
 }
 export default deleteProperty;

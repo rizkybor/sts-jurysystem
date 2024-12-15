@@ -1,7 +1,9 @@
-import "@/assets/styles/global.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AuthProvider from "@/components/AuthProvider";
+import { ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css'
+import "@/assets/styles/global.css";
 
 export const metadata = {
   title: "Sustainable Timing",
@@ -14,9 +16,10 @@ const MainLayout = ({ children }) => {
     <AuthProvider>
       <html>
         <body>
-          <Navbar></Navbar>
+          <Navbar/>
           <main>{children}</main>
-          <Footer></Footer>
+          <Footer />
+          <ToastContainer />
         </body>
       </html>
     </AuthProvider>

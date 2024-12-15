@@ -20,8 +20,6 @@ const ProfilePage = async () => {
   const propertiesDocs = await Property.find({ owner: userId }).lean();
   const properties = propertiesDocs.map(convertToSerializableObject);
 
-  console.log(properties, "<<<< check");
-
   return (
     <section className="bg-blue-50">
       <div className="container m-auto py-24">
