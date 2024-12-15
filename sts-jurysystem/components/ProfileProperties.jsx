@@ -2,9 +2,23 @@
 import { useState } from "react";
 import Images from "next/image";
 import Link from "next/link";
+import deleteProperty from "@/app/actions/deleteProperty";
 
 const ProfileProperties = ({ properties: initialProperties }) => {
   const [properties, setProperties] = useState(initialProperties);
+
+  const handleDeleteProperty = async (propertyId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete properties ?"
+    );
+    if (!confirmed) return;
+    await deleteProperty(propertyId);
+    const updatedProperties = properties.filter(
+      (property) => property._id != propertyId
+    );
+
+    setProperties(updatedProperties);
+  };
 
   return properties.map((property) => (
     <div key={property._id} className="mb-10">
@@ -19,7 +33,10 @@ const ProfileProperties = ({ properties: initialProperties }) => {
       </Link>
       <div className="mt-2">
         <p className="text-lg font-semibold">{property.name}</p>
-        <p className="text-gray-600">Address: {property.location.street}, {property.location.city} - {property.location.state}</p>
+        <p className="text-gray-600">
+          Address: {property.location.street}, {property.location.city} -{" "}
+          {property.location.state}
+        </p>
       </div>
       <div className="mt-2">
         <a
@@ -31,6 +48,7 @@ const ProfileProperties = ({ properties: initialProperties }) => {
         <button
           className="bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600"
           type="button"
+          onClick={() => handleDeleteProperty(property._id)}
         >
           Delete
         </button>
