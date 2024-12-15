@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import AuthProvider from "@/components/AuthProvider";
 
 export const metadata = {
-  title: "Sustainable-JS",
+  title: "Sustainable Timing",
   keywords: "timing-system, rafting, jury-penalty",
   description: "Sustainable Timing System",
 };
