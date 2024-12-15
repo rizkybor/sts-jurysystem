@@ -22,7 +22,7 @@ async function addProperty(formData) {
 
   const propertyData = {
     owner: userId,
-    types: formData.get("type"),
+    type: formData.get("type"),
     name: formData.get("name"),
     description: formData.get("description"),
     location: {
@@ -31,14 +31,14 @@ async function addProperty(formData) {
       state: formData.get("location.state"),
       zipcode: formData.get("location.zipcode"),
     },
-    bath: formData.get("bath"),
+    baths: formData.get("baths"),
     beds: formData.get("beds"),
     square_feet: formData.get("square_feet"),
     amenities,
     rates: {
-      nightly: formData.get("nightly"),
-      weekly: formData.get("weekly"),
-      monthly: formData.get("monthly"),
+      nightly: formData.get("rates.nightly"),
+      weekly: formData.get("rates.weekly"),
+      monthly: formData.get("rates.monthly"),
     },
     seller_info: {
       name: formData.get("seller_info.name"),
@@ -48,15 +48,12 @@ async function addProperty(formData) {
   };
 
   const imageUrls = [];
-
   for (const imageFile of images) {
     const imageBuffer = await imageFile.arrayBuffer();
     const imageArray = Array.from(new Uint8Array(imageBuffer));
     const imageData = Buffer.from(imageArray);
-
     // Convert base 64
     const imageBase64 = imageData.toString("base64");
-
     // Make Request Cloudinary
     const result = await cloudinary.uploader.upload(
       `data:image/png;base64,${imageBase64}`,
@@ -64,17 +61,15 @@ async function addProperty(formData) {
         folder: "sustainable-js",
       }
     );
-
     imageUrls.push(result.secure_url);
   }
 
   propertyData.images = imageUrls;
-
   const newProperty = new Property(propertyData);
   await newProperty.save();
 
   revalidatePath("/", "layout");
-  redirect(`properties/${newProperty.id}`);
+  redirect(`/properties/${newProperty.id}`);
 }
 
 export default addProperty;
