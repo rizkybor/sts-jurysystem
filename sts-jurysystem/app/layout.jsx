@@ -1,6 +1,7 @@
 import "@/assets/styles/global.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import AuthProvider from "@/components/AuthProvider";
 
 export const metadata = {
   title: "Sustainable-JS",
@@ -10,13 +11,15 @@ export const metadata = {
 
 const MainLayout = ({ children }) => {
   return (
-    <html>
-      <body>
-        <Navbar></Navbar>
-        <main>{children}</main>
-        <Footer></Footer>
-      </body>
-    </html>
+    <AuthProvider>
+      <html>
+        <body>
+          <Navbar></Navbar>
+          <main>{children}</main>
+          <Footer></Footer>
+        </body>
+      </html>
+    </AuthProvider>
   );
 };
 
