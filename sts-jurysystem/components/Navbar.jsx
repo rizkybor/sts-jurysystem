@@ -255,10 +255,19 @@ const Navbar = () => {
               </Link>
             )}
             {!session && (
-              <button className="flex items-center text-white bg-gray-700 hover:bg-gray-900 hover:text-white rounded-md px-3 py-2 my-4">
-                <i className="fa-brands fa-google mr-2"></i>
-                <span>Login or Register</span>
-              </button>
+              <div className="flex items-center">
+                {providers &&
+                  Object.values(providers).map((provider, index) => (
+                    <button
+                      key={index}
+                      onClick={() => signIn(provider.id)}
+                      className="flex items-center text-white bg-gray-700 hover:bg-gray-900 hover:text-white rounded-md px-3 py-2 my-4"
+                    >
+                      <i className="fa-brands fa-google mr-2"></i>
+                      <span>Login or Register</span>
+                    </button>
+                  ))}
+              </div>
             )}
           </div>
         </div>
