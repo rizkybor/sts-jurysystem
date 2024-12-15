@@ -1,7 +1,7 @@
 "use client";
 import ClipLoader from "react-spinners/ClipLoader";
 
-const LoadingPage = () => {
+const Spinner = () => {
   const override = {
     display: "block",
     margin: "100px auto",
@@ -16,4 +16,4 @@ const LoadingPage = () => {
   );
 };
 
-export default LoadingPage;
+export default Spinner;
