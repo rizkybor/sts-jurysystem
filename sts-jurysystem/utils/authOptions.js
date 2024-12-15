@@ -2,7 +2,7 @@ import GoogleProvider from "next-auth/providers/google";
 import connectDB from "@/config/database";
 import User from "@/models/User";
 
-const authOptions = {
+export const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
