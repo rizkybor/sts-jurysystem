@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { fetchProperties } from '@/utils/requests';
 import FeaturedPropertyCard from './FeaturedPropertyCard';
 

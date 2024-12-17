@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import Link from 'next/link';
 import PropertyCard from '@/components/PropertyCard';
 import { fetchProperties } from '@/utils/requests';
@@ -5,8 +7,8 @@ import { fetchProperties } from '@/utils/requests';
 const HomeProperties = async () => {
   const data = await fetchProperties();
   const recentProperties = data.properties
-    .sort(() => Math.random() - Math.random())
-    .slice(0, 3);
+    ? data.properties.sort(() => Math.random() - Math.random()).slice(0, 3)
+    : [];
 
   return (
     <>
