@@ -3,7 +3,7 @@ import PropertyCard from "@/components/PropertyCard";
 import connectDB from "@/config/database";
 import Property from "@/models/Property";
 
-const Properties = async () => {
+const Properties = async ({searchParams: {page=1, pageSize = 3}}) => {
   connectDB()
   const properties = await Property.find({}).lean();
   return (
