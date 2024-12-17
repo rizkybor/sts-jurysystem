@@ -3,11 +3,22 @@ import PropertyCard from '@/components/PropertyCard';
 import { fetchProperties } from '@/utils/requests';
 
 const HomeProperties = async () => {
-  const data = await fetchProperties();
+  let data = { properties: [] }; // Default fallback
+  try {
+    // Fetch data safely
+    data = await fetchProperties();
+  } catch (error) {
+    console.error("Error fetching properties:", error);
+  }
 
-  const recentProperties = data.properties
-    .sort(() => Math.random() - Math.random())
-    .slice(0, 3);
+  console.log(data,'<< cek')
+
+  // Safely access properties array
+  const recentProperties = Array.isArray(data?.properties)
+    ? data.properties
+        .sort(() => Math.random() - Math.random())
+        .slice(0, 3)
+    : [];
 
   return (
     <>
