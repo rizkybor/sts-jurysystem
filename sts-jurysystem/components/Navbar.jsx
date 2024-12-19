@@ -67,7 +67,7 @@ const Navbar = () => {
               <Image className='h-10 w-auto' src={logo} alt='PropertyPulse' />
 
               <span className='hidden md:block text-white text-2xl font-bold ml-2'>
-                PropertyPulse
+                Sustainable Timing
               </span>
             </Link>
             {/* <!-- Desktop Menu Hidden below md screens --> */}
@@ -88,6 +88,15 @@ const Navbar = () => {
                   } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
                 >
                   Properties
+                </Link>
+
+                <Link
+                  href='/matches'
+                  className={`${
+                    pathname === '/properties' ? 'bg-black' : ''
+                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
+                >
+                  Matches
                 </Link>
                 {session && (
                   <Link
@@ -245,6 +254,14 @@ const Navbar = () => {
               } text-white block rounded-md px-3 py-2 text-base font-medium`}
             >
               Properties
+            </Link>
+            <Link
+              href='/matches'
+              className={`${
+                pathname === '/properties' ? 'bg-black' : ''
+              } text-white block rounded-md px-3 py-2 text-base font-medium`}
+            >
+              Matches
             </Link>
             {session && (
               <Link
