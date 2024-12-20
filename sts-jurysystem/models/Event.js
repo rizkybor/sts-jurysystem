@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, models } from 'mongoose';
+import mongoose, { Schema, model, models } from "mongoose";
 
 const EventSchema = new Schema(
   {
@@ -39,30 +39,10 @@ const EventSchema = new Schema(
         },
       },
     ],
-    category: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Category', 
-      },
-    ],
-    division: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Division', 
-      },
-    ],
-    racecategory: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'RaceCategory',
-      },
-    ],
-    initial: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Initial', 
-      },
-    ],
+    categories: [{ type: Schema.Types.ObjectId, ref: "Category" }],
+    divisions: [{ type: Schema.Types.ObjectId, ref: "Division" }],
+    types: [{ type: Schema.Types.ObjectId, ref: "Type" }],
+    initials: [{ type: Schema.Types.ObjectId, ref: "Initial" }],
     chiefJudge: {
       name: {
         type: String,
@@ -102,8 +82,8 @@ const EventSchema = new Schema(
     ],
     statusEvent: {
       type: String,
-      enum: ['Activated', 'Deactivated'],
-      default: 'Activated',
+      enum: ["Activated", "Deactivated"],
+      default: "Activated",
     },
     logoSupport: [
       {
@@ -121,8 +101,9 @@ const EventSchema = new Schema(
   },
   {
     timestamps: true,
+    collection: "events",
   }
 );
 
-const Event = models.Event || model('Event', EventSchema);
+const Event = models.Event || model("Event", EventSchema);
 export default Event;

@@ -1,5 +1,9 @@
 import connectDB from '@/config/database';
 import Event from '@/models/Event';
+import Category from "@/models/Category";
+import Division from "@/models/Division";
+import Type from "@/models/Type";
+import Initial from "@/models/Initial";
 import { getSessionUser } from '@/utils/getSessionUser';
 import cloudinary from '@/config/cloudinary';
 import mongoose from 'mongoose';
@@ -8,13 +12,34 @@ import mongoose from 'mongoose';
 export const GET = async (request) => {
   try {
     await connectDB();
-    console.log(mongoose.modelNames()); 
+    console.log('List Models',mongoose.modelNames()); 
     const page = parseInt(request.nextUrl.searchParams.get('page')) || 1;
     const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize')) || 10;
     const skip = (page - 1) * pageSize;
 
     const total = await Event.countDocuments({});
-    const events = await Event.find({}).skip(skip).limit(pageSize);
+    const events = await Event.find({})
+    .populate({
+      path: 'categories',
+      model: 'Category',
+      select: 'name',
+    })
+    .populate({
+      path: 'divisions',
+      model: 'Division',
+      select: 'name',
+    })
+    .populate({
+      path: 'types',
+      model: 'Type',
+      select: 'name',
+    })
+    .populate({
+      path: 'initials',
+      model: 'Initial',
+      select: 'name',
+    })
+    .skip(skip).limit(pageSize);
 
     const result = {
       total,
