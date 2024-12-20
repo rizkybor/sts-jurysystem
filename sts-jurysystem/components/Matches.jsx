@@ -1,8 +1,8 @@
-'use client';
-import { useState, useEffect } from 'react';
-import MatchCard from '@/components/MatchCard'; // Komponen untuk menampilkan match
-import Spinner from '@/components/Spinner';
-import Pagination from '@/components/Pagination';
+"use client";
+import { useState, useEffect } from "react";
+import MatchCard from "@/components/MatchCard"; // Komponen untuk menampilkan match
+import Spinner from "@/components/Spinner";
+import Pagination from "@/components/Pagination";
 
 const Matches = () => {
   const [matches, setMatches] = useState([]); // State untuk data matches
@@ -18,12 +18,14 @@ const Matches = () => {
           `/api/matches?page=${page}&pageSize=${pageSize}`
         );
 
+        console.log(res, "<<<< CEK RES");
+
         if (!res.ok) {
-          throw new Error('Failed to fetch matches');
+          throw new Error("Failed to fetch matches");
         }
 
         const data = await res.json();
-        setMatches(data.matches);
+        setMatches(data.events);
         setTotalMatches(data.total);
       } catch (error) {
         console.log(error);
@@ -35,26 +37,25 @@ const Matches = () => {
     fetchMatches();
   }, [page, pageSize]);
 
+  console.log('tes data')
+
   const handlePageChange = (newPage) => {
     setPage(newPage);
   };
 
-  return (
-    <section className='px-4 py-6'>
-      <div className='container-xl lg:container m-auto px-4 py-6'>
-        {loading ? (
-          <Spinner />
-        ) : matches.length === 0 ? (
+  return loading ? (
+    <Spinner />
+  ) : (
+    <section className="px-4 py-6">
+      <div className="container-xl lg:container m-auto px-4 py-6">
+        {matches.length === 0 ? (
           <p>No matches found</p>
         ) : (
-          <div>
-            <h2 className='text-xl font-bold mb-4'>Matches</h2>
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {matches.map((match) => (
                 <MatchCard key={match._id} match={match} />
               ))}
             </div>
-          </div>
         )}
 
         <Pagination
