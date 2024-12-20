@@ -2,23 +2,20 @@ import connectDB from '@/config/database';
 import Event from '@/models/Event';
 import { getSessionUser } from '@/utils/getSessionUser';
 import cloudinary from '@/config/cloudinary';
+import mongoose from 'mongoose';
 
 // GET /api/events
 export const GET = async (request) => {
   try {
     await connectDB();
-    
+    console.log(mongoose.modelNames()); 
     const page = parseInt(request.nextUrl.searchParams.get('page')) || 1;
     const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize')) || 10;
     const skip = (page - 1) * pageSize;
 
     const total = await Event.countDocuments({});
-    console.log(`Total events: ${total}`);
-
-    // Mengambil data dengan populasi
     const events = await Event.find({}).skip(skip).limit(pageSize);
 
-    // Hasilkan data dalam bentuk JSON
     const result = {
       total,
       events,

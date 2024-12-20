@@ -39,28 +39,28 @@ const EventSchema = new Schema(
         },
       },
     ],
-    eventCategories: [
+    category: [
       {
         type: Schema.Types.ObjectId,
-        ref: 'Category', // Reference to stsListCategories
+        ref: 'Category', 
       },
     ],
-    divisionCategories: [
+    division: [
       {
         type: Schema.Types.ObjectId,
-        ref: 'Division', // Reference to stsListDivision
+        ref: 'Division', 
       },
     ],
-    raceCategories: [
+    racecategory: [
       {
         type: Schema.Types.ObjectId,
-        ref: 'RaceCategory', // Reference to stsListGender or equivalent
+        ref: 'RaceCategory',
       },
     ],
-    initialCategories: [
+    initial: [
       {
         type: Schema.Types.ObjectId,
-        ref: 'Initial', // Reference to stsListInitial
+        ref: 'Initial', 
       },
     ],
     chiefJudge: {
@@ -121,7 +121,6 @@ const EventSchema = new Schema(
   },
   {
     timestamps: true,
-    collection: 'stsEvents', // Ensure the collection name matches your MongoDB collection
   }
 );
 

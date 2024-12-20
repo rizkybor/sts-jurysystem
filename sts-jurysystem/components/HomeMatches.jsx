@@ -6,7 +6,6 @@ import { fetchMatches } from '@/utils/requestMatches'; // Utilitas untuk fetch m
 
 const HomeMatches = async () => {
   const datas = await fetchMatches();
-  console.log(datas,'<<< cek datas');
 
   const recentMatches = datas.events
     ? datas.events.sort(() => Math.random() - Math.random()).slice(0, 3)

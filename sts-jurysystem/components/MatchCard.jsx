@@ -9,7 +9,6 @@ import {
 } from 'react-icons/fa';
 
 const MatchCard = ({ match }) => {
-  console.log(match,'<< CEK DATA MATCH')
   // const getRateDisplay = () => {
   //   const { rates } = property;
 

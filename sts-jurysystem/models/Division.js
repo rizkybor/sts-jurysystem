@@ -1,8 +1,9 @@
 import mongoose, { Schema, model, models } from 'mongoose';
 
-const InitialSchema = new Schema({
+const DivisionSchema = new Schema({
   value: { type: String, required: true },
   name: { type: String, required: true },
 });
 
-export default models.Initial || model('Initial', InitialSchema);
+const Division = models.Division || model('Division', DivisionSchema);
+export default Division;
