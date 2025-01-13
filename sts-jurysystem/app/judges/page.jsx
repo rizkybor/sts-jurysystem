@@ -147,7 +147,7 @@ const JudgesPage = () => {
             </button>
           </Link>
 
-          <Link href="/judges/head2head">
+          <Link href="/judges/headtohead">
             <button className="w-full py-4 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-700">
               🤜🤛 Head 2 Head
             </button>
@@ -159,7 +159,7 @@ const JudgesPage = () => {
             </button>
           </Link>
 
-          <Link href="/judges/drr">
+          <Link href="/judges/downriverrace">
             <button className="w-full py-4 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-700">
               🚀 DRR
             </button>
