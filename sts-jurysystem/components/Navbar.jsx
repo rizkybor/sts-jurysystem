@@ -93,7 +93,7 @@ const Navbar = () => {
                 <Link
                   href="/matches"
                   className={`${
-                    pathname === "/properties" ? "bg-black" : ""
+                    pathname === "/matches" ? "bg-black" : ""
                   } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
                 >
                   Matches
@@ -212,7 +212,7 @@ const Navbar = () => {
                     >
                       Your Profile
                     </Link>
-                    <Link
+                    {/* <Link
                       href="/properties/saved"
                       className="block px-4 py-2 text-sm text-gray-700"
                       role="menuitem"
@@ -223,7 +223,7 @@ const Navbar = () => {
                       }}
                     >
                       Saved Properties
-                    </Link>
+                    </Link> */}
                     <button
                       onClick={() => {
                         setIsProfileMenuOpen(false);
@@ -256,18 +256,18 @@ const Navbar = () => {
             >
               Home
             </Link>
-            <Link
+            {/* <Link
               href="/properties"
               className={`${
                 pathname === "/properties" ? "bg-black" : ""
               } text-white block rounded-md px-3 py-2 text-base font-medium`}
             >
               Properties
-            </Link>
+            </Link> */}
             <Link
               href="/matches"
               className={`${
-                pathname === "/properties" ? "bg-black" : ""
+                pathname === "/matches" ? "bg-black" : ""
               } text-white block rounded-md px-3 py-2 text-base font-medium`}
             >
               Matches
