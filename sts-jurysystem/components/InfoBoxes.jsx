@@ -1,4 +1,6 @@
 import InfoBox from './InfoBox';
+import InfoBoxWa from './InfoBoxWa';
+
 
 const InfoBoxes = () => {
   return (
@@ -10,23 +12,24 @@ const InfoBoxes = () => {
             backgroundColor='bg-gray-100'
             buttonInfo={{
               text: 'History Result All Events',
-              link: '/properties',
+              link: '/matches',
               backgroundColor: 'bg-black',
             }}
           >
             Find all match results from sustainable timings.
           </InfoBox>
-          <InfoBox
+          <InfoBoxWa
             heading='Jury Register'
             backgroundColor='bg-blue-100'
             buttonInfo={{
               text: 'Request as Jury',
-              link: '/properties/add',
+              link: 'https://wa.me/6285121110794?text=Jadikan%20saya%20sebagai%20juri%20bor,%20Mau%20test%20halaman%20judges',
               backgroundColor: 'bg-blue-500',
+              target: '_blank',
             }}
           >
             Register as a jury in an activity.
-          </InfoBox>
+          </InfoBoxWa>
         </div>
       </div>
     </section>
