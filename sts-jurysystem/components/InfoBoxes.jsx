@@ -6,28 +6,26 @@ const InfoBoxes = () => {
       <div className='container-xl lg:container m-auto'>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg'>
           <InfoBox
-            heading='For Renters'
+            heading='All Events by Sustainable'
             backgroundColor='bg-gray-100'
             buttonInfo={{
-              text: 'Browse Properties',
+              text: 'History Result All Events',
               link: '/properties',
               backgroundColor: 'bg-black',
             }}
           >
-            Find your dream rental property. Bookmark properties and contact
-            owners.
+            Find all match results from sustainable timings.
           </InfoBox>
           <InfoBox
-            heading='For Property Owners'
+            heading='Jury Register'
             backgroundColor='bg-blue-100'
             buttonInfo={{
-              text: 'Add Property',
+              text: 'Request as Jury',
               link: '/properties/add',
               backgroundColor: 'bg-blue-500',
             }}
           >
-            List your properties and reach potential tenants. Rent short or long
-            term.
+            Register as a jury in an activity.
           </InfoBox>
         </div>
       </div>

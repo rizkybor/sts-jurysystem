@@ -20,6 +20,12 @@ const UserSchema = new Schema(
         ref: 'Property',
       },
     ],
+    mainEvents: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Event',
+      },
+    ],
   },
   {
     timestamps: true,
