@@ -111,7 +111,7 @@ const Navbar = () => {
                   <Link
                     href="/judges"
                     className={`${
-                      pathname === "/properties/add" ? "bg-black" : ""
+                      pathname === "/judges" ? "bg-black" : ""
                     } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
                   >
                     Judges
@@ -273,13 +273,22 @@ const Navbar = () => {
               Matches
             </Link>
             {session && (
+              // <Link
+              //   href="/properties/add"
+              //   className={`${
+              //     pathname === "/properties/add" ? "bg-black" : ""
+              //   } text-white block rounded-md px-3 py-2 text-base font-medium`}
+              // >
+              //   Add Property
+              // </Link>
+
               <Link
-                href="/properties/add"
+                href="/judges"
                 className={`${
-                  pathname === "/properties/add" ? "bg-black" : ""
-                } text-white block rounded-md px-3 py-2 text-base font-medium`}
+                  pathname === "/judges" ? "bg-black" : ""
+                } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
               >
-                Add Property
+                Judges
               </Link>
             )}
 
