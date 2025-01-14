@@ -1,39 +1,42 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import ResultHeadToHead from "@/components/ResultHeadToHead";
 
 const JudgesHeadToHeadPage = () => {
   const [selectedHeat, setSelectedHeat] = useState("");
   const [selectedBooyan, setSelectedBooyan] = useState("");
   const [teamAResult, setTeamAResult] = useState(null);
   const [teamBResult, setTeamBResult] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [resultData, setResultData] = useState({});
 
   const heatOptions = ["Heat 1", "Heat 2", "Final"];
-  const booyanOptions = ["R1", "R2", "R3"];
+  const booyanOptions = ["R1", "R2", "L1", "L2"];
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (!selectedHeat || !selectedBooyan || teamAResult === null || teamBResult === null) {
-      alert("Please complete all selections.");
+      alert("⚠️ Please complete all selections before submitting.");
       return;
     }
 
-    // Simulasi pengiriman data
-    console.log({
+    const formData = {
       heat: selectedHeat,
       booyan: selectedBooyan,
-      teamA: teamAResult ? "YES" : "NO",
-      teamB: teamBResult ? "YES" : "NO",
-    });
+      teamA: teamAResult ? "Y" : "N",
+      teamB: teamBResult ? "Y" : "N",
+    };
 
-    alert("Penalties submitted successfully!");
+    alert("📊 Submitted Data:\n\n" + JSON.stringify(formData, null, 2));
+    setResultData(formData);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
       <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-lg relative">
 
-        {/* Title */}
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
           Head to Head Feature
         </h1>
@@ -41,7 +44,7 @@ const JudgesHeadToHeadPage = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Heat Selection */}
           <div>
-            <label className="block text-gray-700 mb-2">Position Penalties:</label>
+            <label className="block text-gray-700 mb-2">Heat:</label>
             <select
               value={selectedHeat}
               onChange={(e) => setSelectedHeat(e.target.value)}
@@ -50,9 +53,7 @@ const JudgesHeadToHeadPage = () => {
             >
               <option value="" disabled>Select Heat</option>
               {heatOptions.map((heat, index) => (
-                <option key={index} value={heat}>
-                  {heat}
-                </option>
+                <option key={index} value={heat}>{heat}</option>
               ))}
             </select>
           </div>
@@ -68,9 +69,7 @@ const JudgesHeadToHeadPage = () => {
             >
               <option value="" disabled>Select Booyan</option>
               {booyanOptions.map((booyan, index) => (
-                <option key={index} value={booyan}>
-                  {booyan}
-                </option>
+                <option key={index} value={booyan}>{booyan}</option>
               ))}
             </select>
           </div>
@@ -78,26 +77,26 @@ const JudgesHeadToHeadPage = () => {
           {/* Team A */}
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Team A</h3>
-            <div className="flex space-x-4">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => setTeamAResult(true)}
-                className={`w-1/2 py-3 rounded-lg border ${
+                className={`py-3 rounded-lg font-semibold border ${
                   teamAResult === true
-                    ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold"
+                    ? "bg-green-500 text-white border-green-600"
                     : "bg-white border-gray-300 text-gray-700"
-                } hover:bg-blue-50 transition duration-300`}
+                } hover:bg-green-400 transition duration-300`}
               >
                 YES
               </button>
               <button
                 type="button"
                 onClick={() => setTeamAResult(false)}
-                className={`w-1/2 py-3 rounded-lg border ${
+                className={`py-3 rounded-lg font-semibold border ${
                   teamAResult === false
-                    ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold"
+                    ? "bg-red-500 text-white border-red-600"
                     : "bg-white border-gray-300 text-gray-700"
-                } hover:bg-blue-50 transition duration-300`}
+                } hover:bg-red-400 transition duration-300`}
               >
                 NO
               </button>
@@ -107,26 +106,26 @@ const JudgesHeadToHeadPage = () => {
           {/* Team B */}
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Team B</h3>
-            <div className="flex space-x-4">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => setTeamBResult(true)}
-                className={`w-1/2 py-3 rounded-lg border ${
+                className={`py-3 rounded-lg font-semibold border ${
                   teamBResult === true
-                    ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold"
+                    ? "bg-green-500 text-white border-green-600"
                     : "bg-white border-gray-300 text-gray-700"
-                } hover:bg-blue-50 transition duration-300`}
+                } hover:bg-green-400 transition duration-300`}
               >
                 YES
               </button>
               <button
                 type="button"
                 onClick={() => setTeamBResult(false)}
-                className={`w-1/2 py-3 rounded-lg border ${
+                className={`py-3 rounded-lg font-semibold border ${
                   teamBResult === false
-                    ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold"
+                    ? "bg-red-500 text-white border-red-600"
                     : "bg-white border-gray-300 text-gray-700"
-                } hover:bg-blue-50 transition duration-300`}
+                } hover:bg-red-400 transition duration-300`}
               >
                 NO
               </button>
@@ -144,18 +143,26 @@ const JudgesHeadToHeadPage = () => {
 
         {/* View Result */}
         <div className="text-center mt-4">
-          <button className="text-blue-500 hover:underline">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="text-blue-500 hover:underline"
+          >
             View Result
           </button>
         </div>
 
-        {/* 🔙 Button Back */}
+        {/* Button Back */}
         <div className="text-center mt-4">
-        <Link href="/judges">
+          <Link href="/judges">
             <button className="text-blue-500 hover:underline">← Back</button>
-        </Link>
+          </Link>
         </div>
 
+        <ResultHeadToHead
+          isOpen={isModalOpen}
+          closeModal={() => setIsModalOpen(false)}
+          resultData={resultData}
+        />
       </div>
     </div>
   );

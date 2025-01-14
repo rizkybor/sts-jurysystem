@@ -1,31 +1,46 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import ResultDRR from "@/components/ResultDRR";  // Import Modal
 
 const JudgesDRRPages = () => {
   const [selectedPenalty, setSelectedPenalty] = useState(null);
   const [selectedPosition, setSelectedPosition] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);  // State Modal
+  const [resultData, setResultData] = useState({});       // State Data Modal
 
   const penalties = [0, 5, 50];
   const teams = ["Team A", "Team B", "Team C"];
   const positions = ["Start", "Finish"];
 
+  // ✅ Handle Submit hanya untuk alert JSON
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (!selectedPosition || !selectedTeam || selectedPenalty === null) {
-      alert("Please select all options before submitting.");
+      alert("⚠️ Please select all options before submitting.");
       return;
     }
 
-    // Simulasi Submit
-    console.log({
+    const formData = {
       position: selectedPosition,
       team: selectedTeam,
       penalty: selectedPenalty,
-    });
+    };
 
-    alert("Penalty Submitted!");
+    alert("📊 Submitted Data:\n\n" + JSON.stringify(formData, null, 2));
+  };
+
+  // ✅ Handle untuk buka modal
+  const handleViewResult = () => {
+    const formData = {
+      position: selectedPosition,
+      team: selectedTeam,
+      penalty: selectedPenalty,
+    };
+    setResultData(formData);
+    setIsModalOpen(true);
   };
 
   return (
@@ -49,9 +64,7 @@ const JudgesDRRPages = () => {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               required
             >
-              <option value="" disabled>
-                Select Position
-              </option>
+              <option value="" disabled>Select Position</option>
               {positions.map((position, index) => (
                 <option key={index} value={position}>
                   {position}
@@ -69,9 +82,7 @@ const JudgesDRRPages = () => {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               required
             >
-              <option value="" disabled>
-                Select Team
-              </option>
+              <option value="" disabled>Select Team</option>
               {teams.map((team, index) => (
                 <option key={index} value={team}>
                   {team}
@@ -98,7 +109,6 @@ const JudgesDRRPages = () => {
             ))}
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold shadow-md hover:bg-blue-600 transition duration-300"
@@ -109,7 +119,12 @@ const JudgesDRRPages = () => {
 
         {/* View Result */}
         <div className="text-center mt-4">
-          <button className="text-blue-500 hover:underline">View Result</button>
+          <button
+            onClick={handleViewResult}
+            className="text-blue-500 hover:underline"
+          >
+            View Result
+          </button>
         </div>
 
         {/* 🔙 Button Back */}
@@ -118,6 +133,13 @@ const JudgesDRRPages = () => {
             <button className="text-blue-500 hover:underline">← Back</button>
           </Link>
         </div>
+
+        {/* Modal Result DRR */}
+        <ResultDRR
+          isOpen={isModalOpen}
+          closeModal={() => setIsModalOpen(false)}
+          resultData={resultData}
+        />
       </div>
     </div>
   );

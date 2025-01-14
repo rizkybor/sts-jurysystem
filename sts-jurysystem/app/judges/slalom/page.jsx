@@ -1,47 +1,49 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import ResultSlalom from "@/components/ResultSlalom";
 
 const JudgesSlalomPage = () => {
   const [selectedTeam, setSelectedTeam] = useState("");
   const [selectedGate, setSelectedGate] = useState("");
   const [selectedPenalty, setSelectedPenalty] = useState(null);
-  const [score, setScore] = useState(0);
   const [clickedCircles, setClickedCircles] = useState({
     P1: false,
     P2: false,
     P3: false,
     P4: false,
   });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [resultData, setResultData] = useState({});
 
   const teamOptions = ["Team A", "Team B", "Team C"];
   const gateOptions = ["Gate 1", "Gate 2", "Gate 3"];
 
+  // ✅ Handle Submit: Menampilkan JSON di Alert
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!selectedTeam || !selectedGate || selectedPenalty === null) {
-      alert("Please complete all selections.");
+      alert("⚠️ Please complete all selections.");
       return;
     }
 
-    console.log({
+    const formData = {
       team: selectedTeam,
       gate: selectedGate,
-      penalty: selectedPenalty,
-    });
+      selectedPenalty,
+      penaltiesDetail: clickedCircles,
+    };
 
-    alert("Penalties submitted successfully!");
+    // 🔥 Tampilkan data dalam alert
+    alert("📊 Submitted Data:\n\n" + JSON.stringify(formData, null, 2));
   };
 
+  // ✅ Handle Klik Posisi di Boat
   const handleClick = (position) => {
-    setClickedCircles((prev) => {
-      const isClicked = prev[position];
-      const updated = { ...prev, [position]: !isClicked };
-
-      setScore((prevScore) => (isClicked ? prevScore - 10 : prevScore + 10));
-
-      return updated;
-    });
+    setClickedCircles((prev) => ({
+      ...prev,
+      [position]: !prev[position],
+    }));
   };
 
   return (
@@ -63,12 +65,12 @@ const JudgesSlalomPage = () => {
                   type="text"
                   value="Section 1"
                   readOnly
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-100 focus:outline-none cursor-not-allowed"
+                  className="w-full px-4 py-2 border rounded-lg bg-gray-100 cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-2">Pilih Team:</label>
+                <label className="block text-gray-700 mb-2">Select Team:</label>
                 <select
                   value={selectedTeam}
                   onChange={(e) => setSelectedTeam(e.target.value)}
@@ -85,7 +87,7 @@ const JudgesSlalomPage = () => {
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-2">Pilih Gawang:</label>
+                <label className="block text-gray-700 mb-2">Select Gate:</label>
                 <select
                   value={selectedGate}
                   onChange={(e) => setSelectedGate(e.target.value)}
@@ -119,12 +121,24 @@ const JudgesSlalomPage = () => {
                 ))}
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold shadow-md hover:bg-blue-600 transition duration-300"
               >
                 Submit →
               </button>
+
+               {/* Button View Result */}
+        <div className="text-center mt-4">
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="text-blue-500 hover:underline"
+          >
+            View Result
+          </button>
+        </div>
 
               <div className="text-center mt-4">
                 <Link href="/judges">
@@ -137,61 +151,39 @@ const JudgesSlalomPage = () => {
             <div className="w-full md:w-1/2 flex flex-col items-center">
               <h2 className="text-lg font-semibold mb-4">Penalties Detail</h2>
 
-              <div className="text-lg font-semibold mb-4">
-                Sample Penalties Point: {score}
-              </div>
-
               <div className="relative w-64 h-96 bg-green-300 rounded-full shadow-inner border-8 border-green-600">
-                <div className="absolute top-4 left-4 w-64 h-88 bg-green-800 rounded-full"></div>
-
-                {/* Lingkaran P1 */}
-                <div
-                  onClick={() => handleClick("P1")}
-                  className={`absolute w-14 h-14 flex items-center justify-center rounded-full cursor-pointer font-bold ${
-                    clickedCircles["P1"] ? "bg-red-500" : "bg-yellow-300"
-                  } hover:scale-105 transition`}
-                  style={{ top: "10%", left: "20%" }}
-                >
-                  P1
-                </div>
-
-                {/* Lingkaran P2 */}
-                <div
-                  onClick={() => handleClick("P2")}
-                  className={`absolute w-14 h-14 flex items-center justify-center rounded-full cursor-pointer font-bold ${
-                    clickedCircles["P2"] ? "bg-red-500" : "bg-yellow-300"
-                  } hover:scale-105 transition`}
-                  style={{ top: "10%", right: "20%" }}
-                >
-                  P2
-                </div>
-
-                {/* Lingkaran P3 */}
-                <div
-                  onClick={() => handleClick("P3")}
-                  className={`absolute w-14 h-14 flex items-center justify-center rounded-full cursor-pointer font-bold ${
-                    clickedCircles["P3"] ? "bg-red-500" : "bg-yellow-300"
-                  } hover:scale-105 transition`}
-                  style={{ bottom: "10%", left: "20%" }}
-                >
-                  P3
-                </div>
-
-                {/* Lingkaran P4 */}
-                <div
-                  onClick={() => handleClick("P4")}
-                  className={`absolute w-14 h-14 flex items-center justify-center rounded-full cursor-pointer font-bold ${
-                    clickedCircles["P4"] ? "bg-red-500" : "bg-yellow-300"
-                  } hover:scale-105 transition`}
-                  style={{ bottom: "10%", right: "20%" }}
-                >
-                  P4
-                </div>
+                {["P1", "P2", "P3", "P4"].map((pos, index) => (
+                  <div
+                    key={index}
+                    onClick={() => handleClick(pos)}
+                    className={`absolute w-14 h-14 flex items-center justify-center rounded-full cursor-pointer font-bold ${
+                      clickedCircles[pos] ? "bg-red-500" : "bg-yellow-300"
+                    } hover:scale-105 transition`}
+                    style={{
+                      top: index < 2 ? "10%" : "70%",
+                      left: index % 2 === 0 ? "20%" : "60%",
+                    }}
+                  >
+                    {pos}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </form>
       </div>
+
+      {/* Modal Result */}
+      <ResultSlalom
+        isOpen={isModalOpen}
+        closeModal={() => setIsModalOpen(false)}
+        resultData={{
+          team: selectedTeam,
+          gate: selectedGate,
+          selectedPenalty,
+          penaltiesDetail: clickedCircles,
+        }}
+      />
     </div>
   );
 };
