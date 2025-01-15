@@ -10,7 +10,7 @@ const JudgesDRRPages = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);  // State Modal
   const [resultData, setResultData] = useState({});       // State Data Modal
 
-  const penalties = [0, 5, 50];
+  const penalties = [0, -10, 10, 50];
   const teams = ["Team A", "Team B", "Team C"];
   const positions = ["Start", "Finish"];
 
