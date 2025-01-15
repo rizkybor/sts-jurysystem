@@ -98,6 +98,15 @@ const Navbar = () => {
                 >
                   Matches
                 </Link>
+
+                <Link
+                  href="/live"
+                  className={`${
+                    pathname === "/live" ? "bg-black" : ""
+                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
+                >
+                  On Air
+                </Link>
                 {session && (
                   // <Link
                   //   href='/properties/add'
@@ -271,6 +280,15 @@ const Navbar = () => {
               } text-white block rounded-md px-3 py-2 text-base font-medium`}
             >
               Matches
+            </Link>
+
+            <Link
+              href="/live"
+              className={`${
+                pathname === "/live" ? "bg-black" : ""
+              } text-white block rounded-md px-3 py-2 text-base font-medium`}
+            >
+              On Air
             </Link>
             {session && (
               // <Link
