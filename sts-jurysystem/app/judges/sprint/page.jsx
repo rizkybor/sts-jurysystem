@@ -1,21 +1,45 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import ResultSprint from "@/components/ResultSprint"; // Import komponen modal
+import ResultSprint from "@/components/ResultSprint";
 
 const JudgesSprintPages = () => {
+  const searchParams = useSearchParams();
+  const eventId = searchParams.get("eventId");
+  const juryId = searchParams.get("userId");
   const [selectedPenalty, setSelectedPenalty] = useState(null);
   const [selectedPosition, setSelectedPosition] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [resultData, setResultData] = useState({});
+  const [sprintResults, setSprintResults] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const penalties = [0, 5, 50];
   const teams = ["Team A", "Team B", "Team C"];
   const positions = ["Start", "Finish"];
 
-  // Fungsi Submit hanya untuk menampilkan alert
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchSprintResults();
+    }
+  }, [isModalOpen]);
+
+  const fetchSprintResults = async () => {
+    try {
+      const res = await fetch("/api/judges/sprint");
+      const data = await res.json();
+      if (res.ok) {
+        setSprintResults(data.data);
+      } else {
+        console.error("Error fetching sprint results:", data.message);
+      }
+    } catch (error) {
+      console.error("Failed to fetch sprint results:", error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedPosition || !selectedTeam || selectedPenalty === null) {
       alert("⚠️ Please select all options before submitting.");
@@ -26,13 +50,32 @@ const JudgesSprintPages = () => {
       position: selectedPosition,
       team: selectedTeam,
       penalty: selectedPenalty,
+      eventId,
+      juryId,
     };
 
-    // Tampilkan data dalam alert
-    alert("📊 Submitted Data:\n\n" + JSON.stringify(formData, null, 2));
+    setLoading(true);
 
-    // Data disimpan ke resultData untuk View Result
-    setResultData(formData);
+    try {
+      const res = await fetch("/api/judges/sprint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ Data submitted successfully!");
+        fetchSprintResults();
+      } else {
+        alert(`❌ Error: ${data.message}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("❌ Failed to submit data!");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,15 +85,13 @@ const JudgesSprintPages = () => {
           Sprint Feature
         </h1>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Position Penalties */}
           <div>
-            <label className="block text-gray-700 mb-2">Position Penalties:</label>
+            <label className="block text-gray-700 mb-2">Position:</label>
             <select
               value={selectedPosition}
               onChange={(e) => setSelectedPosition(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full px-4 py-2 border rounded-lg"
               required
             >
               <option value="" disabled>Select Position</option>
@@ -62,13 +103,12 @@ const JudgesSprintPages = () => {
             </select>
           </div>
 
-          {/* Teams */}
           <div>
-            <label className="block text-gray-700 mb-2">Teams:</label>
+            <label className="block text-gray-700 mb-2">Team:</label>
             <select
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full px-4 py-2 border rounded-lg"
               required
             >
               <option value="" disabled>Select Team</option>
@@ -80,7 +120,6 @@ const JudgesSprintPages = () => {
             </select>
           </div>
 
-          {/* Penalties */}
           <div className="space-y-2">
             {penalties.map((penalty, index) => (
               <button
@@ -91,33 +130,28 @@ const JudgesSprintPages = () => {
                   selectedPenalty === penalty
                     ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold"
                     : "bg-white border-gray-300 text-gray-700"
-                } hover:bg-blue-50 transition duration-300`}
+                }`}
               >
                 {penalty}
               </button>
             ))}
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
-            className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold shadow-md hover:bg-blue-600 transition duration-300"
+            className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold shadow-md"
+            disabled={loading}
           >
-            Submit →
+            {loading ? "Submitting..." : "Submit →"}
           </button>
         </form>
 
-        {/* Button untuk membuka Modal */}
         <div className="text-center mt-4">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="text-blue-500 hover:underline"
-          >
+          <button onClick={() => setIsModalOpen(true)} className="text-blue-500 hover:underline">
             View Result
           </button>
         </div>
 
-        {/* Tombol Back */}
         <div className="text-center mt-4">
           <Link href="/judges">
             <button className="text-blue-500 hover:underline">← Back</button>
@@ -125,12 +159,8 @@ const JudgesSprintPages = () => {
         </div>
       </div>
 
-      {/* Modal ResultSprint */}
-      <ResultSprint
-        isOpen={isModalOpen}
-        closeModal={() => setIsModalOpen(false)}
-        resultData={resultData}
-      />
+      <ResultSprint isOpen={isModalOpen} closeModal={() => setIsModalOpen(false)} sprintResults={sprintResults} />
+
     </div>
   );
 };
