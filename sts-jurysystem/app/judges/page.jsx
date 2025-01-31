@@ -1,11 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import NavigationButton from "@/components/NavigationButton";
 
 const JudgesPage = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);  // State untuk data user
+  const [user, setUser] = useState(null); // State untuk data user
   const [loadingUser, setLoadingUser] = useState(true);
 
   // Fetch Events
@@ -102,34 +103,36 @@ const JudgesPage = () => {
                   </p>
                 </div>
 
-                 {/* 🚀 DATA USER */}
-        {loadingUser ? (
-          <p className="text-gray-500 text-center">Loading user data...</p>
-        ) : user ? (
-          <div className="flex flex-col items-center mb-10">
-            {/* Foto Profil */}
-            {user.image && (
-              <img
-                src={user.image}
-                alt={user.username}
-                className="w-24 h-24 rounded-full shadow-md mb-4"
-              />
-            )}
+                {/* 🚀 DATA USER */}
+                {loadingUser ? (
+                  <p className="text-gray-500 text-center">
+                    Loading user data...
+                  </p>
+                ) : user ? (
+                  <div className="flex flex-col items-center mb-10">
+                    {/* Foto Profil */}
+                    {user.image && (
+                      <img
+                        src={user.image}
+                        alt={user.username}
+                        className="w-24 h-24 rounded-full shadow-md mb-4"
+                      />
+                    )}
 
-            {/* Nama dan Email */}
-            <h2 className="text-xl font-semibold text-gray-800">
-              {user.username}
-            </h2>
-            <p className="text-gray-600">{user.email}</p>
+                    {/* Nama dan Email */}
+                    <h2 className="text-xl font-semibold text-gray-800">
+                      {user.username}
+                    </h2>
+                    <p className="text-gray-600">{user.email}</p>
 
-            {/* Tampilkan Tanggal Bergabung */}
-            <p className="text-gray-500 text-sm">
-              Joined on {new Date(user.createdAt).toLocaleDateString()}
-            </p>
-          </div>
-        ) : (
-          <p className="text-red-500 text-center">User not found.</p>
-        )}
+                    {/* Tampilkan Tanggal Bergabung */}
+                    <p className="text-gray-500 text-sm">
+                      Joined on {new Date(user.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-red-500 text-center">User not found.</p>
+                )}
               </div>
             ))}
           </div>
@@ -139,33 +142,49 @@ const JudgesPage = () => {
       </div>
 
       {/* 🚀 BUTTON NAVIGASI */}
-      <div className="flex items-center justify-center py-10 px-4 sm:px-8 md:px-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-6xl">
-          <Link href="/judges/sprint">
-            <button className="w-full py-4 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-700">
-              🏎️ Sprint
-            </button>
-          </Link>
+      {events.length > 0 && user && (
+  <div className="flex items-center justify-center py-10 px-4 sm:px-8 md:px-16">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-6xl">
+      <NavigationButton
+        href="/judges/sprint"
+        label="Sprint"
+        icon="🏎️"
+        color="bg-blue-500"
+        params={{ eventId: events[0]?._id, userId: user?._id }}
+        className="w-full flex items-center justify-center py-4 min-h-[60px]"
+      />
 
-          <Link href="/judges/headtohead">
-            <button className="w-full py-4 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-700">
-              🤜🤛 Head 2 Head
-            </button>
-          </Link>
+      <NavigationButton
+        href="/judges/headtohead"
+        label="Head 2 Head"
+        icon="🤜🤛"
+        color="bg-green-500"
+        params={{ eventId: events[0]?._id, userId: user?._id }}
+        className="w-full flex items-center justify-center py-4 min-h-[60px]"
+      />
 
-          <Link href="/judges/slalom">
-            <button className="w-full py-4 bg-purple-500 text-white rounded-lg shadow-md hover:bg-purple-700">
-              🌀 Slalom
-            </button>
-          </Link>
+      <NavigationButton
+        href="/judges/slalom"
+        label="Slalom"
+        icon="🌀"
+        color="bg-purple-500"
+        params={{ eventId: events[0]?._id, userId: user?._id }}
+        className="w-full flex items-center justify-center py-4 min-h-[60px]"
+      />
 
-          <Link href="/judges/downriverrace">
-            <button className="w-full py-4 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-700">
-              🚀 DRR
-            </button>
-          </Link>
-        </div>
-      </div>
+      <NavigationButton
+        href="/judges/downriverrace"
+        label="DRR"
+        icon="🚀"
+        color="bg-red-500"
+        params={{ eventId: events[0]?._id, userId: user?._id }}
+        className="w-full flex items-center justify-center py-4 min-h-[60px]"
+      />
+    </div>
+  </div>
+)}
+
+
     </>
   );
 };
