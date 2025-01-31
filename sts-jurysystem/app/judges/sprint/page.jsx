@@ -19,6 +19,7 @@ const JudgesSprintPages = () => {
   const teams = ["Team A", "Team B", "Team C"];
   const positions = ["Start", "Finish"];
 
+  console.log(eventId, juryId,'<< cek paramsnya')
   useEffect(() => {
     if (isModalOpen) {
       fetchSprintResults();
