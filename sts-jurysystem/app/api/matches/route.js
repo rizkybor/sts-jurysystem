@@ -12,47 +12,38 @@ import mongoose from "mongoose";
 export const GET = async (request) => {
   try {
     await connectDB();
-    const page = parseInt(request.nextUrl.searchParams.get("page")) || 1;
-    const pageSize =
-      parseInt(request.nextUrl.searchParams.get("pageSize")) || 10;
+
+    const page = Math.max(1, parseInt(request.nextUrl.searchParams.get("page") || "1", 10));
+    const pageSize = Math.max(1, parseInt(request.nextUrl.searchParams.get("pageSize") || "10", 10));
     const skip = (page - 1) * pageSize;
 
-    const total = await Event.countDocuments({});
-    const events = await Event.find({})
-      .populate({
-        path: "categories",
-        model: "Category",
-        select: "name",
-      })
-      .populate({
-        path: "divisions",
-        model: "Division",
-        select: "name",
-      })
-      .populate({
-        path: "types",
-        model: "Type",
-        select: "name",
-      })
-      .populate({
-        path: "initials",
-        model: "Initial",
-        select: "name",
-      })
-      .skip(skip)
-      .limit(pageSize);
+    const [total, events] = await Promise.all([
+      Event.countDocuments({}),
+      Event.find({})
+        .sort({ startDateEvent: 1, createdAt: -1 }) // optional: urutkan yang terdekat dulu
+        .skip(skip)
+        .limit(pageSize)
+        .lean(), // kirim plain JSON, lebih ringan & cepat
+    ]);
 
     const result = {
       total,
-      events,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize) || 1,
+      events, // sudah berisi categoriesEvent/Division/Race/Initial (embedded), jadi tak perlu populate
     };
 
     return new Response(JSON.stringify(result), {
       status: 200,
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error(error);
-    return new Response("Failed to fetch events", { status: 500 });
+    console.error("[GET /api/events]", error);
+    return new Response(JSON.stringify({ message: "Failed to fetch events" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 };
 
