@@ -9,9 +9,9 @@ export const GET = async (request, { params }) => {
 
     const event = await Event.findById(params.id);
 
-    if (!property) return new Response('Property Not Found', { status: 404 });
+    if (!event) return new Response('Event Not Found', { status: 404 });
 
-    return new Response(JSON.stringify(property), {
+    return new Response(JSON.stringify(event), {
       status: 200,
     });
   } catch (error) {
