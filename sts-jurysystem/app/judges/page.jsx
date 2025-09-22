@@ -166,7 +166,7 @@ const JudgesPage = () => {
           className="px-4 py-2 rounded bg-blue-600 text-white"
           onClick={sendRealtimeMessage}
         >
-          Kirim Pesan ke Timing Operator
+          Kirim Pesan ke Operator Timing
         </button>
 
         {/* 🚀 DAFTAR EVENTS */}
