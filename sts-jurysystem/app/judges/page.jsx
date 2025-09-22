@@ -1,9 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import NavigationButton from "@/components/NavigationButton";
-import getSocket from "@/utils/socket"
-
+import getSocket from "@/utils/socket";
 
 const JudgesPage = () => {
   const [events, setEvents] = useState([]);
@@ -11,24 +10,79 @@ const JudgesPage = () => {
   const [user, setUser] = useState(null); // State untuk data user
   const [loadingUser, setLoadingUser] = useState(true);
 
+  // ====== TOAST RINGAN (tanpa library) ======
+  const [toasts, setToasts] = useState([]);
+  const toastId = useRef(1);
 
+  const pushToast = (msg, ttlMs = 4000) => {
+    const id = toastId.current++;
+    setToasts((prev) => [...prev, { id, ...msg }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, ttlMs);
+  };
+
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+  // ==========================================
+
+  // simpan instance + id socket
+  const socketRef = useRef(null);
+  const [socketId, setSocketId] = useState(null);
+
+  // Socket listeners (HANYA tampilkan toast untuk pesan dari orang lain)
   useEffect(() => {
     const socket = getSocket();
+    socketRef.current = socket;
+
+    const onConnect = () => setSocketId(socket.id);
+
     const handler = (msg) => {
+      // Jika pesan berasal dari diri sendiri, JANGAN tampilkan
+      if (msg?.senderId && socketRef.current && msg.senderId === socketRef.current.id) {
+        return;
+      }
       console.log("[Next] terima:", msg);
-      alert(`Realtime dari ${msg.from}: ${msg.text}`);
+      pushToast({
+        title: msg.from ? `Pesan dari ${msg.from}` : "Realtime Message",
+        text: msg.text || "New message received",
+      });
     };
+
+    socket.on("connect", onConnect);
     socket.on("custom:event", handler);
-    return () => socket.off("custom:event", handler);
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("custom:event", handler);
+    };
   }, []);
 
+  // Kirim pesan TANPA menampilkan toast lokal
   const sendRealtimeMessage = () => {
-    const socket = getSocket();
-    socket.emit("custom:event", {
-      from: "Next.js/JudgesPage.jsx",
-      text: "Halo Rizky bor dari Next.js!",
-      ts: new Date().toISOString()
-    });
+    const socket = socketRef.current || getSocket();
+    if (!socket) return;
+
+    socket.emit(
+      "custom:event",
+      {
+        senderId: socket.id, // penanda pengirim
+        from: "Rizky Judges - Gates A || ",
+        text: "Budi Luhur Team : Penalties 50",
+        ts: new Date().toISOString(),
+      },
+      // optional ack (kalau mau tangani error saja)
+      (ok) => {
+        if (!ok) {
+          // contoh: hanya tampilkan kalau gagal
+          // pushToast({ title: "Gagal", text: "Pesan tidak terkirim." }, 3000);
+          console.warn("Emit not acknowledged by server");
+        }
+      }
+    );
+
+    // >>> TIDAK ada pushToast “Terkirim” di sisi pengirim <<<
   };
 
   // Fetch Events
@@ -73,17 +127,47 @@ const JudgesPage = () => {
 
   return (
     <>
+      {/* ====== TOAST CONTAINER (kanan atas) ====== */}
+      <div className="pointer-events-none fixed top-4 right-4 z-[1000] flex w-full max-w-sm flex-col gap-3">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className="pointer-events-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl ring-1 ring-black/5 transition-all duration-200 animate-in fade-in slide-in-from-top-2"
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+              <div className="flex-1">
+                {t.title && (
+                  <p className="text-sm font-semibold text-gray-900">
+                    {t.title}
+                  </p>
+                )}
+                <p className="text-sm text-gray-700">{t.text}</p>
+              </div>
+              <button
+                onClick={() => removeToast(t.id)}
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* ========================================== */}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
           Events
         </h1>
 
         <button
-        className="px-4 py-2 rounded bg-blue-600 text-white"
-        onClick={sendRealtimeMessage}
-      >
-        Kirim Pesan Realtime (Next.js → Semua)
-      </button>
+          className="px-4 py-2 rounded bg-blue-600 text-white"
+          onClick={sendRealtimeMessage}
+        >
+          Kirim Pesan ke Timing Operator
+        </button>
 
         {/* 🚀 DAFTAR EVENTS */}
         {loading ? (
@@ -172,48 +256,46 @@ const JudgesPage = () => {
 
       {/* 🚀 BUTTON NAVIGASI */}
       {events.length > 0 && user && (
-  <div className="flex items-center justify-center py-10 px-4 sm:px-8 md:px-16">
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-6xl">
-      <NavigationButton
-        href="/judges/sprint"
-        label="Sprint"
-        icon="🏎️"
-        color="bg-blue-500"
-        params={{ eventId: events[0]?._id, userId: user?._id }}
-        className="w-full flex items-center justify-center py-4 min-h-[60px]"
-      />
+        <div className="flex items-center justify-center py-10 px-4 sm:px-8 md:px-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-6xl">
+            <NavigationButton
+              href="/judges/sprint"
+              label="Sprint"
+              icon="🏎️"
+              color="bg-blue-500"
+              params={{ eventId: events[0]?._id, userId: user?._id }}
+              className="w-full flex items-center justify-center py-4 min-h-[60px]"
+            />
 
-      <NavigationButton
-        href="/judges/headtohead"
-        label="Head 2 Head"
-        icon="🤜🤛"
-        color="bg-green-500"
-        params={{ eventId: events[0]?._id, userId: user?._id }}
-        className="w-full flex items-center justify-center py-4 min-h-[60px]"
-      />
+            <NavigationButton
+              href="/judges/headtohead"
+              label="Head 2 Head"
+              icon="🤜🤛"
+              color="bg-green-500"
+              params={{ eventId: events[0]?._id, userId: user?._id }}
+              className="w-full flex items-center justify-center py-4 min-h-[60px]"
+            />
 
-      <NavigationButton
-        href="/judges/slalom"
-        label="Slalom"
-        icon="🌀"
-        color="bg-purple-500"
-        params={{ eventId: events[0]?._id, userId: user?._id }}
-        className="w-full flex items-center justify-center py-4 min-h-[60px]"
-      />
+            <NavigationButton
+              href="/judges/slalom"
+              label="Slalom"
+              icon="🌀"
+              color="bg-purple-500"
+              params={{ eventId: events[0]?._id, userId: user?._id }}
+              className="w-full flex items-center justify-center py-4 min-h-[60px]"
+            />
 
-      <NavigationButton
-        href="/judges/downriverrace"
-        label="DRR"
-        icon="🚀"
-        color="bg-red-500"
-        params={{ eventId: events[0]?._id, userId: user?._id }}
-        className="w-full flex items-center justify-center py-4 min-h-[60px]"
-      />
-    </div>
-  </div>
-)}
-
-
+            <NavigationButton
+              href="/judges/downriverrace"
+              label="DRR"
+              icon="🚀"
+              color="bg-red-500"
+              params={{ eventId: events[0]?._id, userId: user?._id }}
+              className="w-full flex items-center justify-center py-4 min-h-[60px]"
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 };
