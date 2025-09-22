@@ -1,101 +1,74 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import {
-  FaBed,
-  FaBath,
-  FaRulerCombined,
-  FaMoneyBill,
-  FaMapMarker,
-} from 'react-icons/fa';
+import Image from "next/image";
+import Link from "next/link";
 
-const MatchCard = ({ match }) => {
-  // const getRateDisplay = () => {
-  //   const { rates } = property;
+const DEFAULT_IMG = "/images/logo-dummy.png";
 
-  //   if (rates.monthly) {
-  //     return `${rates.monthly.toLocaleString()}/mo`;
-  //   } else if (rates.weekly) {
-  //     return `${rates.weekly.toLocaleString()}/wk`;
-  //   } else if (rates.nightly) {
-  //     return `${rates.nightly.toLocaleString()}/night`;
-  //   }
-  // };
+function fmtDate(s) {
+  if (!s) return "-";
+  const d = new Date(s);
+  return isNaN(d) ? s : d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export default function MatchCard({ match }) {
+  const id = String(match?.id ?? match?._id ?? "");
+  const name = match?.eventName ?? "Untitled";
+  const level = match?.levelName ?? "-";
+  const city = match?.addressCity || "";
+  const prov = match?.addressProvince || "";
+  const start = fmtDate(match?.startDateEvent);
+  const end = fmtDate(match?.endDateEvent);
+  const totalParticipant = Array.isArray(match?.participant) ? match.participant.length : 0;
 
   return (
-    <div className='rounded-xl shadow-md relative'>
-      {/* <Image
-        src={match.images[0]}
-        alt=''
-        height={0}
-        width={0}
-        sizes='100vw'
-        className='w-full h-auto rounded-t-xl'
-      /> */}
-      <div className='p-4'>
-        <div className='text-left md:text-center lg:text-left mb-6'>
-          <div className='text-gray-600'>{match.eventName}</div>
-          <h3 className='text-xl font-bold'>{match.description}</h3>
+    <Link href={`/live/${id}`} className="group block">
+      <article className="rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-gray-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+        {/* Image */}
+        <div className="relative h-44 w-full bg-gray-100">
+          <Image
+            src={DEFAULT_IMG}
+            alt={name}
+            fill
+            className="object-cover"
+            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+            priority={false}
+          />
+          {/* level badge */}
+          <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/90 text-gray-800 shadow">
+            {level}
+          </span>
         </div>
-        
-        {/* <h3 className='absolute top-[10px] right-[10px] bg-white px-4 py-2 rounded-lg text-blue-500 font-bold text-right md:text-center lg:text-right'>
-          ${getRateDisplay()}
-        </h3> */}
 
-        {/* <div className='flex justify-center gap-4 text-gray-500 mb-4'>
-          <p>
-            <FaBed className='inline mr-2' /> {property.beds}{' '}
-            <span className='md:hidden lg:inline'>Beds</span>
-          </p>
-          <p>
-            <FaBath className='inline mr-2' />
-            {property.baths} <span className='md:hidden lg:inline'>Baths</span>
-          </p>
-          <p>
-            <FaRulerCombined className='inline mr-2' />
-            {property.square_feet}{' '}
-            <span className='md:hidden lg:inline'>sqft</span>
-          </p>
-        </div> */}
+        {/* Body */}
+        <div className="p-4">
+          <h3 className="text-base md:text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-blue-600">
+            {name}
+          </h3>
 
-        {/* <div className='flex justify-center gap-4 text-green-900 text-sm mb-4'>
-          {property.rates.nightly && (
-            <p>
-              <FaMoneyBill className='inline mr-2' /> Nightly
-            </p>
-          )}
+          <div className="mt-1 text-sm text-gray-600 flex items-center gap-1.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" className="text-rose-600">
+              <path fill="currentColor" d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7m0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/>
+            </svg>
+            <span className="truncate">{city}{city && prov ? ", " : ""}{prov}</span>
+          </div>
 
-          {property.rates.weekly && (
-            <p>
-              <FaMoneyBill className='inline mr-2' /> Weekly
-            </p>
-          )}
+          <div className="mt-1 text-sm text-gray-600">
+            <span className="font-medium">Tanggal:</span> {start} — {end}
+          </div>
 
-          {property.rates.monthly && (
-            <p>
-              <FaMoneyBill className='inline mr-2' /> Monthly
-            </p>
-          )}
-        </div> */}
+          <div className="mt-3 flex items-center justify-between">
+            <span className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <svg width="18" height="18" viewBox="0 0 24 24" className="text-emerald-600">
+                <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5a5 5 0 0 0 5 5M6 22v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2Z"/>
+              </svg>
+              {totalParticipant} peserta
+            </span>
 
-        {/* <div className='border border-gray-100 mb-5'></div> */}
-
-        {/* <div className='flex flex-col lg:flex-row justify-between mb-4'>
-          <div className='flex align-middle gap-2 mb-4 lg:mb-0'>
-            <FaMapMarker className='text-orange-700 mt-1' />
-            <span className='text-orange-700'>
-              {' '}
-              {property.location.city} {property.location.state}{' '}
+            <span className="text-blue-600 text-sm font-semibold group-hover:translate-x-0.5 transition">
+              Lihat Detail →
             </span>
           </div>
-          <Link
-            href={`/properties/${property._id}`}
-            className='h-[36px] bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-center text-sm'
-          >
-            Details
-          </Link>
-        </div> */}
-      </div>
-    </div>
+        </div>
+      </article>
+    </Link>
   );
-};
-export default MatchCard;
+}
