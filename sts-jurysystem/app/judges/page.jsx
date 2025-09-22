@@ -1,192 +1,224 @@
-"use client";
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import NavigationButton from "@/components/NavigationButton";
+'use client'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import NavigationButton from '@/components/NavigationButton'
 
 const JudgesPage = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null); // State untuk data user
-  const [loadingUser, setLoadingUser] = useState(true);
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(null) // State untuk data user
+  const [loadingUser, setLoadingUser] = useState(true)
+
+  // const handleChangeRiver = async (eventId, newRiverName) => {
+  //   try {
+  //     const res = await fetch(`/api/judges/${eventId}`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ riverName: newRiverName }),
+  //     })
+
+  //     if (res.ok) {
+  //       const updatedEvent = await res.json()
+  //       // update state supaya langsung kelihatan di UI
+  //       setEvents(prev =>
+  //         prev.map(ev => (ev._id === eventId ? updatedEvent : ev))
+  //       )
+  //     } else {
+  //       console.log('Failed to update river name:', res.statusText)
+  //     }
+  //   } catch (error) {
+  //     console.log('Error updating river name:', error)
+  //   }
+  // }
 
   // Fetch Events
   useEffect(() => {
     const fetchEventsActive = async () => {
       try {
-        const res = await fetch("/api/judges");
+        const res = await fetch('/api/judges')
         if (res.status === 200) {
-          const data = await res.json();
-          setEvents(data);
+          const data = await res.json()
+          setEvents(data)
         } else {
-          console.log(res.statusText);
+          console.log(res.statusText)
         }
       } catch (error) {
-        console.log(error);
+        console.log(error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchEventsActive();
-  }, []);
+    fetchEventsActive()
+  }, [])
 
   // Fetch User Data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const res = await fetch("/api/user");
+        const res = await fetch('/api/user')
         if (res.status === 200) {
-          const data = await res.json();
-          setUser(data);
+          const data = await res.json()
+          setUser(data)
         }
       } catch (error) {
-        console.log("Error fetching user:", error);
+        console.log('Error fetching user:', error)
       } finally {
-        setLoadingUser(false);
+        setLoadingUser(false)
       }
-    };
+    }
 
-    fetchUserData();
-  }, []);
+    fetchUserData()
+  }, [])
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+        <h1 className='text-3xl font-extrabold text-gray-800 mb-6 text-center'>
           Events
         </h1>
 
         {/* 🚀 DAFTAR EVENTS */}
         {loading ? (
-          <p className="text-gray-500 text-center">Loading events...</p>
+          <p className='text-gray-500 text-center'>Loading events...</p>
         ) : events.length > 0 ? (
-          <div className="space-y-12">
-            {events.map((event) => (
+          <div className='space-y-12'>
+            {events.map(event => (
               <div
                 key={event._id}
-                className="flex flex-col md:flex-row md:items-center gap-6 border-b border-gray-300 pb-8"
-              >
+                className='flex flex-col md:flex-row md:items-center gap-6 border-b border-gray-300 pb-8'>
                 {event.images && event.images.length > 0 && (
                   <img
                     src={event.images[0]}
                     alt={event.eventName}
-                    className="w-full md:w-1/3 h-64 object-cover rounded-lg"
+                    className='w-full md:w-1/3 h-64 object-cover rounded-lg'
                   />
                 )}
 
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-blue-600 mb-2">
+                <div className='flex-1'>
+                  <h2 className='text-2xl font-bold text-blue-600 mb-2'>
                     {event.eventName}
                   </h2>
 
-                  <p className="text-gray-700 mb-4">{event.description}</p>
+                  <p className='text-gray-700 mb-4'>{event.description}</p>
 
-                  <p className="text-gray-600 mb-1">
-                    <strong>Location:</strong> {event.location.street},{" "}
-                    {event.location.city}, {event.location.state},{" "}
+                  {/* <p className='text-gray-600 mb-1'>
+                    <strong>Location:</strong> {event.location.street},{' '}
+                    {event.location.city}, {event.location.state},{' '}
                     {event.location.zipcode}
-                  </p>
+                  </p> */}
 
-                  <p className="text-gray-600 mb-1">
-                    <strong>River:</strong> {event.riverName} |{" "}
+                  <p className='text-gray-600 mb-1'>
+                    <strong>River:</strong> {event.riverName} |{' '}
                     <strong>Level:</strong> {event.levelName}
                   </p>
 
+                  {/* <div className='mt-2'>
+                    <label className='block text-sm text-gray-600 mb-1'>
+                      Edit River Name:
+                    </label>
+                    <input
+                      type='text'
+                      defaultValue={event.riverName}
+                      onBlur={e => handleChangeRiver(event._id, e.target.value)}
+                      className='border px-2 py-1 rounded w-full md:w-1/2'
+                    />
+                  </div> */}
+
                   <p
                     className={`font-semibold ${
-                      event.statusEvent === "Activated"
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
+                      event.statusEvent === 'Activated'
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}>
                     Status: {event.statusEvent}
                   </p>
                 </div>
 
                 {/* 🚀 DATA USER */}
                 {loadingUser ? (
-                  <p className="text-gray-500 text-center">
+                  <p className='text-gray-500 text-center'>
                     Loading user data...
                   </p>
                 ) : user ? (
-                  <div className="flex flex-col items-center mb-10">
+                  <div className='flex flex-col items-center mb-10'>
                     {/* Foto Profil */}
                     {user.image && (
                       <img
                         src={user.image}
                         alt={user.username}
-                        className="w-24 h-24 rounded-full shadow-md mb-4"
+                        className='w-24 h-24 rounded-full shadow-md mb-4'
                       />
                     )}
 
                     {/* Nama dan Email */}
-                    <h2 className="text-xl font-semibold text-gray-800">
+                    <h2 className='text-xl font-semibold text-gray-800'>
                       {user.username}
                     </h2>
-                    <p className="text-gray-600">{user.email}</p>
+                    <p className='text-gray-600'>{user.email}</p>
 
                     {/* Tampilkan Tanggal Bergabung */}
-                    <p className="text-gray-500 text-sm">
+                    <p className='text-gray-500 text-sm'>
                       Joined on {new Date(user.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 ) : (
-                  <p className="text-red-500 text-center">User not found.</p>
+                  <p className='text-red-500 text-center'>User not found.</p>
                 )}
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-center">No events available.</p>
+          <p className='text-gray-500 text-center'>No events available.</p>
         )}
       </div>
 
       {/* 🚀 BUTTON NAVIGASI */}
       {events.length > 0 && user && (
-  <div className="flex items-center justify-center py-10 px-4 sm:px-8 md:px-16">
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-6xl">
-      <NavigationButton
-        href="/judges/sprint"
-        label="Sprint"
-        icon="🏎️"
-        color="bg-blue-500"
-        params={{ eventId: events[0]?._id, userId: user?._id }}
-        className="w-full flex items-center justify-center py-4 min-h-[60px]"
-      />
+        <div className='flex items-center justify-center py-10 px-4 sm:px-8 md:px-16'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-6xl'>
+            <NavigationButton
+              href='/judges/sprint'
+              label='Sprint'
+              icon='🏎️'
+              color='bg-blue-500'
+              params={{ eventId: events[0]?._id, userId: user?._id }}
+              className='w-full flex items-center justify-center py-4 min-h-[60px]'
+            />
 
-      <NavigationButton
-        href="/judges/headtohead"
-        label="Head 2 Head"
-        icon="🤜🤛"
-        color="bg-green-500"
-        params={{ eventId: events[0]?._id, userId: user?._id }}
-        className="w-full flex items-center justify-center py-4 min-h-[60px]"
-      />
+            <NavigationButton
+              href='/judges/headtohead'
+              label='Head 2 Head'
+              icon='🤜🤛'
+              color='bg-green-500'
+              params={{ eventId: events[0]?._id, userId: user?._id }}
+              className='w-full flex items-center justify-center py-4 min-h-[60px]'
+            />
 
-      <NavigationButton
-        href="/judges/slalom"
-        label="Slalom"
-        icon="🌀"
-        color="bg-purple-500"
-        params={{ eventId: events[0]?._id, userId: user?._id }}
-        className="w-full flex items-center justify-center py-4 min-h-[60px]"
-      />
+            <NavigationButton
+              href='/judges/slalom'
+              label='Slalom'
+              icon='🌀'
+              color='bg-purple-500'
+              params={{ eventId: events[0]?._id, userId: user?._id }}
+              className='w-full flex items-center justify-center py-4 min-h-[60px]'
+            />
 
-      <NavigationButton
-        href="/judges/downriverrace"
-        label="DRR"
-        icon="🚀"
-        color="bg-red-500"
-        params={{ eventId: events[0]?._id, userId: user?._id }}
-        className="w-full flex items-center justify-center py-4 min-h-[60px]"
-      />
-    </div>
-  </div>
-)}
-
-
+            <NavigationButton
+              href='/judges/downriverrace'
+              label='DRR'
+              icon='🚀'
+              color='bg-red-500'
+              params={{ eventId: events[0]?._id, userId: user?._id }}
+              className='w-full flex items-center justify-center py-4 min-h-[60px]'
+            />
+          </div>
+        </div>
+      )}
     </>
-  );
-};
+  )
+}
 
-export default JudgesPage;
+export default JudgesPage
