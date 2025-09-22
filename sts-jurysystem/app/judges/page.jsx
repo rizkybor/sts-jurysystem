@@ -2,12 +2,34 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import NavigationButton from "@/components/NavigationButton";
+import getSocket from "@/utils/socket"
+
 
 const JudgesPage = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null); // State untuk data user
   const [loadingUser, setLoadingUser] = useState(true);
+
+
+  useEffect(() => {
+    const socket = getSocket();
+    const handler = (msg) => {
+      console.log("[Next] terima:", msg);
+      alert(`Realtime dari ${msg.from}: ${msg.text}`);
+    };
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, []);
+
+  const sendRealtimeMessage = () => {
+    const socket = getSocket();
+    socket.emit("custom:event", {
+      from: "Next.js/JudgesPage.jsx",
+      text: "Halo Rizky bor dari Next.js!",
+      ts: new Date().toISOString()
+    });
+  };
 
   // Fetch Events
   useEffect(() => {
@@ -55,6 +77,13 @@ const JudgesPage = () => {
         <h1 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
           Events
         </h1>
+
+        <button
+        className="px-4 py-2 rounded bg-blue-600 text-white"
+        onClick={sendRealtimeMessage}
+      >
+        Kirim Pesan Realtime (Next.js → Semua)
+      </button>
 
         {/* 🚀 DAFTAR EVENTS */}
         {loading ? (
