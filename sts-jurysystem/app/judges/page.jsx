@@ -81,11 +81,11 @@ const JudgesPage = () => {
 
                   <p className="text-gray-700 mb-4">{event.description}</p>
 
-                  <p className="text-gray-600 mb-1">
+                  {/* <p className="text-gray-600 mb-1">
                     <strong>Location:</strong> {event.location.street},{" "}
                     {event.location.city}, {event.location.state},{" "}
                     {event.location.zipcode}
-                  </p>
+                  </p> */}
 
                   <p className="text-gray-600 mb-1">
                     <strong>River:</strong> {event.riverName} |{" "}
