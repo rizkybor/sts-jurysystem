@@ -2,7 +2,6 @@
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-
 const DEFAULT_IMG = '/images/logo-dummy.png'
 
 export default function EventDetailPage() {
