@@ -1,38 +1,65 @@
-import InfoBox from './InfoBox';
-import InfoBoxWa from './InfoBoxWa';
-
+'use client'
+import { useState, useEffect } from 'react'
+import { signIn, useSession, getProviders } from 'next-auth/react'
+import InfoBox from './InfoBox' // Gunakan InfoBox yang fleksibel
 
 const InfoBoxes = () => {
+  const { data: session } = useSession() // Mendapatkan data sesi pengguna
+  const [providers, setProviders] = useState(null)
+
+  useEffect(() => {
+    const setAuthProviders = async () => {
+      const res = await getProviders()
+      setProviders(res)
+    }
+    setAuthProviders()
+  }, [])
+
+  const handleRegisterClick = () => {
+    // Jika pengguna belum login
+    if (!session) {
+      if (providers) {
+        // Panggil fungsi signIn dari NextAuth
+        const googleProvider = Object.values(providers)[0]
+        signIn(googleProvider.id)
+      }
+    } else {
+      // Jika pengguna sudah login, arahkan ke halaman juri
+      window.location.href = '/judges'
+    }
+  }
+
   return (
     <section>
       <div className='container-xl lg:container m-auto'>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg'>
           <InfoBox
             heading='All Events by Sustainable'
-            backgroundColor='bg-gray-100'
+            backgroundColor='bg-blue-100'
             buttonInfo={{
               text: 'History Result All Events',
               link: '/matches',
               backgroundColor: 'bg-black',
-            }}
-          >
+            }}>
             Find all match results from sustainable timings.
           </InfoBox>
-          <InfoBoxWa
+
+          <InfoBox
             heading='Jury Register'
             backgroundColor='bg-blue-100'
             buttonInfo={{
-              text: 'Request as Jury',
-              link: 'https://wa.me/6285121110794?text=Jadikan%20saya%20sebagai%20juri%20bor,%20Mau%20test%20halaman%20judges',
+              // Teks tombol akan berubah berdasarkan status sesi pengguna
+              text: session ? 'Register Now' : 'Login or Register',
+              // Menggunakan fungsi onClick untuk menangani logika
+              onClick: handleRegisterClick,
               backgroundColor: 'bg-blue-500',
-              target: '_blank',
-            }}
-          >
+            }}>
             Register as a jury in an activity.
-          </InfoBoxWa>
+          </InfoBox>
         </div>
       </div>
     </section>
-  );
-};
-export default InfoBoxes;
+  )
+}
+
+export default InfoBoxes

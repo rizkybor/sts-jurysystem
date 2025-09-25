@@ -1,7 +1,8 @@
 'use client'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+
 const DEFAULT_IMG = '/images/logo-dummy.png'
 
 export default function EventDetailPage() {
@@ -15,59 +16,125 @@ export default function EventDetailPage() {
   const [eventCategories, setEventCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [errMsg, setErrMsg] = useState(null)
-  const [activeTab, setActiveTab] = useState('participants')
+
+  const [selectedEventCat, setSelectedEventCat] = useState('')
+  const [selectedRace, setSelectedRace] = useState('')
+  const [selectedInitial, setSelectedInitial] = useState('')
+  const [selectedDivision, setSelectedDivision] = useState('')
 
   useEffect(() => {
     if (!id) return
 
-    const fetchEvent = async () => {
+    const fetchData = async () => {
       setLoading(true)
       setErrMsg(null)
+
       try {
-        const res = await fetch(`/api/matches/${id}`, { cache: 'no-store' })
-        if (!res.ok) throw new Error(`Failed to fetch event (${res.status})`)
-        const data = await res.json()
+        console.log('🔍 Fetching event details for ID:', id)
 
-        const normalized = {
-          id: data._id,
-          name: data.eventName ?? 'Untitled',
-          levelName: data.levelName ?? '-',
-          startDate: data.startDateEvent
-            ? new Date(data.startDateEvent).toLocaleDateString()
+        // Ambil event detail
+        const eventRes = await fetch(`/api/events/${id}`, { cache: 'no-store' })
+        if (!eventRes.ok)
+          throw new Error(`Failed to fetch event (${eventRes.status})`)
+        const eventJson = await eventRes.json()
+        const eventData = eventJson.event
+        if (!eventData) throw new Error('Event data is empty')
+
+        const normalizedEvent = {
+          id: eventData.id,
+          name: eventData.eventName ?? 'Untitled',
+          levelName: eventData.levelName ?? '-',
+          startDate: eventData.startDateEvent
+            ? new Date(eventData.startDateEvent).toLocaleDateString()
             : '-',
-          endDate: data.endDateEvent
-            ? new Date(data.endDateEvent).toLocaleDateString()
+          endDate: eventData.endDateEvent
+            ? new Date(eventData.endDateEvent).toLocaleDateString()
             : '-',
-          city: data.addressCity ?? '',
-          province: data.addressProvince ?? '',
-          image: data.eventBanner || DEFAULT_IMG,
-          chiefJudge: data.chiefJudge ?? '-',
-          raceDirector: data.raceDirector ?? '-',
-          safetyDirector: data.safetyDirector ?? '-',
-          eventDirector: data.eventDirector ?? '-',
+          city: eventData.addressCity ?? '',
+          province: eventData.addressProvince ?? '',
+          image: eventData.eventBanner || DEFAULT_IMG,
+          chiefJudge: eventData.chiefJudge ?? '-',
+          raceDirector: eventData.raceDirector ?? '-',
+          safetyDirector: eventData.safetyDirector ?? '-',
+          eventDirector: eventData.eventDirector ?? '-',
         }
-        setEvent(normalized)
+        setEvent(normalizedEvent)
 
-        const allTeams = data.participant?.flatMap(p => p.teams) || []
-        setParticipants(allTeams)
+        setRaceCategories(
+          (eventData.categoriesRace || []).map(cat => ({
+            value: String(cat.value ?? cat._id),
+            name: cat.name,
+          }))
+        )
+        setInitialCategories(
+          (eventData.categoriesInitial || []).map(cat => ({
+            value: String(cat.value ?? cat._id),
+            name: cat.name,
+          }))
+        )
+        setDivisionCategories(
+          (eventData.categoriesDivision || []).map(cat => ({
+            value: String(cat.value ?? cat._id),
+            name: cat.name,
+          }))
+        )
 
-        setRaceCategories(data.categoriesRace || [])
-        setInitialCategories(data.categoriesInitial || [])
-        setDivisionCategories(data.categoriesDivision || [])
-        setEventCategories(data.categoriesEvent || [])
+        // Ambil tim peserta + kategori event
+        const teamsRes = await fetch(`/api/events/${id}/teams`, {
+          cache: 'no-store',
+        })
+        if (!teamsRes.ok)
+          throw new Error(`Failed to fetch teams (${teamsRes.status})`)
+        const teamsJson = await teamsRes.json()
+
+        setParticipants(teamsJson.teams || [])
+        setEventCategories(
+          (teamsJson.eventCategories || []).map(cat => ({
+            value: cat._id,
+            name: cat.name,
+          }))
+        )
       } catch (err) {
+        console.error(err)
         setErrMsg(err.message)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchEvent()
+    fetchData()
   }, [id])
+
+  const filteredTeams = useMemo(() => {
+    return participants.filter(team => {
+      let ok = true
+      if (
+        selectedEventCat &&
+        String(team.eventCatId) !== String(selectedEventCat)
+      )
+        ok = false
+      if (selectedRace && String(team.raceId) !== String(selectedRace))
+        ok = false
+      if (selectedInitial && String(team.initialId) !== String(selectedInitial))
+        ok = false
+      if (
+        selectedDivision &&
+        String(team.divisionId) !== String(selectedDivision)
+      )
+        ok = false
+      return ok
+    })
+  }, [
+    participants,
+    selectedEventCat,
+    selectedRace,
+    selectedInitial,
+    selectedDivision,
+  ])
 
   return (
     <section className='min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8'>
-      <div className='max-w-5xl mx-auto space-y-6'>
+      <div className='max-w-6xl mx-auto space-y-6'>
         {/* Header */}
         <div className='flex items-center justify-between'>
           <h1 className='text-2xl sm:text-3xl font-bold'>📊 Event Detail</h1>
@@ -121,286 +188,114 @@ export default function EventDetailPage() {
                 </p>
               </div>
             </div>
-
-            {/* Officials */}
-            <div className='px-6 py-4 grid sm:grid-cols-2 gap-4 text-sm border-t'>
-              <p>
-                <span className='font-medium'>Chief Judge:</span>{' '}
-                {event.chiefJudge}
-              </p>
-              <p>
-                <span className='font-medium'>Race Director:</span>{' '}
-                {event.raceDirector}
-              </p>
-              <p>
-                <span className='font-medium'>Safety Director:</span>{' '}
-                {event.safetyDirector}
-              </p>
-              <p>
-                <span className='font-medium'>Event Director:</span>{' '}
-                {event.eventDirector}
-              </p>
-            </div>
           </div>
         )}
 
-        {/* TAB NAVIGATION */}
+        {/* Filters */}
         {!loading && !errMsg && (
-          <div className='bg-white p-4 rounded-xl shadow'>
-            <div className='flex space-x-4 border-b'>
-              <button
-                onClick={() => setActiveTab('participants')}
-                className={`pb-2 px-1 font-medium ${
-                  activeTab === 'participants'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500'
-                }`}>
-                Participants ({participants.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('categories')}
-                className={`pb-2 px-1 font-medium ${
-                  activeTab === 'categories'
-                    ? 'border-b-2 border-green-500 text-green-600'
-                    : 'text-gray-500'
-                }`}>
-                Categories
-              </button>
-              <button
-                onClick={() => setActiveTab('event-categories')}
-                className={`pb-2 px-1 font-medium ${
-                  activeTab === 'event-categories'
-                    ? 'border-b-2 border-orange-500 text-orange-600'
-                    : 'text-gray-500'
-                }`}>
-                Event Categories ({eventCategories.length})
-              </button>
+          <div className='bg-white p-6 rounded-xl shadow space-y-4'>
+            <h3 className='text-lg font-semibold'>Filter Participants</h3>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+              <select
+                value={selectedEventCat}
+                onChange={e => setSelectedEventCat(e.target.value)}
+                className='border rounded px-3 py-2 text-sm w-full'>
+                <option value=''>All Event Categories</option>
+                {eventCategories.map(cat => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedRace}
+                onChange={e => setSelectedRace(e.target.value)}
+                className='border rounded px-3 py-2 text-sm w-full'>
+                <option value=''>All Race Categories</option>
+                {raceCategories.map(cat => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedInitial}
+                onChange={e => setSelectedInitial(e.target.value)}
+                className='border rounded px-3 py-2 text-sm w-full'>
+                <option value=''>All Initial Categories</option>
+                {initialCategories.map(cat => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedDivision}
+                onChange={e => setSelectedDivision(e.target.value)}
+                className='border rounded px-3 py-2 text-sm w-full'>
+                <option value=''>All Division Categories</option>
+                {divisionCategories.map(cat => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         )}
 
-        {/* PARTICIPANTS TAB */}
-        {!loading && !errMsg && activeTab === 'participants' && (
-          <div className='bg-white p-6 rounded-xl shadow'>
-            <h3 className='text-lg font-semibold mb-4'>Participants</h3>
-            {participants.length > 0 ? (
-              <div className='overflow-x-auto'>
-                <table className='min-w-full bg-white border rounded-lg'>
-                  <thead className='bg-gray-200'>
-                    <tr>
-                      <th className='py-2 px-3 text-xs sm:text-sm'>No</th>
-                      <th className='py-2 px-3 text-xs sm:text-sm'>Team ID</th>
-                      <th className='py-2 px-3 text-xs sm:text-sm'>
-                        Team Name
-                      </th>
-                      <th className='py-2 px-3 text-xs sm:text-sm'>BIB</th>
-                      <th className='py-2 px-3 text-xs sm:text-sm'>Category</th>
-                      <th className='py-2 px-3 text-xs sm:text-sm'>Division</th>
-                      <th className='py-2 px-3 text-xs sm:text-sm'>Class</th>
-                      <th className='py-2 px-3 text-xs sm:text-sm'>
-                        Event Category
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {participants.map((team, idx) => (
+        {/* Participants Table */}
+        {!loading && !errMsg && (
+          <div className='bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200'>
+            <div className='overflow-x-auto'>
+              <table className='min-w-full divide-y divide-gray-200 text-sm'>
+                <thead className='bg-blue-50'>
+                  <tr>
+                    <th className='px-6 py-3 text-left font-semibold text-gray-700'>
+                      No
+                    </th>
+                    <th className='px-6 py-3 text-left font-semibold text-gray-700'>
+                      Team
+                    </th>
+                    <th className='px-6 py-3 text-left font-semibold text-gray-700'>
+                      BIB
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className='bg-white divide-y divide-gray-100'>
+                  {filteredTeams.length > 0 ? (
+                    filteredTeams.map((team, idx) => (
                       <tr
-                        key={team._id || idx}
-                        className='text-center odd:bg-gray-50 even:bg-white hover:bg-blue-50'>
-                        <td className='py-2 px-3'>{idx + 1}</td>
-                        <td className='py-2 px-3 font-mono text-xs text-gray-600'>
-                          {team._id || '-'}
+                        key={idx}
+                        className={`hover:bg-blue-100 transition-colors duration-200 ${
+                          idx % 2 === 0 ? 'bg-gray-50' : ''
+                        }`}>
+                        <td className='px-6 py-4 text-gray-700 font-medium'>
+                          {idx + 1}
                         </td>
-                        <td className='py-2 px-3 font-medium'>
+                        <td className='px-6 py-4 font-medium text-gray-800'>
                           {team.nameTeam}
                         </td>
-                        <td className='py-2 px-3 font-mono'>{team.bibTeam}</td>
-                        <td className='py-2 px-3'>
-                          <span className='bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded'>
-                            {team.initialName || '-'}
-                          </span>
-                        </td>
-                        <td className='py-2 px-3'>
-                          <span className='bg-green-100 text-green-800 text-xs px-2 py-1 rounded'>
-                            {team.divisionName || '-'}
-                          </span>
-                        </td>
-                        <td className='py-2 px-3'>
-                          <span className='bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded'>
-                            {team.raceName || '-'}
-                          </span>
-                        </td>
-                        <td className='py-2 px-3'>
-                          <span className='bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded'>
-                            {team.eventCategory || '-'}
-                          </span>
+                        <td className='px-6 py-4 text-gray-600'>
+                          {team.bibTeam}
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className='text-gray-500 text-center py-4'>
-                No participants registered yet.
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* CATEGORIES TAB */}
-        {!loading && !errMsg && activeTab === 'categories' && (
-          <div className='space-y-6'>
-            {raceCategories.length > 0 && (
-              <div className='bg-white p-6 rounded-xl shadow'>
-                <h3 className='text-lg font-semibold mb-4 flex items-center'>
-                  <span className='bg-purple-100 text-purple-800 p-2 rounded mr-2'>
-                    🏃
-                  </span>
-                  Race Categories ({raceCategories.length})
-                </h3>
-                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                  {raceCategories.map((cat, idx) => (
-                    <div
-                      key={idx}
-                      className='border rounded-lg p-4 bg-purple-50'>
-                      <h4 className='font-semibold text-purple-700'>
-                        {cat.name}
-                      </h4>
-                      {cat.description && (
-                        <p className='text-sm text-purple-600 mt-1'>
-                          {cat.description}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {initialCategories.length > 0 && (
-              <div className='bg-white p-6 rounded-xl shadow'>
-                <h3 className='text-lg font-semibold mb-4 flex items-center'>
-                  <span className='bg-blue-100 text-blue-800 p-2 rounded mr-2'>
-                    🏆
-                  </span>
-                  Initial Categories ({initialCategories.length})
-                </h3>
-                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                  {initialCategories.map((cat, idx) => (
-                    <div key={idx} className='border rounded-lg p-4 bg-blue-50'>
-                      <h4 className='font-semibold text-blue-700'>
-                        {cat.name}
-                      </h4>
-                      {cat.description && (
-                        <p className='text-sm text-blue-600 mt-1'>
-                          {cat.description}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {divisionCategories.length > 0 && (
-              <div className='bg-white p-6 rounded-xl shadow'>
-                <h3 className='text-lg font-semibold mb-4 flex items-center'>
-                  <span className='bg-green-100 text-green-800 p-2 rounded mr-2'>
-                    ⚡
-                  </span>
-                  Division Categories ({divisionCategories.length})
-                </h3>
-                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                  {divisionCategories.map((cat, idx) => (
-                    <div
-                      key={idx}
-                      className='border rounded-lg p-4 bg-green-50'>
-                      <h4 className='font-semibold text-green-700'>
-                        {cat.name}
-                      </h4>
-                      {cat.description && (
-                        <p className='text-sm text-green-600 mt-1'>
-                          {cat.description}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {raceCategories.length === 0 &&
-              initialCategories.length === 0 &&
-              divisionCategories.length === 0 && (
-                <div className='bg-white p-6 rounded-xl shadow text-center'>
-                  <h3 className='text-lg font-semibold mb-2'>No Categories</h3>
-                  <p className='text-gray-500'>
-                    No categories defined for this event.
-                  </p>
-                </div>
-              )}
-          </div>
-        )}
-
-        {/* EVENT CATEGORIES TAB */}
-        {!loading && !errMsg && activeTab === 'event-categories' && (
-          <div className='space-y-6'>
-            {eventCategories.length > 0 ? (
-              <div className='bg-white p-6 rounded-xl shadow'>
-                <h3 className='text-lg font-semibold mb-4 flex items-center'>
-                  <span className='bg-orange-100 text-orange-800 p-2 rounded mr-2'>
-                    🏷️
-                  </span>
-                  Event Categories ({eventCategories.length})
-                </h3>
-                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                  {eventCategories.map((category, idx) => (
-                    <div
-                      key={idx}
-                      className='border rounded-lg p-4 bg-orange-50 hover:bg-orange-100 transition-colors'>
-                      <h4 className='font-semibold text-orange-700 mb-2'>
-                        {category.name}
-                      </h4>
-                      {category.description && (
-                        <p className='text-sm text-orange-600 mb-3'>
-                          {category.description}
-                        </p>
-                      )}
-                      <div className='text-xs text-gray-500 space-y-1'>
-                        {category.type && (
-                          <p>
-                            <span className='font-medium'>Type:</span>{' '}
-                            {category.type}
-                          </p>
-                        )}
-                        {category.level && (
-                          <p>
-                            <span className='font-medium'>Level:</span>{' '}
-                            {category.level}
-                          </p>
-                        )}
-                        {category.participantsCount && (
-                          <p>
-                            <span className='font-medium'>Participants:</span>{' '}
-                            {category.participantsCount}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className='bg-white p-6 rounded-xl shadow text-center'>
-                <h3 className='text-lg font-semibold mb-2'>
-                  No Event Categories
-                </h3>
-                <p className='text-gray-500'>
-                  No event categories defined for this event.
-                </p>
-              </div>
-            )}
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan='3'
+                        className='px-6 py-6 text-center text-gray-500'>
+                        No participants match the selected filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
