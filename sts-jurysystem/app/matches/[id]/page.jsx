@@ -79,7 +79,7 @@ export default function EventDetailPage() {
           }))
         )
 
-        // Ambil tim peserta + kategori event
+        // Ambil tim peserta + event metadata
         const teamsRes = await fetch(`/api/events/${id}/teams`, {
           cache: 'no-store',
         })
@@ -88,10 +88,12 @@ export default function EventDetailPage() {
         const teamsJson = await teamsRes.json()
 
         setParticipants(teamsJson.teams || [])
+
+        // gunakan eventMetadata → eventCategories
         setEventCategories(
-          (teamsJson.eventCategories || []).map(cat => ({
-            value: cat._id,
-            name: cat.name,
+          (teamsJson.eventMetadata || []).map(meta => ({
+            value: meta.eventCatId,
+            name: meta.eventName,
           }))
         )
       } catch (err) {
@@ -269,7 +271,7 @@ export default function EventDetailPage() {
                   {filteredTeams.length > 0 ? (
                     filteredTeams.map((team, idx) => (
                       <tr
-                        key={idx}
+                        key={team._id}
                         className={`hover:bg-blue-100 transition-colors duration-200 ${
                           idx % 2 === 0 ? 'bg-gray-50' : ''
                         }`}>
