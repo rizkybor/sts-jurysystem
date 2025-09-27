@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ResultSprint from "@/components/ResultSprint";
@@ -7,27 +7,33 @@ import ResultSprint from "@/components/ResultSprint";
 const JudgesSprintPages = () => {
   const searchParams = useSearchParams();
   const eventId = searchParams.get("eventId");
-  const juryId = searchParams.get("userId");
 
-  const [selectedPenalty, setSelectedPenalty] = useState(null);
-  const [selectedTeam, setSelectedTeam] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  // UI states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [sprintResults, setSprintResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [teams, setTeams] = useState([]);
-  const [eventMetadata, setEventMetadata] = useState(null);
-  const [loadingTeams, setLoadingTeams] = useState(true);
+  // User / judge
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [selectedPosition, setSelectedPosition] = useState("");
 
+  // Event & teams
   const [eventDetail, setEventDetail] = useState(null);
   const [loadingEvent, setLoadingEvent] = useState(true);
+  const [teams, setTeams] = useState([]);
+  const [loadingTeams, setLoadingTeams] = useState(true);
+
+  // Form states
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState("");
+  const [selectedPenalty, setSelectedPenalty] = useState(null);
+
+  // Results modal
+  const [sprintResults, setSprintResults] = useState([]);
 
   const penalties = [0, 5, 50];
 
-  // ✅ Fungsi konversi judgesSprint ke posisi
+  // Map judgesSprint -> position label
   const getPositionFromJudgeSprint = (judgeValue) => {
     switch (judgeValue) {
       case "1":
@@ -39,29 +45,25 @@ const JudgesSprintPages = () => {
     }
   };
 
+  // Derived assigned position
   const assignedPosition = user
     ? getPositionFromJudgeSprint(user.judgesSprint)
     : "";
-  const [selectedPosition, setSelectedPosition] = useState(
-    assignedPosition || ""
-  );
 
-  const showPositionSelector = !assignedPosition;
-
-  // ✅ Fetch user
+  // Fetch user
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const res = await fetch("/api/user");
-        if (res.status === 200) {
+        if (res.ok) {
           const data = await res.json();
           setUser(data);
           setSelectedPosition(
             getPositionFromJudgeSprint(data.judgesSprint) || ""
           );
         }
-      } catch (error) {
-        console.log("Error fetching user:", error);
+      } catch {
+        // ignore
       } finally {
         setLoadingUser(false);
       }
@@ -69,39 +71,47 @@ const JudgesSprintPages = () => {
     fetchUserData();
   }, []);
 
-  // ✅ Fetch Teams
+  // Fetch teams
   useEffect(() => {
+    if (!eventId || !selectedCategory) return;
+
     const fetchTeams = async () => {
       try {
-        const res = await fetch(`/api/events/${eventId}/teams`);
+        const [initialId, divisionId, raceId] = selectedCategory.split("|");
+        const catEvent = "SPRINT";
+
+        const res = await fetch(
+          `/api/events/${eventId}/teams?initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}&eventName=${catEvent}`
+        );
+
         const data = await res.json();
-        if (res.ok && data.success) {
+        if (res.ok && data?.success) {
           setTeams(data.teams || []);
-          setEventMetadata(data.eventMetadata || {});
-          console.log(data.teams);
+        } else {
+          setTeams([]);
         }
-      } catch (error) {
-        console.error("❌ Failed to fetch teams:", error);
+      } catch (err) {
+        console.error("❌ Failed to fetch teams:", err);
+        setTeams([]);
       } finally {
-        setLoadingTeams(false);
+        setLoadingTeams(false); // selesai loading
       }
     };
-    if (eventId) fetchTeams();
-  }, [eventId]);
 
-  // ✅ Fetch Event Detail
+    fetchTeams();
+  }, [eventId, selectedCategory]);
+
+  // Fetch event detail
   useEffect(() => {
+    if (!eventId) return;
     const fetchEventDetail = async () => {
-      if (!eventId) return;
       setLoadingEvent(true);
       try {
         const res = await fetch(`/api/matches/${eventId}`);
         const data = await res.json();
         const evt = data.event || data;
         setEventDetail(evt || null);
-        console.log(data);
-      } catch (err) {
-        console.error("❌ Failed to fetch event detail:", err);
+      } catch {
         setEventDetail(null);
       } finally {
         setLoadingEvent(false);
@@ -110,56 +120,76 @@ const JudgesSprintPages = () => {
     fetchEventDetail();
   }, [eventId]);
 
-  // ✅ Fetch Sprint Results
+  // Fetch sprint results when modal opens
   useEffect(() => {
-    if (isModalOpen) {
-      fetchSprintResults();
-    }
+    if (!isModalOpen) return;
+    const fetchSprintResults = async () => {
+      try {
+        const res = await fetch("/api/judges/sprint");
+        const data = await res.json();
+        if (res.ok) setSprintResults(data.data || []);
+      } catch {
+        // ignore
+      }
+    };
+    fetchSprintResults();
   }, [isModalOpen]);
 
-  const fetchSprintResults = async () => {
-    try {
-      const res = await fetch("/api/judges/sprint");
-      const data = await res.json();
-      if (res.ok) {
-        setSprintResults(data.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch sprint results:", error);
-    }
-  };
-
+  // Refresh teams after submit
   const refreshTeams = async () => {
     try {
       const res = await fetch(`/api/events/${eventId}/teams?t=${Date.now()}`);
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (res.ok && data?.success) {
         setTeams(data.teams || []);
-        console.log(data.teams, "<<<<");
-        setEventMetadata(data.eventMetadata || {});
       }
-    } catch (error) {
-      console.error("❌ Failed to refresh teams:", error);
+    } catch {
+      // ignore
     }
   };
 
+  // Category list (Initial | Division | Race) -> label & value "initial|division|race"
+  const combinedCategories = useMemo(() => {
+    const list = [];
+    const initials = eventDetail?.categoriesInitial || [];
+    const divisions = eventDetail?.categoriesDivision || [];
+    const races = eventDetail?.categoriesRace || [];
+    initials.forEach((initial) => {
+      divisions.forEach((division) => {
+        races.forEach((race) => {
+          list.push({
+            label: `${initial.name} - ${division.name} - ${race.name}`,
+            value: `${initial.value}|${division.value}|${race.value}`,
+          });
+        });
+      });
+    });
+    return list;
+  }, [eventDetail]);
+
+  // Handle category selection
   const handleCategoryChange = (value) => {
     setSelectedCategory(value);
     setSelectedTeam("");
-
-    const [initialId, divisionId, raceId] = value.split("|");
-    console.log("Category selected:", {
-      eventId,
-      initialId,
-      divisionId,
-      raceId,
-    });
+    setTeams([]);
+    setLoadingTeams(true);
   };
 
-  // ✅ Handle Submit
+  // Teams filtered by selected category
+  const filteredTeams = useMemo(() => {
+    if (!selectedCategory) return teams;
+    const [initialId, divisionId, raceId] = selectedCategory.split("|");
+    return teams.filter(
+      (team) =>
+        String(team.initialId) === String(initialId) &&
+        String(team.divisionId) === String(divisionId) &&
+        String(team.raceId) === String(raceId)
+    );
+  }, [selectedCategory, teams]);
+
+  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const finalPosition = assignedPosition || selectedPosition;
 
     if (
@@ -193,57 +223,24 @@ const JudgesSprintPages = () => {
       });
       const data = await res.json();
 
-      if (res.ok && data.success) {
+      if (res.ok && data?.success) {
         alert(
           `✅ ${finalPosition} Penalty updated by ${user?.username || "you"}!`
         );
-        console.log(data, "<< cek data");
         await refreshTeams();
         setSelectedTeam("");
         setSelectedPenalty(null);
         setSelectedCategory("");
         if (!assignedPosition) setSelectedPosition("");
       } else {
-        alert(`❌ Error: ${data.message}`);
+        alert(`❌ Error: ${data?.message || "Failed to update penalty."}`);
       }
-    } catch (error) {
-      console.error("❌ [FRONTEND] Fetch error:", error);
-      alert("❌ Failed to update penalty! Check console for details.");
+    } catch {
+      alert("❌ Failed to update penalty! Please try again.");
     } finally {
       setLoading(false);
     }
   };
-
-  // ✅ Gabungan kategori untuk dropdown
-  const combinedCategories = [];
-  if (
-    eventDetail?.categoriesInitial &&
-    eventDetail?.categoriesDivision &&
-    eventDetail?.categoriesRace
-  ) {
-    eventDetail.categoriesInitial.forEach((initial) => {
-      eventDetail.categoriesDivision.forEach((division) => {
-        eventDetail.categoriesRace.forEach((race) => {
-          combinedCategories.push({
-            label: `${initial.name} ${division.name} ${race.name}`,
-            value: `${initial.value}|${division.value}|${race.value}`,
-          });
-        });
-      });
-    });
-  }
-
-  // ✅ Filter teams berdasarkan kategori yang dipilih
-  const filteredTeams = selectedCategory
-    ? teams.filter((team) => {
-        const [initialId, divisionId, raceId] = selectedCategory.split("|");
-        return (
-          String(team.initialId) === String(initialId) &&
-          String(team.divisionId) === String(divisionId) &&
-          String(team.raceId) === String(raceId)
-        );
-      })
-    : teams;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
@@ -252,7 +249,7 @@ const JudgesSprintPages = () => {
           Sprint Session
         </h1>
 
-        {/* DATA USER */}
+        {/* USER */}
         {loadingUser ? (
           <p className="text-gray-500 text-center">Loading user data...</p>
         ) : user ? (
@@ -286,7 +283,7 @@ const JudgesSprintPages = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* CATEGORY COMBINED DROPDOWN */}
+          {/* CATEGORY */}
           <div>
             <label className="block text-gray-700 mb-2">Category:</label>
             {loadingEvent ? (
@@ -310,7 +307,7 @@ const JudgesSprintPages = () => {
             )}
           </div>
 
-          {/* TEAM SELECT */}
+          {/* TEAM */}
           <div>
             <label className="block text-gray-700 mb-2">Team:</label>
             {loadingTeams ? (
@@ -338,12 +335,12 @@ const JudgesSprintPages = () => {
             )}
           </div>
 
-          {/* PENALTY BUTTONS */}
+          {/* PENALTY */}
           <div className="space-y-2">
             <div className="text-sm text-gray-600 mb-2">Select Penalty:</div>
-            {penalties.map((pen, index) => (
+            {penalties.map((pen) => (
               <button
-                key={index}
+                key={pen}
                 type="button"
                 onClick={() => setSelectedPenalty(pen)}
                 className={`w-full py-3 rounded-lg border ${
@@ -357,7 +354,7 @@ const JudgesSprintPages = () => {
             ))}
           </div>
 
-          {/* SUBMIT BUTTON */}
+          {/* SUBMIT */}
           <button
             type="submit"
             className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold shadow-md hover:bg-blue-600 disabled:bg-gray-400"
