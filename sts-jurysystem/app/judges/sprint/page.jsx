@@ -11,6 +11,7 @@ const JudgesSprintPages = () => {
 
   const [selectedPenalty, setSelectedPenalty] = useState(null)
   const [selectedTeam, setSelectedTeam] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [sprintResults, setSprintResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -24,14 +25,9 @@ const JudgesSprintPages = () => {
   const [eventDetail, setEventDetail] = useState(null)
   const [loadingEvent, setLoadingEvent] = useState(true)
 
-  // checkbox selections
-  const [selectedInitials, setSelectedInitials] = useState([])
-  const [selectedDivisions, setSelectedDivisions] = useState([])
-  const [selectedClasses, setSelectedClasses] = useState([])
-
   const penalties = [0, 5, 50]
 
-  // ✅ Fungsi untuk konversi judgesSprint "1" atau "2" ke Position
+  // ✅ Fungsi konversi judgesSprint ke posisi
   const getPositionFromJudgeSprint = judgeValue => {
     switch (judgeValue) {
       case '1':
@@ -43,7 +39,6 @@ const JudgesSprintPages = () => {
     }
   }
 
-  // ✅ Dapatkan position dari user.judgesSprint
   const assignedPosition = user
     ? getPositionFromJudgeSprint(user.judgesSprint)
     : ''
@@ -51,9 +46,9 @@ const JudgesSprintPages = () => {
     assignedPosition || ''
   )
 
-  // ✅ Tentukan apakah perlu menampilkan position selector
   const showPositionSelector = !assignedPosition
 
+  // ✅ Fetch user
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -61,7 +56,6 @@ const JudgesSprintPages = () => {
         if (res.status === 200) {
           const data = await res.json()
           setUser(data)
-          // ✅ Set selectedPosition setelah user data loaded
           setSelectedPosition(
             getPositionFromJudgeSprint(data.judgesSprint) || ''
           )
@@ -72,25 +66,18 @@ const JudgesSprintPages = () => {
         setLoadingUser(false)
       }
     }
-
     fetchUserData()
   }, [])
 
-  // ✅ Fetch Teams dari API termasuk metadata
+  // ✅ Fetch Teams
   useEffect(() => {
     const fetchTeams = async () => {
       try {
-        console.log('🔄 [FRONTEND] Fetching teams for eventId:', eventId)
         const res = await fetch(`/api/events/${eventId}/teams`)
         const data = await res.json()
-
-        console.log('📥 [FRONTEND] Full response:', data)
-
         if (res.ok && data.success) {
           setTeams(data.teams || [])
           setEventMetadata(data.eventMetadata || {})
-        } else {
-          console.error('Error fetching teams:', data.message)
         }
       } catch (error) {
         console.error('❌ Failed to fetch teams:', error)
@@ -98,10 +85,10 @@ const JudgesSprintPages = () => {
         setLoadingTeams(false)
       }
     }
-
     if (eventId) fetchTeams()
   }, [eventId])
 
+  // ✅ Fetch Event Detail
   useEffect(() => {
     const fetchEventDetail = async () => {
       if (!eventId) return
@@ -109,7 +96,6 @@ const JudgesSprintPages = () => {
       try {
         const res = await fetch(`/api/matches/${eventId}`)
         const data = await res.json()
-        // sesuaikan bentuk response-mu; di sini kuanggap { event: {...} }
         const evt = data.event || data
         setEventDetail(evt || null)
       } catch (err) {
@@ -122,13 +108,7 @@ const JudgesSprintPages = () => {
     fetchEventDetail()
   }, [eventId])
 
-  const toggleFromList = (value, list, setList) => {
-    setList(prev =>
-      prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
-    )
-  }
-
-  // ✅ Fetch Sprint Results kalau modal dibuka
+  // ✅ Fetch Sprint Results
   useEffect(() => {
     if (isModalOpen) {
       fetchSprintResults()
@@ -141,20 +121,16 @@ const JudgesSprintPages = () => {
       const data = await res.json()
       if (res.ok) {
         setSprintResults(data.data)
-      } else {
-        console.error('Error fetching sprint results:', data.message)
       }
     } catch (error) {
       console.error('Failed to fetch sprint results:', error)
     }
   }
 
-  // ✅ Function refresh teams dengan metadata
   const refreshTeams = async () => {
     try {
       const res = await fetch(`/api/events/${eventId}/teams?t=${Date.now()}`)
       const data = await res.json()
-
       if (res.ok && data.success) {
         setTeams(data.teams || [])
         setEventMetadata(data.eventMetadata || {})
@@ -164,73 +140,54 @@ const JudgesSprintPages = () => {
     }
   }
 
-  // Di JudgesSprintPages - handleSubmit function
+  // ✅ Handle Submit
   const handleSubmit = async e => {
     e.preventDefault()
 
-    // ✅ Gunakan assignedPosition atau selectedPosition
     const finalPosition = assignedPosition || selectedPosition
 
-    if (!selectedTeam || selectedPenalty === null || !finalPosition) {
-      alert('⚠️ Please select team and penalty before submitting.')
+    if (
+      !selectedTeam ||
+      selectedPenalty === null ||
+      !finalPosition ||
+      !selectedCategory
+    ) {
+      alert('⚠️ Please select category, team and penalty before submitting.')
       return
     }
 
-    const selectedTeamData = teams.find(t => t._id === selectedTeam)
-    if (!selectedTeamData) {
-      alert(`❌ Error: Selected team not found. Please reselect the team.`)
-      return
-    }
+    const [initialId, divisionId, raceId] = selectedCategory.split('|')
 
-    if (!eventMetadata) {
-      alert('❌ Event metadata not loaded yet. Please wait...')
-      await refreshTeams()
-      return
-    }
-
-    // ✅ TAMBAHKAN updateBy DENGAN USERNAME
     const formData = {
       teamId: selectedTeam,
       penalty: Number(selectedPenalty),
-      initialId: eventMetadata.initialId,
-      raceId: eventMetadata.raceId,
-      divisionId: eventMetadata.divisionId,
+      initialId,
+      divisionId,
+      raceId,
       position: finalPosition,
       updateBy: user?.username || 'Unknown Judge',
-      selectedInitials,
-      selectedDivisions,
-      selectedClasses,
     }
 
-    console.log('📤 [FRONTEND] Sending PATCH request with updateBy:', formData)
-
     setLoading(true)
-
     try {
       const res = await fetch(`/api/events/${eventId}/teams`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
-
       const data = await res.json()
 
       if (res.ok && data.success) {
         alert(
           `✅ ${finalPosition} Penalty updated by ${user?.username || 'you'}!`
         )
-        console.log('📝 Update details:', data.data)
         await refreshTeams()
         setSelectedTeam('')
         setSelectedPenalty(null)
+        setSelectedCategory('')
         if (!assignedPosition) setSelectedPosition('')
       } else {
         alert(`❌ Error: ${data.message}`)
-        if (data.message.includes('not found')) {
-          await refreshTeams()
-        }
       }
     } catch (error) {
       console.error('❌ [FRONTEND] Fetch error:', error)
@@ -240,6 +197,37 @@ const JudgesSprintPages = () => {
     }
   }
 
+  // ✅ Gabungan kategori untuk dropdown
+  const combinedCategories = []
+  if (
+    eventDetail?.categoriesInitial &&
+    eventDetail?.categoriesDivision &&
+    eventDetail?.categoriesRace
+  ) {
+    eventDetail.categoriesInitial.forEach(initial => {
+      eventDetail.categoriesDivision.forEach(division => {
+        eventDetail.categoriesRace.forEach(race => {
+          combinedCategories.push({
+            label: `${initial.name} ${division.name} ${race.name}`,
+            value: `${initial._id}|${division._id}|${race._id}`,
+          })
+        })
+      })
+    })
+  }
+
+  // ✅ Filter teams berdasarkan kategori yang dipilih
+  const filteredTeams = selectedCategory
+    ? teams.filter(team => {
+        const [initialId, divisionId, raceId] = selectedCategory.split('|')
+        return (
+          team.initialId === initialId &&
+          team.divisionId === divisionId &&
+          team.raceId === raceId
+        )
+      })
+    : teams
+
   return (
     <div className='min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8'>
       <div className='w-full max-w-md bg-white p-6 rounded-2xl shadow-lg relative'>
@@ -247,12 +235,11 @@ const JudgesSprintPages = () => {
           Sprint Session
         </h1>
 
-        {/* 🚀 DATA USER */}
+        {/* DATA USER */}
         {loadingUser ? (
           <p className='text-gray-500 text-center'>Loading user data...</p>
         ) : user ? (
           <div className='flex flex-col items-center mb-6'>
-            {/* Foto Profil */}
             {user.image && (
               <img
                 src={user.image}
@@ -260,14 +247,10 @@ const JudgesSprintPages = () => {
                 className='w-10 h-10 rounded-full shadow-md mb-3'
               />
             )}
-
-            {/* Nama dan Email */}
             <h2 className='text-lg font-semibold text-gray-800'>
               {user.username}
             </h2>
             <p className='text-gray-600 text-sm'>{user.email}</p>
-
-            {/* ✅ TAMPILKAN POSITION DARI judgesSprint */}
             {assignedPosition && (
               <div
                 className={`mt-2 px-3 py-1 rounded-full border ${
@@ -285,111 +268,30 @@ const JudgesSprintPages = () => {
         )}
 
         <form onSubmit={handleSubmit} className='space-y-6'>
-          {/* ✅ FILTERS: Initial / Division / Class */}
-          <div className='space-y-4'>
-            <h3 className='text-base font-semibold text-gray-800'>Filters</h3>
-
-            {/* Initial */}
-            <div>
-              <div className='text-sm font-medium text-gray-700 mb-2'>
-                Initial
-              </div>
-              {loadingEvent ? (
-                <p className='text-gray-500 text-sm'>Loading initial...</p>
-              ) : eventDetail?.categoriesInitial?.length ? (
-                <div className='grid grid-cols-2 gap-2'>
-                  {eventDetail.categoriesInitial.map(item => (
-                    <label
-                      key={item._id}
-                      className='flex items-center gap-2 text-sm'>
-                      <input
-                        type='checkbox'
-                        checked={selectedInitials.includes(item.name)}
-                        onChange={() =>
-                          toggleFromList(
-                            item.name,
-                            selectedInitials,
-                            setSelectedInitials
-                          )
-                        }
-                        className='h-4 w-4'
-                      />
-                      <span>{item.name}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className='text-gray-500 text-sm'>No initial available.</p>
-              )}
-            </div>
-
-            {/* Division */}
-            <div>
-              <div className='text-sm font-medium text-gray-700 mb-2'>
-                Division
-              </div>
-              {loadingEvent ? (
-                <p className='text-gray-500 text-sm'>Loading division...</p>
-              ) : eventDetail?.categoriesDivision?.length ? (
-                <div className='grid grid-cols-2 gap-2'>
-                  {eventDetail.categoriesDivision.map(item => (
-                    <label
-                      key={item._id}
-                      className='flex items-center gap-2 text-sm'>
-                      <input
-                        type='checkbox'
-                        checked={selectedDivisions.includes(item.name)}
-                        onChange={() =>
-                          toggleFromList(
-                            item.name,
-                            selectedDivisions,
-                            setSelectedDivisions
-                          )
-                        }
-                        className='h-4 w-4'
-                      />
-                      <span>{item.name}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className='text-gray-500 text-sm'>No division available.</p>
-              )}
-            </div>
-
-            {/* Class */}
-            <div>
-              <div className='text-sm font-medium text-gray-700 mb-2'>
-                Class
-              </div>
-              {loadingEvent ? (
-                <p className='text-gray-500 text-sm'>Loading class...</p>
-              ) : eventDetail?.categoriesRace?.length ? (
-                <div className='grid grid-cols-2 gap-2'>
-                  {eventDetail.categoriesRace.map(item => (
-                    <label
-                      key={item._id}
-                      className='flex items-center gap-2 text-sm'>
-                      <input
-                        type='checkbox'
-                        checked={selectedClasses.includes(item.name)}
-                        onChange={() =>
-                          toggleFromList(
-                            item.name,
-                            selectedClasses,
-                            setSelectedClasses
-                          )
-                        }
-                        className='h-4 w-4'
-                      />
-                      <span>{item.name}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className='text-gray-500 text-sm'>No class available.</p>
-              )}
-            </div>
+          {/* CATEGORY COMBINED DROPDOWN */}
+          <div>
+            <label className='block text-gray-700 mb-2'>Category:</label>
+            {loadingEvent ? (
+              <p className='text-gray-500 text-sm'>Loading categories...</p>
+            ) : combinedCategories.length ? (
+              <select
+                value={selectedCategory}
+                onChange={e => {
+                  setSelectedCategory(e.target.value)
+                  setSelectedTeam('') // reset tim ketika kategori berubah
+                }}
+                className='w-full px-4 py-2 border rounded-lg'
+                required>
+                <option value=''>Select Category</option>
+                {combinedCategories.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className='text-gray-500 text-sm'>No categories available.</p>
+            )}
           </div>
 
           {/* TEAM SELECT */}
@@ -397,7 +299,7 @@ const JudgesSprintPages = () => {
             <label className='block text-gray-700 mb-2'>Team:</label>
             {loadingTeams ? (
               <p className='text-gray-500'>Loading teams...</p>
-            ) : (
+            ) : filteredTeams.length ? (
               <select
                 value={selectedTeam}
                 onChange={e => setSelectedTeam(e.target.value)}
@@ -406,12 +308,16 @@ const JudgesSprintPages = () => {
                 <option value='' disabled>
                   Select Team
                 </option>
-                {teams.map(team => (
+                {filteredTeams.map(team => (
                   <option key={team._id} value={team._id}>
                     {team.nameTeam} (BIB {team.bibTeam})
                   </option>
                 ))}
               </select>
+            ) : (
+              <p className='text-gray-500 text-sm'>
+                No teams available for this category.
+              </p>
             )}
           </div>
 
@@ -441,7 +347,7 @@ const JudgesSprintPages = () => {
               loading ||
               !selectedTeam ||
               selectedPenalty === null ||
-              !eventMetadata
+              !selectedCategory
             }>
             {loading
               ? 'Submitting...'
