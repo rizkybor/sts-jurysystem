@@ -62,6 +62,11 @@ const JudgesPage = () => {
     )
   }
 
+// ALUR 
+// FETCH USER 
+// FETCH EVENT 
+// FETCH ASSIGNMENT JUDGES
+
 useEffect(() => {
   const fetchData = async () => {
     try {
