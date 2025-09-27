@@ -62,40 +62,50 @@ const JudgesPage = () => {
     )
   }
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const judgesRes = await fetch('/api/judges')
-        const judgesData = await judgesRes.json()
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      // 1) Ambil data judges
+      const judgesRes = await fetch('/api/judges', { cache: 'no-store' })
+      if (!judgesRes.ok) throw new Error('Gagal memuat /api/judges')
+      const judgesData = await judgesRes.json()
 
-        const assignmentsRes = await fetch(
-          `/api/assignments?email=${encodeURIComponent(judgesData.user.email)}`
-        )
-        // const assignmentsData = await assignmentsRes.json()
+      const email =
+        judgesData?.user?.email ??
+        judgesData?.email ??
+        (Array.isArray(judgesData) ? judgesData[0]?.email : null)
 
-        console.log('Assignments Data:', assignmentsRes)
+      if (!email) throw new Error('Email tidak ditemukan di /api/judges')
 
-        // const eventsWithRoles = judgesData.events.map(event => {
-        //   const assignment = assignmentsData.assignments.find(
-        //     a => a.eventId._id === event._id
-        //   )
-        //   return {
-        //     ...event,
-        //     judgeAssignment: assignment ? assignment.roles : null,
-        //   }
-        // })
+      // 2) Ambil assignments by email
+      const res = await fetch(`/api/assignments?email=${encodeURIComponent(email)}`, {
+        cache: 'no-store',
+      })
 
-        // setUser(judgesData.user)
-        // setEvents(eventsWithRoles)
-      } catch (error) {
-        console.error('Error fetching data:', error)
-      } finally {
-        setLoading(false)
+      // Log status & headers bila perlu
+      console.log('[Assignments] status:', res.status)
+
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error('[Assignments] error body:', errText)
+        throw new Error(`Gagal memuat /api/assignments: ${res.status}`)
       }
-    }
 
-    fetchData()
-  }, [])
+      // PENTING: await res.json() baru di-log
+      const data = await res.json()
+      console.log('Assignments Data JSON:', data)
+
+      // contoh: set state
+      // setAssignments(data.data ?? [])
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  fetchData()
+}, [])
 
   const judgeButtonsConfig = useMemo(
     () => [
