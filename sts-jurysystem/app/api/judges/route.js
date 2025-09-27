@@ -1,76 +1,38 @@
-import connectDB from '@/config/database';
-import User from '@/models/User';
-import Event from "@/models/Event";
-import { getSessionUser } from '@/utils/getSessionUser';
+import connectDB from '@/config/database'
+import User from '@/models/User'
+import Event from '@/models/Event'
+import { getSessionUser } from '@/utils/getSessionUser'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
-// GET /api/bookmarks
-export const GET = async () => {
+export async function GET() {
   try {
-    await connectDB();
+    await connectDB()
 
-    const sessionUser = await getSessionUser();
-    if (!sessionUser || !sessionUser.userId) {
-        return new Response('User ID is required', { status: 401 });
+    const sessionUser = await getSessionUser()
+    if (!sessionUser?.userId) {
+      return new Response('User ID is required', { status: 401 })
     }
-    
-    const { userId } = sessionUser;
-    
-    // Find user in database
-    const user = await User.findOne({ _id: userId });
-    
-    // Get users event
-    const mainEvent = await Event.find({ _id: { $in: user.mainEvents } });
-    console.log(mainEvent)
-    return new Response(JSON.stringify(mainEvent), { status: 200 });
+
+    const userId = sessionUser.userId
+    const user = await User.findById(userId).lean()
+    if (!user) {
+      return new Response('User not found', { status: 404 })
+    }
+
+    const events = await Event.find({
+      _id: { $in: user.mainEvents || [] },
+    }).lean()
+
+    return new Response(
+      JSON.stringify({
+        user,
+        events,
+      }),
+      { status: 200 }
+    )
   } catch (error) {
-    console.log(error);
-    return new Response('Something went wrong', { status: 500 });
+    console.error('❌ GET /api/judges error:', error)
+    return new Response('Something went wrong', { status: 500 })
   }
-};
-
-// export const POST = async (request) => {
-//   try {
-//     await connectDB();
-
-//     const { propertyId } = await request.json();
-
-//     const sessionUser = await getSessionUser();
-
-//     if (!sessionUser || !sessionUser.userId) {
-//       return new Response('User ID is required', { status: 401 });
-//     }
-
-//     const { userId } = sessionUser;
-
-//     // Find user in database
-//     const user = await User.findOne({ _id: userId });
-
-//     // Check if property is bookmarked
-//     let isBookmarked = user.bookmarks.includes(propertyId);
-
-//     let message;
-
-//     if (isBookmarked) {
-//       // If already bookmarked, remove it
-//       user.bookmarks.pull(propertyId);
-//       message = 'Bookmark removed successfully';
-//       isBookmarked = false;
-//     } else {
-//       // If not bookmarked, add it
-//       user.bookmarks.push(propertyId);
-//       message = 'Bookmark added successfully';
-//       isBookmarked = true;
-//     }
-
-//     await user.save();
-
-//     return new Response(JSON.stringify({ message, isBookmarked }), {
-//       status: 200,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     return new Response('Something went wrong', { status: 500 });
-//   }
-// };
+}
