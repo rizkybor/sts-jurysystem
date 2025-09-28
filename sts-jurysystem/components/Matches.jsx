@@ -18,8 +18,6 @@ const Matches = () => {
           `/api/matches?page=${page}&pageSize=${pageSize}`
         );
 
-        console.log(res, "<<<< CEK RES");
-
         if (!res.ok) {
           throw new Error("Failed to fetch matches");
         }
