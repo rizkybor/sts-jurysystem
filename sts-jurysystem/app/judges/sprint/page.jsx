@@ -183,7 +183,7 @@ const JudgesSprintPages = () => {
   useEffect(() => {
     const socket = getSocket();
     socketRef.current = socket;
-    console.log(socket,'<<')
+    
     const handler = (msg) => {
       if (msg?.senderId && msg.senderId === socketRef.current?.id) return;
       pushToast({
