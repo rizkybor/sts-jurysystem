@@ -6,8 +6,6 @@ const BROKER_URL =
     ? process.env.NEXT_PUBLIC_RT_URL
     : "http://localhost:4000";
 
-console.log("GET socket:", BROKER_URL);
-
 let socket;
 
 export default function getSocket() {
