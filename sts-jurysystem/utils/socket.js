@@ -1,7 +1,13 @@
 // app/lib/socket.js
 import { io } from 'socket.io-client';
 
-const BROKER_URL = process.env.NEXT_PUBLIC_RT_URL || 'http://localhost:4000';
+const BROKER_URL =
+  process.env.NODE_ENV === "production"
+    ? process.env.NEXT_PUBLIC_RT_URL
+    : "http://localhost:4000";
+
+console.log("GET socket:", BROKER_URL);
+
 let socket;
 
 export default function getSocket() {
