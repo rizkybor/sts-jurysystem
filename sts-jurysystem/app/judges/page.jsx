@@ -1,9 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useMemo } from 'react'
 import NavigationButton from '@/components/NavigationButton'
-import getSocket from '@/utils/socket'
 
 const JudgesPage = () => {
   const [user, setUser] = useState(null)
@@ -11,58 +9,6 @@ const JudgesPage = () => {
   const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [toasts, setToasts] = useState([])
-  const toastId = useRef(1)
-  const socketRef = useRef(null)
-
-  // Toast handler
-  const pushToast = (msg, ttlMs = 4000) => {
-    const id = toastId.current++
-    setToasts(prev => [...prev, { id, ...msg }])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), ttlMs)
-  }
-  const removeToast = id => setToasts(prev => prev.filter(t => t.id !== id))
-
-  // Socket connect
-  useEffect(() => {
-    const socket = getSocket()
-    socketRef.current = socket
-
-    const handler = msg => {
-      if (msg?.senderId && msg.senderId === socketRef.current?.id) return
-      pushToast({
-        title: msg.from ? `Pesan dari ${msg.from}` : 'Notifikasi',
-        text: msg.text || 'Pesan baru diterima',
-        type: 'info',
-      })
-    }
-
-    socket.on('custom:event', handler)
-    return () => socket.off('custom:event', handler)
-  }, [])
-
-  const sendRealtimeMessage = () => {
-    const socket = socketRef.current || getSocket()
-    if (!socket) return
-    socket.emit(
-      'custom:event',
-      {
-        senderId: socket.id,
-        from: 'Judges Dashboard',
-        text: 'Pesan realtime ke operator timing',
-        ts: new Date().toISOString(),
-      },
-      ok => {
-        if (ok) {
-          pushToast({
-            title: 'Berhasil',
-            text: 'Pesan terkirim ke operator timing',
-            type: 'success',
-          })
-        }
-      }
-    )
-  }
 
   // Fetch data
   useEffect(() => {
@@ -199,43 +145,6 @@ const JudgesPage = () => {
 
   return (
     <>
-      {/* Toasts */}
-      <div className='fixed top-6 right-6 z-50 flex flex-col gap-4'>
-        {toasts.map(toast => (
-          <motion.div
-            key={toast.id}
-            initial={{ x: 200, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 200, opacity: 0 }}
-            className={`p-4 rounded-xl shadow-lg border backdrop-blur-xl bg-white/70 relative overflow-hidden
-              ${
-                toast.type === 'error'
-                  ? 'border-red-300 text-red-800'
-                  : toast.type === 'success'
-                  ? 'border-green-300 text-green-800'
-                  : 'border-blue-300 text-blue-800'
-              }`}>
-            <div className='flex items-start gap-3'>
-              <div className='flex-1'>
-                <p className='font-semibold text-sm'>{toast.title}</p>
-                <p className='text-sm opacity-90'>{toast.text}</p>
-              </div>
-              <button
-                onClick={() => removeToast(toast.id)}
-                className='p-1 rounded-full hover:bg-black/10'>
-                ✕
-              </button>
-            </div>
-            <motion.div
-              initial={{ width: '100%' }}
-              animate={{ width: 0 }}
-              transition={{ duration: 4, ease: 'linear' }}
-              className='absolute bottom-0 left-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500'
-            />
-          </motion.div>
-        ))}
-      </div>
-
       {/* Main */}
       <div className='min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50'>
         <div className='max-w-4xl px-4 sm:px-6 lg:px-8 py-10 mx-auto'>
@@ -278,14 +187,6 @@ const JudgesPage = () => {
                     {assignments.length} Tugas
                   </span>
                 </div>
-
-                <button
-                  onClick={sendRealtimeMessage}
-                  className='mt-5 px-5 py-2.5 w-full sm:w-auto
-                   bg-blue-600 text-white rounded-xl shadow 
-                   hover:shadow-lg hover:scale-105 transition-all'>
-                  Kirim Pesan ke Operator
-                </button>
               </div>
             </div>
           </motion.div>
