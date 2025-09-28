@@ -1,65 +1,82 @@
-import connectDB from '@/config/database';
-import TeamsRegistered from '@/models/TeamsRegistered';
+import connectDB from '@/config/database'
+import TeamsRegistered from '@/models/TeamsRegistered'
 
-export async function GET(req, context) {
+export async function GET(req, { params }) {
   try {
-    await connectDB();
+    await connectDB()
 
-    const { eventId } = await context.params;
-    const { searchParams } = new URL(req.url);
+    const { eventId } = params
 
-    const initialId  = searchParams.get('initialId');
-    const divisionId = searchParams.get('divisionId');
-    const raceId     = searchParams.get('raceId');
-    const eventName  = searchParams.get('eventName');
+    console.log('🔍 [GET] Fetching all teams for eventId:', eventId)
 
-    if (!eventId || !initialId || !divisionId || !raceId || !eventName) {
+    const eventDocs = await TeamsRegistered.find({ eventId })
+
+    if (!eventDocs || eventDocs.length === 0) {
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'eventId, initialId, divisionId, raceId, eventName are required',
+          message: 'Teams not found for this event',
         }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const docs = await TeamsRegistered.find({
-      eventId,
-      initialId,
-      divisionId,
-      raceId,
-      eventName,
-    });
-
-    if (!docs || docs.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, message: 'Teams not found' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      )
     }
 
-    const teams = docs.flatMap(doc =>
+    // Format teams
+    const formattedTeams = eventDocs.flatMap(doc =>
       doc.teams.map(team => ({
         _id: team._id.toString(),
         nameTeam: team.nameTeam,
         bibTeam: team.bibTeam,
         eventId: doc.eventId?.toString(),
+        eventCatId: doc._id?.toString(),
         initialId: doc.initialId?.toString() || '',
-        divisionId: doc.divisionId?.toString() || '',
         raceId: doc.raceId?.toString() || '',
-        eventName: doc.eventName || '',
+        divisionId: doc.divisionId?.toString() || '',
+        result: {
+          penaltyTime: Number(team.result?.penaltyTime || 0),
+          score: Number(team.result?.score || 0),
+        },
       }))
-    );
+    )
+
+    const eventMetadata = eventDocs.map(doc => ({
+      eventCatId: doc._id?.toString(),
+      initialId: doc.initialId,
+      raceId: doc.raceId,
+      divisionId: doc.divisionId,
+      eventName: doc.eventName,
+      initialName: doc.initialName,
+      raceName: doc.raceName,
+      divisionName: doc.divisionName,
+    }))
+
+    // Hitung total peserta unik berdasarkan nameTeam
+    const uniqueTeamNames = new Set()
+    eventDocs.forEach(doc => {
+      doc.teams.forEach(team => {
+        if (team.nameTeam) uniqueTeamNames.add(team.nameTeam.trim())
+      })
+    })
+    const totalUniqueParticipants = uniqueTeamNames.size
 
     return new Response(
-      JSON.stringify({ success: true, teams }),
+      JSON.stringify({
+        success: true,
+        teams: formattedTeams,
+        eventMetadata,
+        totalUniqueParticipants,
+      }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    )
   } catch (err) {
-    console.error('❌ [GET] Error:', err);
+    console.error('❌ [GET] Error fetching teams:', err)
     return new Response(
-      JSON.stringify({ success: false, message: 'Error fetching teams' }),
+      JSON.stringify({
+        success: false,
+        message: 'Error fetching teams',
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    )
   }
 }
+
