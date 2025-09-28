@@ -1,3 +1,85 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  /* === COLORS (utility tambahan) === */
+  .bg-primary {
+    @apply bg-blue-500 text-white;
+  }
+  .bg-secondary {
+    @apply bg-gray-100 text-gray-800;
+  }
+  .bg-danger {
+    @apply bg-red-500 text-white;
+  }
+
+  /* === FONT === */
+  .font-title {
+    @apply text-lg font-bold text-gray-800;
+  }
+  .font-description {
+    @apply text-sm text-gray-600;
+  }
+  .font-title-description {
+    @apply text-xs text-gray-600; /* lebih kecil dari sm */
+  }
+  .font-tiny {
+    @apply text-[10px] text-gray-500; /* custom lebih kecil lagi */
+  }
+
+  /* === BUTTON === */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-xl font-semibold transition duration-200 ease-in-out;
+  }
+  .btn-primary {
+    @apply btn bg-blue-500 text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300;
+  }
+  .btn-secondary {
+    @apply btn bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-2 focus:ring-gray-400;
+  }
+  .btn-danger {
+    @apply btn bg-red-500 text-white hover:bg-red-600 focus:ring-2 focus:ring-red-300;
+  }
+  .btn-disabled {
+    @apply btn bg-gray-100 text-gray-400 cursor-not-allowed;
+  }
+
+  /* === SELECT === */
+  .select-base {
+    @apply w-full px-4 py-2 border rounded-xl appearance-none transition duration-200 ease-in-out;
+  }
+  .select-interactive {
+    @apply cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300;
+  }
+  .select-disabled {
+    @apply bg-gray-100 text-gray-400 cursor-not-allowed;
+  }
+
+  /* === LINK === */
+  .link {
+    @apply text-blue-500 hover:text-blue-600 underline cursor-pointer transition duration-200 ease-in-out;
+  }
+
+  /* === TABLE === */
+  .table-base {
+    @apply w-full border-collapse rounded-xl overflow-hidden;
+  }
+  .table-base th {
+    @apply bg-gray-100 text-left px-4 py-2 text-gray-700 font-semibold;
+  }
+  .table-base td {
+    @apply border-t px-4 py-2 text-gray-600;
+  }
+  .table-row-hover:hover {
+    @apply bg-gray-50;
+  }
+
+  /* === CARD === */
+  .card {
+    @apply bg-white rounded-2xl shadow-md p-6 transition duration-200 ease-in-out;
+  }
+  .card-hover {
+    @apply hover:shadow-lg hover:-translate-y-1;
+  }
+}

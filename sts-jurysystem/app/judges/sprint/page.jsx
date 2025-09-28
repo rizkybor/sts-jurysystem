@@ -14,8 +14,6 @@ const JudgesSprintPages = () => {
 
   // User / judge
   const [user, setUser] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [selectedPosition, setSelectedPosition] = useState("");
 
   // Event & teams
   const [eventDetail, setEventDetail] = useState(null);
@@ -31,47 +29,75 @@ const JudgesSprintPages = () => {
   // Results modal
   const [sprintResults, setSprintResults] = useState([]);
 
+  // Assignments & events
+  const [assignments, setAssignments] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [error, setError] = useState(null);
+
   const penalties = [0, 5, 50];
 
-  // Map judgesSprint -> position label
-  const getPositionFromJudgeSprint = (judgeValue) => {
-    switch (judgeValue) {
-      case "1":
-        return "Start";
-      case "2":
-        return "Finish";
-      default:
-        return "";
-    }
-  };
+  /** Helper: ambil posisi SPRINT untuk eventId aktif dari struktur assignments */
+  function getSprintPositionFromAssignments(list, evId) {
+    if (!Array.isArray(list) || !evId) return "";
+    // Kumpulkan semua 'judges' dari setiap item, lalu cari eventId yang cocok
+    const match = list
+      .flatMap((item) => item.judges || [])
+      .find((j) => String(j.eventId) === String(evId));
 
-  // Derived assigned position
-  const assignedPosition = user
-    ? getPositionFromJudgeSprint(user.judgesSprint)
-    : "";
+    if (!match || !match.sprint) return "";
 
-  // Fetch user
+    // Prioritas: start > finish. Jika keduanya false, kosong.
+    if (match.sprint.start) return "Start";
+    if (match.sprint.finish) return "Finish";
+    return "";
+  }
+
+  // Posisi ter-assign (otomatis) dari assignments -> khusus sprint
+  const assignedPosition = useMemo(() => {
+    return getSprintPositionFromAssignments(assignments, eventId);
+  }, [assignments, eventId]);
+
+  // Fetch assignments & user/events sekali, lalu derive selectedPosition dari assignments
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch("/api/user");
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
-          setSelectedPosition(
-            getPositionFromJudgeSprint(data.judgesSprint) || ""
-          );
-        }
-      } catch {
-        // ignore
+        setError(null);
+        setLoading(true);
+
+        // 1) Ambil info judges (user + events)
+        const judgesRes = await fetch("/api/judges", { cache: "no-store" });
+        if (!judgesRes.ok)
+          throw new Error(`Gagal memuat data judges: ${judgesRes.status}`);
+        const judgesData = await judgesRes.json();
+
+        if (judgesData.user) setUser(judgesData.user);
+        setEvents(judgesData.events || []);
+
+        const userEmail = judgesData.user?.email;
+        if (!userEmail) throw new Error("Email tidak ditemukan");
+
+        // 2) Ambil assignments berdasarkan email
+        const assignmentsRes = await fetch(
+          `/api/assignments?email=${encodeURIComponent(userEmail)}`,
+          { cache: "no-store" }
+        );
+        if (!assignmentsRes.ok)
+          throw new Error(`Gagal memuat assignments: ${assignmentsRes.status}`);
+
+        const assignmentsData = await assignmentsRes.json();
+        const list = assignmentsData.data || [];
+        setAssignments(list);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
       } finally {
-        setLoadingUser(false);
+        setLoading(false);
       }
     };
-    fetchUserData();
+    fetchData();
   }, []);
 
-  // Fetch teams
+  // Fetch teams (berdasarkan kategori terpilih)
   useEffect(() => {
     if (!eventId || !selectedCategory) return;
 
@@ -81,7 +107,7 @@ const JudgesSprintPages = () => {
         const catEvent = "SPRINT";
 
         const res = await fetch(
-          `/api/events/${eventId}/teams?initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}&eventName=${catEvent}`
+          `/api/events/${eventId}/judge-tasks?initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}&eventName=${catEvent}`
         );
 
         const data = await res.json();
@@ -94,10 +120,11 @@ const JudgesSprintPages = () => {
         console.error("❌ Failed to fetch teams:", err);
         setTeams([]);
       } finally {
-        setLoadingTeams(false); // selesai loading
+        setLoadingTeams(false);
       }
     };
 
+    setLoadingTeams(true);
     fetchTeams();
   }, [eventId, selectedCategory]);
 
@@ -120,7 +147,7 @@ const JudgesSprintPages = () => {
     fetchEventDetail();
   }, [eventId]);
 
-  // Fetch sprint results when modal opens
+  // Fetch sprint results ketika modal dibuka
   useEffect(() => {
     if (!isModalOpen) return;
     const fetchSprintResults = async () => {
@@ -135,7 +162,7 @@ const JudgesSprintPages = () => {
     fetchSprintResults();
   }, [isModalOpen]);
 
-  // Refresh teams after submit
+  // Refresh teams setelah submit
   const refreshTeams = async () => {
     try {
       const res = await fetch(`/api/events/${eventId}/teams?t=${Date.now()}`);
@@ -148,7 +175,7 @@ const JudgesSprintPages = () => {
     }
   };
 
-  // Category list (Initial | Division | Race) -> label & value "initial|division|race"
+  // Daftar kategori gabungan (Initial|Division|Race)
   const combinedCategories = useMemo(() => {
     const list = [];
     const initials = eventDetail?.categoriesInitial || [];
@@ -167,7 +194,7 @@ const JudgesSprintPages = () => {
     return list;
   }, [eventDetail]);
 
-  // Handle category selection
+  // Ubah kategori
   const handleCategoryChange = (value) => {
     setSelectedCategory(value);
     setSelectedTeam("");
@@ -175,7 +202,7 @@ const JudgesSprintPages = () => {
     setLoadingTeams(true);
   };
 
-  // Teams filtered by selected category
+  // Filter tim sesuai kategori
   const filteredTeams = useMemo(() => {
     if (!selectedCategory) return teams;
     const [initialId, divisionId, raceId] = selectedCategory.split("|");
@@ -190,6 +217,8 @@ const JudgesSprintPages = () => {
   // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return; // cegah double click
+
     const finalPosition = assignedPosition || selectedPosition;
 
     if (
@@ -202,7 +231,12 @@ const JudgesSprintPages = () => {
       return;
     }
 
-    const [initialId, divisionId, raceId] = selectedCategory.split("|");
+    const parts = selectedCategory.split("|");
+    if (parts.length !== 3) {
+      alert("⚠️ Invalid category format.");
+      return;
+    }
+    const [initialId, divisionId, raceId] = parts;
 
     const formData = {
       teamId: selectedTeam,
@@ -214,78 +248,81 @@ const JudgesSprintPages = () => {
       updateBy: user?.username || "Unknown Judge",
     };
 
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/events/${eventId}/teams`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
+    console.log(formData,'<<< cek')
 
-      if (res.ok && data?.success) {
-        alert(
-          `✅ ${finalPosition} Penalty updated by ${user?.username || "you"}!`
-        );
-        await refreshTeams();
-        setSelectedTeam("");
-        setSelectedPenalty(null);
-        setSelectedCategory("");
-        if (!assignedPosition) setSelectedPosition("");
-      } else {
-        alert(`❌ Error: ${data?.message || "Failed to update penalty."}`);
-      }
-    } catch {
-      alert("❌ Failed to update penalty! Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    // setLoading(true);
+    // try {
+    //   const res = await fetch(`/api/events/${eventId}/teams`, {
+    //     method: "PATCH",
+    //     headers: { "Content-Type": "application/json" },
+    //     body: JSON.stringify(formData),
+    //   });
+
+    //   let data = null;
+    //   try {
+    //     data = await res.json();
+    //   } catch {
+    //     // non-JSON response
+    //   }
+
+    //   if (res.ok && (data?.success ?? true)) {
+    //     alert(
+    //       `✅ ${finalPosition} Penalty updated by ${user?.username || "you"}!`
+    //     );
+    //     await refreshTeams();
+    //     // reset minimal
+    //     setSelectedTeam("");
+    //     setSelectedPenalty(null);
+    //     // tetap di kategori yang sama agar cepat input batch
+    //   } else {
+    //     const msg = data?.message || `HTTP ${res.status}`;
+    //     alert(`❌ Error: ${msg}`);
+    //   }
+    // } catch (err) {
+    //   alert("❌ Failed to update penalty! Please try again.");
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
       <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-lg relative">
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Sprint Session
-        </h1>
-
-        {/* USER */}
-        {loadingUser ? (
-          <p className="text-gray-500 text-center">Loading user data...</p>
-        ) : user ? (
-          <div className="flex flex-col items-center mb-6">
-            {user.image && (
-              <img
-                src={user.image}
-                alt={user.username}
-                className="w-10 h-10 rounded-full shadow-md mb-3"
-              />
-            )}
-            <h2 className="text-lg font-semibold text-gray-800">
-              {user.username}
-            </h2>
-            <p className="text-gray-600 text-sm">{user.email}</p>
-            {assignedPosition && (
-              <div
-                className={`mt-2 px-3 py-1 rounded-full border ${
-                  assignedPosition === "Start"
-                    ? "bg-green-100 text-green-800 border-green-200"
-                    : "bg-blue-100 text-blue-800 border-blue-200"
-                }`}
-              >
-                <span className="font-semibold">{assignedPosition} Judge</span>
-                <span className="text-xs ml-1">(Auto-assigned)</span>
-              </div>
-            )}
+        {eventDetail && (
+          <div className="mb-4 space-y-1 bg-gray-100 p-4 rounded-lg">
+            <div className="font-semibold">{eventDetail.eventName}</div>
+            <div className="text-sm text-gray-600">
+              {new Date(eventDetail.startDateEvent).toLocaleDateString(
+                "id-ID",
+                {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                }
+              )}
+              {" – "}
+              {new Date(eventDetail.endDateEvent).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              })}
+            </div>
+            <div className="text-sm text-gray-600">
+              {eventDetail.addressProvince}, {eventDetail.addressState}
+            </div>
           </div>
-        ) : (
-          <p className="text-red-500 text-center">User not found.</p>
         )}
+
+        <div className="text-center mb-5">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Judges {assignedPosition}
+          </h1>
+          <small className="text-center">Race Number : Sprint Race</small>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* CATEGORY */}
           <div>
-            <label className="block text-gray-700 mb-2">Category:</label>
             {loadingEvent ? (
               <p className="text-gray-500 text-sm">Loading categories...</p>
             ) : combinedCategories.length ? (
@@ -311,12 +348,17 @@ const JudgesSprintPages = () => {
           <div>
             <label className="block text-gray-700 mb-2">Team:</label>
             {loadingTeams ? (
-              <p className="text-gray-500">Loading teams...</p>
+              <select
+                disabled
+                className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-400"
+              >
+                <option>Select Teams...</option>
+              </select>
             ) : filteredTeams.length ? (
               <select
                 value={selectedTeam}
                 onChange={(e) => setSelectedTeam(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="select-base select-interactive"
                 required
               >
                 <option value="" disabled>
@@ -329,9 +371,9 @@ const JudgesSprintPages = () => {
                 ))}
               </select>
             ) : (
-              <p className="text-gray-500 text-sm">
-                No teams available for this category.
-              </p>
+              <select disabled className="select-base select-disabled">
+                <option>No teams available for this category.</option>
+              </select>
             )}
           </div>
 
@@ -367,7 +409,7 @@ const JudgesSprintPages = () => {
           >
             {loading
               ? "Submitting..."
-              : `Submit as ${assignedPosition || selectedPosition} Judge →`}
+              : `Submit Penalty →`}
           </button>
         </form>
 
