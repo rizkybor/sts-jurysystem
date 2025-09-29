@@ -11,6 +11,39 @@ const JudgesPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // 🔹 Helper: hitung semua role aktif dalam assignments
+  const countActiveTasks = assignments => {
+    if (!Array.isArray(assignments)) return 0
+    let count = 0
+
+    assignments.forEach(item => {
+      ;(item.judges || []).forEach(judge => {
+        if (judge.h2h) {
+          Object.values(judge.h2h).forEach(v => {
+            if (v) count++
+          })
+        }
+        if (judge.sprint) {
+          Object.values(judge.sprint).forEach(v => {
+            if (v) count++
+          })
+        }
+        if (judge.slalom) {
+          Object.values(judge.slalom).forEach(v => {
+            if (v) count++
+          })
+        }
+        if (judge.drr) {
+          Object.values(judge.drr).forEach(v => {
+            if (v) count++
+          })
+        }
+      })
+    })
+
+    return count
+  }
+
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
@@ -94,7 +127,11 @@ const JudgesPage = () => {
         label: 'Slalom',
         icon: '🌀',
         color: 'from-purple-500 to-purple-600',
-        checkActive: a => a?.slalom && (a.slalom.start || a.slalom.finish),
+        checkActive: a =>
+          a?.slalom &&
+          Object.values(a.slalom).some(
+            v => v === true || (Array.isArray(v) && v.length > 0)
+          ),
       },
       {
         key: 'drr',
@@ -102,13 +139,16 @@ const JudgesPage = () => {
         label: 'Down River',
         icon: '🌊',
         color: 'from-red-500 to-red-600',
-        checkActive: a => a?.drr && (a.drr.start || a.drr.finish),
+        checkActive: a =>
+          a?.drr &&
+          Object.values(a.drr).some(
+            v => v === true || (Array.isArray(v) && v.length > 0)
+          ),
       },
     ],
     []
   )
 
-  // Loading
   if (loading) {
     return (
       <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-purple-100'>
@@ -121,7 +161,6 @@ const JudgesPage = () => {
     )
   }
 
-  // Error
   if (error && !user) {
     return (
       <div className='min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 px-6'>
@@ -146,7 +185,6 @@ const JudgesPage = () => {
 
   return (
     <>
-      {/* Main */}
       <div className='min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50'>
         <div className='max-w-4xl px-4 sm:px-6 lg:px-8 py-10 mx-auto'>
           {/* Profile */}
@@ -155,7 +193,6 @@ const JudgesPage = () => {
             animate={{ scale: 1, opacity: 1 }}
             className='bg-white/70 rounded-2xl shadow-xl p-6 border border-gray-100'>
             <div className='flex flex-col md:flex-row items-center md:items-start gap-6'>
-              {/* Foto profil */}
               {user?.image ? (
                 <img
                   src={user.image}
@@ -171,7 +208,6 @@ const JudgesPage = () => {
                 </div>
               )}
 
-              {/* Info user */}
               <div className='flex-1 text-center md:text-left'>
                 <h2 className='text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800'>
                   {user?.username}
@@ -185,7 +221,7 @@ const JudgesPage = () => {
                     Judge
                   </span>
                   <span className='px-3 py-1 bg-gray-200 text-blue-600 text-xs sm:text-sm rounded-xl'>
-                    {assignments.length} Tugas
+                    {countActiveTasks(assignments)} Tugas
                   </span>
                 </div>
               </div>
