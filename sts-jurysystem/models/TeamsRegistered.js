@@ -5,11 +5,15 @@ const ResultSchema = new mongoose.Schema({
   startTime: String,
   finishTime: String,
   raceTime: String,
-  penaltyTime: String,
+  startPenalty: String,
+  finishPenalty: String,
   penalty: String,
+  penaltyTime: String,
   totalTime: String,
   ranked: String,
   score: String,
+  judgesBy: String,
+  judgesTime: String,
 })
 
 const TeamSchema = new mongoose.Schema({
@@ -36,7 +40,7 @@ const TeamsRegisteredSchema = new mongoose.Schema({
   teams: [TeamSchema],
 })
 
-// 🔥 gunakan nama koleksi asli: teamsRegisteredCollection
+// Gunakan nama koleksi asli di MongoDB
 export default mongoose.models.TeamsRegistered ||
   mongoose.model(
     'TeamsRegistered',
