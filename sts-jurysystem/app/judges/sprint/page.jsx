@@ -111,7 +111,6 @@ const JudgesSprintPages = () => {
   }, [])
 
   // Fetch teams (berdasarkan kategori terpilih)
-  // Fetch teams (berdasarkan kategori terpilih) - SUDAH PAKAI ENDPOINT SAMA
   useEffect(() => {
     if (!eventId || !selectedCategory) return
 
@@ -214,6 +213,9 @@ const JudgesSprintPages = () => {
         senderId: socket.id,
         from: 'Judges Dashboard',
         text: 'Pesan realtime ke operator timing',
+        teamId: selectedTeam,
+        type: assignedPosition,
+        value: Number(selectedPenalty),
         ts: new Date().toISOString(),
       },
       ok => {
@@ -228,7 +230,6 @@ const JudgesSprintPages = () => {
     )
   }
 
-  // Refresh teams setelah submit
   // Refresh teams setelah submit - GUNAKAN ENDPOINT YANG SAMA
   const refreshTeams = async () => {
     if (!selectedCategory || !eventId) return
@@ -361,6 +362,7 @@ const JudgesSprintPages = () => {
           type: 'success',
         })
 
+        sendRealtimeMessage()
         await refreshTeams()
         setSelectedTeam('')
         setSelectedPenalty(null)
