@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import logo from '@/assets/images/sts-logo-primary.png';
+import logo from '@/assets/images/logo-white.png';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
