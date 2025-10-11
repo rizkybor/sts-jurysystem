@@ -43,8 +43,10 @@ export async function GET(req, context) {
       return doc.teams.map(team => {
         const actualTeamId = team.teamId
         const mongoId = team._id?.toString()
-
         const finalId = actualTeamId || mongoId
+
+        // 🔹 Pastikan result selalu berupa array
+        const results = Array.isArray(team.result) ? team.result : [team.result]
 
         return {
           _id: finalId,
@@ -57,10 +59,7 @@ export async function GET(req, context) {
           eventName: doc.eventName || '',
           teamId: actualTeamId,
           hasValidTeamId: !!actualTeamId,
-          startPenalty: team.result?.startPenalty || '',
-          finishPenalty: team.result?.finishPenalty || '',
-          judgesBy: team.result?.judgesBy || '',
-          judgesTime: team.result?.judgesTime || '',
+          results, // 🟢 kirim array hasil run
         }
       })
     })
