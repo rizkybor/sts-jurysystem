@@ -38,7 +38,7 @@ const JudgesSlalomPage = () => {
   const [selectedTeam, setSelectedTeam] = useState('')
   const [selectedGate, setSelectedGate] = useState('')
   const [selectedPenalty, setSelectedPenalty] = useState(null)
-  const [runNumber, setRunNumber] = useState(1) // 🏁 Run 1 = 1, Run 2 = 2
+  const [runNumber, setRunNumber] = useState(1)
 
   const [clickedCircles, setClickedCircles] = useState({
     P1: false,
@@ -73,7 +73,7 @@ const JudgesSlalomPage = () => {
     return getSlalomPositionsFromAssignments(assignments, eventId)
   }, [assignments, eventId])
 
-  const penalties = [0, 5, 50] // ✅ SLALOM penalties: 0=clean, 5=touch, 50=miss
+  const penalties = [0, 5, 50]
   const runs = [
     { label: 'Run 1', value: 1 },
     { label: 'Run 2', value: 2 },
@@ -98,26 +98,62 @@ const JudgesSlalomPage = () => {
   }, [])
 
   // ✅ SEND REALTIME MESSAGE FUNCTION
-  const sendRealtimeMessage = () => {
+  const sendRealtimeMessage = (operationType, gateNumber) => {
     const socket = socketRef.current || getSocket()
     if (!socket) return
 
-    // ✅ Dapatkan nama team untuk message yang lebih informatif
     const selectedTeamData = teams.find(t => t._id === selectedTeam)
     const teamName = selectedTeamData?.nameTeam || 'Unknown Team'
 
-    const messageData = {
-      senderId: socket.id,
-      from: 'Judges Dashboard - SLALOM',
-      text: `Slalom: ${teamName} - Run ${runNumber} ${selectedGate} - Penalty ${selectedPenalty} detik`,
-      teamId: selectedTeam,
-      teamName: teamName,
-      type: 'SLALOM',
-      runNumber: runNumber,
-      gate: selectedGate,
-      penalty: Number(selectedPenalty),
-      eventId: eventId,
-      ts: new Date().toISOString(),
+    let messageData = {}
+
+    if (operationType === 'start') {
+      messageData = {
+        senderId: socket.id,
+        from: 'Judges Dashboard - SLALOM',
+        text: `Slalom: ${teamName} - Run ${runNumber} Start - Penalty ${selectedPenalty} detik`,
+        teamId: selectedTeam,
+        teamName: teamName,
+        type: 'PenaltyStart',
+        runNumber: runNumber,
+        penalty: Number(selectedPenalty),
+        eventId: eventId,
+        ts: new Date().toISOString(),
+        bib: selectedTeamData?.bibTeam || '',
+        run: runNumber,
+      }
+    } else if (operationType === 'finish') {
+      messageData = {
+        senderId: socket.id,
+        from: 'Judges Dashboard - SLALOM',
+        text: `Slalom: ${teamName} - Run ${runNumber} Finish - Penalty ${selectedPenalty} detik`,
+        teamId: selectedTeam,
+        teamName: teamName,
+        type: 'PenaltyFinish',
+        runNumber: runNumber,
+        penalty: Number(selectedPenalty),
+        eventId: eventId,
+        ts: new Date().toISOString(),
+        bib: selectedTeamData?.bibTeam || '',
+        run: runNumber,
+      }
+    } else {
+      messageData = {
+        senderId: socket.id,
+        from: 'Judges Dashboard - SLALOM',
+        text: `Slalom: ${teamName} - Run ${runNumber} Gate ${gateNumber} - Penalty ${selectedPenalty} detik`,
+        teamId: selectedTeam,
+        teamName: teamName,
+        type: 'PenaltiesUpdated',
+        runNumber: runNumber,
+        gate: `Gate ${gateNumber}`,
+        gateNumber: gateNumber,
+        penalty: Number(selectedPenalty),
+        eventId: eventId,
+        ts: new Date().toISOString(),
+        bib: selectedTeamData?.bibTeam || '',
+        run: runNumber,
+      }
     }
 
     console.log('📡 [SLALOM SOCKET] Sending realtime message:', messageData)
@@ -307,7 +343,6 @@ const JudgesSlalomPage = () => {
   /** 🔹 SUBMIT HANDLER YANG SUDAH DIPERBAIKI */
   const handleSubmit = async e => {
     e.preventDefault()
-
     if (
       !selectedCategory ||
       !selectedTeam ||
@@ -322,21 +357,30 @@ const JudgesSlalomPage = () => {
       return
     }
 
-    // ✅ EXTRACT GATE NUMBER dari "Gate X" ke number
-    const gateNumber = parseInt(selectedGate.replace('Gate ', ''))
+    // ✅ DETERMINE OPERATION TYPE
+    let operationType = ''
+    let gateNumber = undefined
 
-    if (isNaN(gateNumber)) {
-      pushToast({
-        title: 'Gate Tidak Valid',
-        text: 'Format gate tidak valid',
-        type: 'error',
-      })
-      return
+    if (selectedGate === 'Start') {
+      operationType = 'start'
+    } else if (selectedGate === 'Finish') {
+      operationType = 'finish'
+    } else {
+      operationType = 'gate'
+      // ✅ EXTRACT GATE NUMBER dari "Gate X"
+      gateNumber = parseInt(selectedGate.replace('Gate ', ''))
+      if (isNaN(gateNumber)) {
+        pushToast({
+          title: 'Gate Tidak Valid',
+          text: 'Format gate tidak valid',
+          type: 'error',
+        })
+        return
+      }
     }
 
-    // ✅ CEK APAKAH TEAM VALID (PUNYA teamId)
+    // ✅ CEK APAKAH TEAM VALID
     const selectedTeamData = teams.find(t => t._id === selectedTeam)
-
     if (!selectedTeamData?.hasValidTeamId) {
       pushToast({
         title: 'Team Tidak Valid',
@@ -348,28 +392,29 @@ const JudgesSlalomPage = () => {
     }
 
     const [initialId, divisionId, raceId] = selectedCategory.split('|')
-
-    // ✅ GUNAKAN teamId YANG VALID DARI TEAM DATA
     const actualTeamId = selectedTeamData.teamId
 
-    // ✅ PAYLOAD YANG SESUAI DENGAN BE (DENGAN gateNumber)
+    // ✅ PAYLOAD YANG SESUAI DENGAN API BARU
     const payload = {
-      runNumber, // ✅ 1 atau 2
-      team: actualTeamId, // ✅ GUNAKAN teamId YANG VALID
+      runNumber,
+      team: actualTeamId,
       penalty: selectedPenalty,
-      gateNumber, // ✅ NUMBER (contoh: 5), bukan string
       eventId,
       initialId,
       divisionId,
       raceId,
+      operationType, // ✅ 'start', 'gate', atau 'finish'
+    }
+
+    // ✅ HANYA TAMBAH gateNumber UNTUK OPERASI GATES
+    if (operationType === 'gate') {
+      payload.gateNumber = gateNumber
     }
 
     console.log('🔍 Submitting SLALOM penalty:', payload)
-
     setIsSubmitting(true)
 
     try {
-      // ✅ GUNAKAN METHOD POST, BUKAN PATCH
       const res = await fetch('/api/judges/slalom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -384,18 +429,27 @@ const JudgesSlalomPage = () => {
       }
 
       if (res.ok && data?.success) {
+        let successMessage = ''
+
+        if (operationType === 'start') {
+          successMessage = `✅ Start penalty recorded - Run ${runNumber}: ${selectedPenalty} seconds`
+        } else if (operationType === 'finish') {
+          successMessage = `✅ Finish penalty recorded - Run ${runNumber}: ${selectedPenalty} seconds`
+        } else {
+          successMessage = `✅ Gate penalty added - Run ${runNumber} Gate ${gateNumber}: ${selectedPenalty} seconds`
+        }
+
         pushToast({
           title: 'Berhasil!',
-          text: `✅ Run ${runNumber} Gate ${gateNumber}: Penalty ${selectedPenalty} detik berhasil disimpan!`,
+          text: successMessage,
           type: 'success',
         })
 
         // ✅ KIRIM REALTIME MESSAGE KE OPERATOR
-        sendRealtimeMessage()
+        sendRealtimeMessage(operationType, gateNumber)
 
         // Refresh teams data
         await refreshTeams()
-
         // Reset form
         setSelectedGate('')
         setSelectedPenalty(null)
@@ -502,7 +556,21 @@ const JudgesSlalomPage = () => {
           {/* ✅ BUTTON TEST REALTIME MESSAGE */}
           <div className='mb-6 text-center'>
             <button
-              onClick={sendRealtimeMessage}
+              onClick={() => {
+                let operationType = ''
+                let gateNumber = undefined
+
+                if (selectedGate === 'Start') {
+                  operationType = 'start'
+                } else if (selectedGate === 'Finish') {
+                  operationType = 'finish'
+                } else {
+                  operationType = 'gate'
+                  gateNumber = parseInt(selectedGate.replace('Gate ', ''))
+                }
+
+                sendRealtimeMessage(operationType, gateNumber)
+              }}
               disabled={!selectedTeam || !selectedGate}
               className={`px-5 py-2.5 w-full sm:w-auto rounded-xl shadow transition-all ${
                 !selectedTeam || !selectedGate
@@ -626,7 +694,7 @@ const JudgesSlalomPage = () => {
                 {/* SELECT GATE */}
                 <div>
                   <label className='block text-gray-700 mb-2'>
-                    Select Gate:
+                    Select Gate: {selectedGate}
                   </label>
                   <select
                     value={selectedGate}

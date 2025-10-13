@@ -19,23 +19,28 @@ export const POST = async req => {
       )
     }
 
+    // ✅ Parse request body
+    const requestBody = await req.json()
+    console.log('🔍 [DEBUG] Request body:', requestBody)
+
     const {
       runNumber,
       team,
       penalty,
-      gateNumber,
+      gateNumber, // ✅ Bisa ada (GATES) atau tidak (START/FINISH)
       eventId,
       initialId,
       divisionId,
       raceId,
-    } = await req.json()
+      operationType, // ✅ Opsional: 'start', 'gate', 'finish'
+    } = requestBody
 
-    // ✅ VALIDASI
+    // ✅ VALIDASI DASAR
     if (
       !runNumber ||
       !team ||
       penalty === null ||
-      !gateNumber ||
+      penalty === undefined ||
       !eventId ||
       !initialId ||
       !divisionId ||
@@ -45,7 +50,7 @@ export const POST = async req => {
         JSON.stringify({
           success: false,
           message:
-            'Missing required fields: runNumber, team, penalty, gateNumber, eventId, initialId, divisionId, raceId',
+            'Missing required fields: runNumber, team, penalty, eventId, initialId, divisionId, raceId',
         }),
         { status: 400 }
       )
@@ -60,9 +65,22 @@ export const POST = async req => {
       initialId,
       divisionId,
       raceId,
+      operationType,
     })
 
-    // ✅ **1️⃣ Ambil User Data**
+    // ✅ **1️⃣ Tentukan Jenis Operasi**
+    let operation = ''
+    if (gateNumber === undefined || gateNumber === null || gateNumber === '') {
+      // START atau FINISH
+      operation = operationType === 'finish' ? 'FINISH' : 'START'
+    } else {
+      // GATES
+      operation = 'GATES'
+    }
+
+    console.log(`🎯 Detected operation: ${operation}`)
+
+    // ✅ **2️⃣ Ambil User Data**
     const user = await User.findById(sessionUser.userId)
     if (!user) {
       return new Response(
@@ -73,47 +91,7 @@ export const POST = async req => {
 
     const username = user.username
 
-    // ✅ **2️⃣ Ambil Race Setting**
-    const raceSetting = await RaceSetting.findOne({
-      eventId: eventId,
-    })
-
-    console.log('🔍 [DEBUG] Race setting search result:', {
-      found: !!raceSetting,
-      raceSetting: raceSetting
-        ? {
-            _id: raceSetting._id,
-            eventId: raceSetting.eventId,
-            totalGates: raceSetting.settings?.slalom?.totalGate,
-            fullSettings: raceSetting.settings,
-          }
-        : 'NOT FOUND',
-    })
-
-    // ✅ **3️⃣ Tentukan Total Gates**
-    let totalGates = 14 // default fallback
-
-    if (raceSetting && raceSetting.settings?.slalom?.totalGate) {
-      totalGates = raceSetting.settings.slalom.totalGate
-      console.log(`🎯 Total gates from setting: ${totalGates}`)
-    } else {
-      console.log(
-        '⚠️ Race setting not found or missing totalGate, using default 14 gates'
-      )
-    }
-
-    // ✅ Validasi gateNumber tidak melebihi total gates
-    if (gateNumber > totalGates) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: `Gate number ${gateNumber} exceeds total gates (${totalGates})`,
-        }),
-        { status: 400 }
-      )
-    }
-
-    // ✅ **4️⃣ Cari team document**
+    // ✅ **3️⃣ Cari team document**
     const teamDoc = await TeamsRegistered.findOne({
       eventId,
       eventName: 'SLALOM',
@@ -131,12 +109,8 @@ export const POST = async req => {
     }
 
     const runIndex = runNumber - 1
-    const gateIndex = gateNumber - 1
 
-    // ✅ **5️⃣ Check current gates data**
-    const currentGates = teamDoc.teams[0]?.result[runIndex]?.penaltyTotal?.gates
-    console.log('🔍 [DEBUG] Current gates before update:', currentGates)
-
+    // ✅ **4️⃣ LOGIC BERDASARKAN OPERASI**
     let updateQuery = {
       $set: {
         [`teams.$.result.${runIndex}.judgesBy`]: username,
@@ -144,37 +118,85 @@ export const POST = async req => {
       },
     }
 
-    // ✅ **6️⃣ LOGIC UPDATE YANG BENAR:**
-    if (!currentGates) {
-      // ❌ CASE 1: Belum ada gates array sama sekali - BUAT BARU
-      const newGatesArray = Array(totalGates).fill(0)
-      newGatesArray[gateIndex] = penalty
-      updateQuery.$set[`teams.$.result.${runIndex}.penaltyTotal.gates`] =
-        newGatesArray
-      console.log(`🔄 Creating NEW gates array with ${totalGates} gates`)
-    } else if (currentGates.length !== totalGates) {
-      // ❌ CASE 2: Length tidak match - RESIZE DENGAN RESET (karena structure berubah)
-      const resizedGatesArray = Array(totalGates).fill(0)
-      // Copy existing values yang masih within range
-      const copyLength = Math.min(currentGates.length, totalGates)
-      for (let i = 0; i < copyLength; i++) {
-        resizedGatesArray[i] = currentGates[i]
+    let message = ''
+
+    if (operation === 'START') {
+      // 🚀 START OPERATION
+      updateQuery.$set[`teams.$.result.${runIndex}.startTime`] =
+        new Date().toISOString()
+      updateQuery.$set[`teams.$.result.${runIndex}.startPenalty`] = penalty
+      message = `Start penalty recorded - Run ${runNumber}: ${penalty} seconds`
+    } else if (operation === 'FINISH') {
+      // 🏁 FINISH OPERATION
+      updateQuery.$set[`teams.$.result.${runIndex}.finishTime`] =
+        new Date().toISOString()
+      updateQuery.$set[`teams.$.result.${runIndex}.finishPenalty`] = penalty
+      message = `Finish penalty recorded - Run ${runNumber}: ${penalty} seconds`
+    } else if (operation === 'GATES') {
+      // 🎯 GATES OPERATION
+      const numericGateNumber = Number(gateNumber)
+      const gateIndex = numericGateNumber - 1
+
+      // ✅ Ambil Race Setting untuk totalGates
+      const raceSetting = await RaceSetting.findOne({ eventId })
+      const totalGates = raceSetting?.settings?.slalom?.totalGate || 14
+
+      // ✅ Validasi gateNumber
+      if (numericGateNumber < 1 || numericGateNumber > totalGates) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: `Gate number ${numericGateNumber} is invalid. Must be between 1 and ${totalGates}`,
+          }),
+          { status: 400 }
+        )
       }
-      resizedGatesArray[gateIndex] = penalty
-      updateQuery.$set[`teams.$.result.${runIndex}.penaltyTotal.gates`] =
-        resizedGatesArray
-      console.log(
-        `🔄 Resizing gates array from ${currentGates.length} to ${totalGates} gates`
-      )
-    } else {
-      // ✅ CASE 3: Length sudah match - UPDATE HANYA GATE TERTENTU
-      updateQuery.$set[
-        `teams.$.result.${runIndex}.penaltyTotal.gates.${gateIndex}`
-      ] = penalty
-      console.log(`✅ Updating only gate ${gateNumber} (index ${gateIndex})`)
+
+      // ✅ Check current gates data
+      const currentGates =
+        teamDoc.teams[0]?.result[runIndex]?.penaltyTotal?.gates
+      console.log('🔍 [DEBUG] Current gates before update:', currentGates)
+
+      // ✅ Logic update gates
+      if (!currentGates) {
+        // CASE 1: Belum ada gates array - BUAT BARU
+        const newGatesArray = Array(totalGates).fill(0)
+        newGatesArray[gateIndex] = penalty
+        updateQuery.$set[`teams.$.result.${runIndex}.penaltyTotal.gates`] =
+          newGatesArray
+        console.log(`🔄 Creating NEW gates array with ${totalGates} gates`)
+      } else if (currentGates.length !== totalGates) {
+        // CASE 2: Length tidak match - RESIZE
+        const resizedGatesArray = Array(totalGates).fill(0)
+        const copyLength = Math.min(currentGates.length, totalGates)
+        for (let i = 0; i < copyLength; i++) {
+          resizedGatesArray[i] = currentGates[i]
+        }
+        resizedGatesArray[gateIndex] = penalty
+        updateQuery.$set[`teams.$.result.${runIndex}.penaltyTotal.gates`] =
+          resizedGatesArray
+        console.log(
+          `🔄 Resizing gates array from ${currentGates.length} to ${totalGates} gates`
+        )
+      } else {
+        // CASE 3: Length sudah match - UPDATE GATE TERTENTU
+        updateQuery.$set[
+          `teams.$.result.${runIndex}.penaltyTotal.gates.${gateIndex}`
+        ] = penalty
+        console.log(`✅ Updating only gate ${gateNumber} (index ${gateIndex})`)
+      }
+
+      // ✅ Update total penalty (increment)
+      updateQuery.$inc = {
+        [`teams.$.result.${runIndex}.penaltyTotal.total`]: penalty,
+      }
+
+      message = `Gate penalty added - Run ${runNumber} Gate ${gateNumber}: ${penalty} seconds`
     }
 
-    // ✅ **7️⃣ UPDATE TeamsRegistered**
+    console.log('🔍 [DEBUG] Final update query:', updateQuery)
+
+    // ✅ **5️⃣ UPDATE TeamsRegistered**
     const updateTeamsRegistered = await TeamsRegistered.findOneAndUpdate(
       {
         eventId,
@@ -189,34 +211,35 @@ export const POST = async req => {
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'Failed to update team penalty',
+          message: 'Failed to update team data',
         }),
         { status: 500 }
       )
     }
 
-    // ✅ **8️⃣ DEBUG: Cek hasil update**
-    const updatedGates =
-      updateTeamsRegistered.teams[0]?.result[runIndex]?.penaltyTotal?.gates
-    console.log('🔍 [DEBUG] Gates after update:', updatedGates)
+    // ✅ **6️⃣ DEBUG: Cek hasil update**
+    const updatedData = updateTeamsRegistered.teams[0]?.result[runIndex]
+    console.log('🔍 [DEBUG] Data after update:', updatedData)
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Slalom penalty added successfully - Run ${runNumber} Gate ${gateNumber}: ${penalty} detik`,
-        teamsRegistered: {
+        message: message,
+        data: {
           eventId: updateTeamsRegistered.eventId,
           teamId: team,
           updatedRun: runNumber,
-          gateNumber: gateNumber,
-          penaltyValue: penalty,
-          totalGates: totalGates,
+          operation: operation,
+          penalty: penalty,
+          gateNumber: operation === 'GATES' ? gateNumber : undefined,
+          judgesBy: username,
+          timestamp: new Date().toISOString(),
         },
       }),
-      { status: 201 }
+      { status: 200 }
     )
   } catch (error) {
-    console.error('❌ Error saving slalom report:', error)
+    console.error('❌ Error in slalom API:', error)
     return new Response(
       JSON.stringify({
         success: false,
