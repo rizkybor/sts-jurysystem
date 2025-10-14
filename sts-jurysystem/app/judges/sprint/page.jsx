@@ -126,12 +126,23 @@ const JudgesSprintPages = () => {
         const data = await res.json()
         if (res.ok && data?.success) {
           setTeams(data.teams || [])
+          console.log('🔍 Teams structure from API:', data.teams) // ✅ DI SINI
         } else {
           setTeams([])
+          pushToast({
+            title: 'Data Tim Kosong',
+            text: 'Tidak ada tim untuk kategori ini',
+            type: 'info',
+          })
         }
       } catch (err) {
         console.error('❌ Failed to fetch teams:', err)
         setTeams([])
+        pushToast({
+          title: 'Error',
+          text: 'Gagal memuat data tim',
+          type: 'error',
+        })
       } finally {
         setLoadingTeams(false)
       }
@@ -202,6 +213,9 @@ const JudgesSprintPages = () => {
         senderId: socket.id,
         from: 'Judges Dashboard',
         text: 'Pesan realtime ke operator timing',
+        teamId: selectedTeam,
+        type: assignedPosition,
+        value: Number(selectedPenalty),
         ts: new Date().toISOString(),
       },
       ok => {
@@ -216,16 +230,29 @@ const JudgesSprintPages = () => {
     )
   }
 
-  // Refresh teams setelah submit
+  // Refresh teams setelah submit - GUNAKAN ENDPOINT YANG SAMA
   const refreshTeams = async () => {
+    if (!selectedCategory || !eventId) return
+
     try {
-      const res = await fetch(`/api/events/${eventId}/teams?t=${Date.now()}`)
+      const [initialId, divisionId, raceId] = selectedCategory.split('|')
+      const catEvent = 'SPRINT'
+
+      const res = await fetch(
+        `/api/events/${eventId}/judge-tasks?initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}&eventName=${catEvent}&t=${Date.now()}`
+      )
+
       const data = await res.json()
       if (res.ok && data?.success) {
         setTeams(data.teams || [])
       }
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error('❌ Failed to refresh teams:', error)
+      pushToast({
+        title: 'Refresh Gagal',
+        text: 'Gagal memuat ulang data tim',
+        type: 'error',
+      })
     }
   }
 
@@ -271,9 +298,9 @@ const JudgesSprintPages = () => {
   // Submit
   const handleSubmit = async e => {
     e.preventDefault()
-    if (loading) return // cegah double click
+    if (loading) return
 
-    const finalPosition = assignedPosition || selectedPosition
+    const finalPosition = assignedPosition
 
     if (
       !selectedTeam ||
@@ -281,62 +308,82 @@ const JudgesSprintPages = () => {
       !finalPosition ||
       !selectedCategory
     ) {
-      alert('⚠️ Please select category, team and penalty before submitting.')
+      pushToast({
+        title: 'Data Belum Lengkap',
+        text: 'Harap pilih kategori, tim, dan penalty sebelum submit',
+        type: 'error',
+      })
       return
     }
 
     const parts = selectedCategory.split('|')
     if (parts.length !== 3) {
-      alert('⚠️ Invalid category format.')
+      pushToast({
+        title: 'Format Kategori Salah',
+        text: 'Kategori tidak valid',
+        type: 'error',
+      })
       return
     }
     const [initialId, divisionId, raceId] = parts
 
+    // ✅ GUNAKAN _id SEBAGAI teamId
     const formData = {
-      teamId: selectedTeam,
+      position: finalPosition,
+      team: selectedTeam, // ✅ _id ini adalah teamId yang dimaksud
       penalty: Number(selectedPenalty),
+      eventId: eventId,
       initialId,
       divisionId,
       raceId,
-      position: finalPosition,
-      updateBy: user?.username || 'Unknown Judge',
     }
 
-    console.log(formData, '<<< cek')
+    console.log('Submitting penalty:', formData)
 
-    // setLoading(true);
-    // try {
-    //   const res = await fetch(`/api/events/${eventId}/teams`, {
-    //     method: "PATCH",
-    //     headers: { "Content-Type": "application/json" },
-    //     body: JSON.stringify(formData),
-    //   });
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/judges/sprint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
 
-    //   let data = null;
-    //   try {
-    //     data = await res.json();
-    //   } catch {
-    //     // non-JSON response
-    //   }
+      let data = null
+      try {
+        data = await res.json()
+      } catch {
+        // non-JSON response
+      }
 
-    //   if (res.ok && (data?.success ?? true)) {
-    //     alert(
-    //       `✅ ${finalPosition} Penalty updated by ${user?.username || "you"}!`
-    //     );
-    //     await refreshTeams();
-    //     // reset minimal
-    //     setSelectedTeam("");
-    //     setSelectedPenalty(null);
-    //     // tetap di kategori yang sama agar cepat input batch
-    //   } else {
-    //     const msg = data?.message || `HTTP ${res.status}`;
-    //     alert(`❌ Error: ${msg}`);
-    //   }
-    // } catch (err) {
-    //   alert("❌ Failed to update penalty! Please try again.");
-    // } finally {
-    //   setLoading(false);
-    // }
+      if (res.ok && data?.success) {
+        pushToast({
+          title: 'Berhasil!',
+          text: `✅ ${finalPosition} Penalty: ${selectedPenalty} points berhasil disimpan!`,
+          type: 'success',
+        })
+
+        sendRealtimeMessage()
+        await refreshTeams()
+        setSelectedTeam('')
+        setSelectedPenalty(null)
+      } else {
+        const msg = data?.message || `HTTP ${res.status}`
+        pushToast({
+          title: 'Error Submit',
+          text: `❌ ${msg}`,
+          type: 'error',
+        })
+      }
+    } catch (err) {
+      console.error('Submit error:', err)
+      pushToast({
+        title: 'Network Error',
+        text: '❌ Gagal mengirim data! Coba lagi.',
+        type: 'error',
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

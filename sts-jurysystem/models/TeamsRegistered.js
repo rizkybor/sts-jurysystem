@@ -1,15 +1,24 @@
 // models/TeamsRegistered.js
 import mongoose from 'mongoose'
 
+const PenaltyTotalSchema = new mongoose.Schema({
+  start: { type: Number, default: null },
+  finish: { type: Number, default: null },
+  gates: { type: [Number], default: [] },
+})
+
 const ResultSchema = new mongoose.Schema({
-  startTime: String,
-  finishTime: String,
-  raceTime: String,
-  penaltyTime: String,
-  penalty: String,
-  totalTime: String,
-  ranked: String,
-  score: String,
+  session: { type: String, default: '' },
+  startTime: { type: String, default: '' },
+  finishTime: { type: String, default: '' },
+  raceTime: { type: String, default: '' },
+  penaltyTime: { type: String, default: '' },
+  penaltyTotal: { type: PenaltyTotalSchema, default: () => ({}) }, // 🆕 sesuai struktur real
+  totalTime: { type: String, default: '' },
+  ranked: { type: String, default: '' },
+  score: { type: String, default: '' },
+  judgesBy: { type: String, default: '' },
+  judgesTime: { type: String, default: '' },
 })
 
 const TeamSchema = new mongoose.Schema({
@@ -20,8 +29,7 @@ const TeamSchema = new mongoose.Schema({
   praStart: String,
   intervalRace: String,
   statusId: Number,
-  result: ResultSchema,
-  otr: ResultSchema,
+  result: { type: [ResultSchema], default: [] },
 })
 
 const TeamsRegisteredSchema = new mongoose.Schema({
@@ -36,7 +44,6 @@ const TeamsRegisteredSchema = new mongoose.Schema({
   teams: [TeamSchema],
 })
 
-// 🔥 gunakan nama koleksi asli: teamsRegisteredCollection
 export default mongoose.models.TeamsRegistered ||
   mongoose.model(
     'TeamsRegistered',
