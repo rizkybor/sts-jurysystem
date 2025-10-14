@@ -7,18 +7,62 @@ import { getSessionUser } from '@/utils/getSessionUser'
 
 export const dynamic = 'force-dynamic'
 
-// ✅ **GET: Ambil Sprint Reports**
+// ✅ **GET: Ambil Sprint Reports dengan Data Tim**
 export const GET = async () => {
   try {
     await connectDB()
 
     // Ambil semua data sprint
-    const sprintResults = await JudgeReportSprintDetail.find().sort({
-      createdAt: -1,
-    })
+    const sprintResults = await JudgeReportSprintDetail.find()
+      .sort({
+        createdAt: -1,
+      })
+      .lean()
+
+    // Populate data tim untuk setiap result
+    const populatedResults = await Promise.all(
+      sprintResults.map(async result => {
+        try {
+          // Cari data tim dari TeamsRegistered
+          const teamData = await TeamsRegistered.findOne(
+            {
+              'teams.teamId': result.team,
+            },
+            {
+              'teams.$': 1, // hanya ambil team yang match
+            }
+          ).lean()
+
+          const team = teamData?.teams?.[0] || null
+
+          return {
+            ...result,
+            teamInfo: team
+              ? {
+                  nameTeam: team.nameTeam,
+                  bibTeam: team.bibTeam,
+                  // tambahkan field lain yang diperlukan
+                }
+              : {
+                  nameTeam: 'Unknown Team',
+                  bibTeam: 'N/A',
+                },
+          }
+        } catch (error) {
+          console.error(`Error populating team ${result.team}:`, error)
+          return {
+            ...result,
+            teamInfo: {
+              nameTeam: 'Error Loading Team',
+              bibTeam: 'N/A',
+            },
+          }
+        }
+      })
+    )
 
     return new Response(
-      JSON.stringify({ success: true, data: sprintResults }),
+      JSON.stringify({ success: true, data: populatedResults }),
       { status: 200 }
     )
   } catch (error) {

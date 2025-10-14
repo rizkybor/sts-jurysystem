@@ -473,6 +473,7 @@ const JudgesSprintPages = () => {
           <form onSubmit={handleSubmit} className='space-y-6'>
             {/* CATEGORY */}
             <div>
+              <label className='block text-gray-700 mb-2'>Category:</label>
               {loadingEvent ? (
                 <p className='text-gray-500 text-sm'>Loading categories...</p>
               ) : combinedCategories.length ? (
@@ -508,7 +509,7 @@ const JudgesSprintPages = () => {
                 <select
                   value={selectedTeam}
                   onChange={e => setSelectedTeam(e.target.value)}
-                  className='select-base select-interactive'
+                  className='w-full px-4 py-2 border rounded-lg'
                   required>
                   <option value='' disabled>
                     Select Team
