@@ -67,6 +67,13 @@ const JudgesPage = () => {
           throw new Error(`Gagal memuat assignments: ${assignmentsRes.status}`)
         const assignmentsData = await assignmentsRes.json()
         setAssignments(assignmentsData.data || [])
+
+        // 🧩 Tambahkan log di bawah ini:
+        console.log(
+          '🎯 Event aktif FE:',
+          judgesData.events?.map(e => e._id)
+        )
+        console.log('🧩 Assignments:', assignmentsData.data)
       } catch (error) {
         console.error(error)
         setError(error.message)
@@ -93,15 +100,23 @@ const JudgesPage = () => {
     return null
   }
 
-  const hasAnyActiveRole = assignment =>
-    assignment &&
-    ((assignment.sprint &&
-      (assignment.sprint.start || assignment.sprint.finish)) ||
-      (assignment.h2h &&
-        Object.values(assignment.h2h).some(val => val === true)) ||
-      (assignment.slalom &&
-        (assignment.slalom.start || assignment.slalom.finish)) ||
-      (assignment.drr && (assignment.drr.start || assignment.drr.finish)))
+  const hasAnyActiveRole = assignment => {
+    if (!assignment) return false
+    const { sprint, h2h, slalom, drr } = assignment
+
+    return (
+      (sprint && (sprint.start || sprint.finish)) ||
+      (h2h && Object.values(h2h).some(v => v === true)) ||
+      (slalom &&
+        (slalom.start ||
+          slalom.finish ||
+          (Array.isArray(slalom.gates) && slalom.gates.length > 0))) ||
+      (drr &&
+        (drr.start ||
+          drr.finish ||
+          (Array.isArray(drr.sections) && drr.sections.length > 0)))
+    )
+  }
 
   const judgeButtonsConfig = useMemo(
     () => [

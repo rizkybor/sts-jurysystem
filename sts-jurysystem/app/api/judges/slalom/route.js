@@ -111,25 +111,15 @@ export const POST = async req => {
     const runIndex = runNumber - 1
 
     // ✅ **4️⃣ LOGIC BERDASARKAN OPERASI**
-    let updateQuery = {
-      $set: {
-        [`teams.$.result.${runIndex}.judgesBy`]: username,
-        [`teams.$.result.${runIndex}.judgesTime`]: new Date().toISOString(),
-      },
-    }
-
+    let updateQuery = { $set: {} }
     let message = ''
 
     if (operation === 'START') {
       // 🚀 START OPERATION
-      updateQuery.$set[`teams.$.result.${runIndex}.startTime`] =
-        new Date().toISOString()
       updateQuery.$set[`teams.$.result.${runIndex}.startPenalty`] = penalty
       message = `Start penalty recorded - Run ${runNumber}: ${penalty} seconds`
     } else if (operation === 'FINISH') {
       // 🏁 FINISH OPERATION
-      updateQuery.$set[`teams.$.result.${runIndex}.finishTime`] =
-        new Date().toISOString()
       updateQuery.$set[`teams.$.result.${runIndex}.finishPenalty`] = penalty
       message = `Finish penalty recorded - Run ${runNumber}: ${penalty} seconds`
     } else if (operation === 'GATES') {
@@ -232,8 +222,6 @@ export const POST = async req => {
           operation: operation,
           penalty: penalty,
           gateNumber: operation === 'GATES' ? gateNumber : undefined,
-          judgesBy: username,
-          timestamp: new Date().toISOString(),
         },
       }),
       { status: 200 }
