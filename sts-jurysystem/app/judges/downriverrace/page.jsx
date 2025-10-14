@@ -96,6 +96,7 @@ const JudgesDRRPages = () => {
       teamId: selectedTeam,
       teamName: teamName,
       type: 'DRR',
+      value: selectedPenalty,
       section: selectedSection,
       penalty: Number(selectedPenalty),
       eventId: eventId,

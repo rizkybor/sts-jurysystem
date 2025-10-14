@@ -19,6 +19,8 @@ const ResultSchema = new mongoose.Schema({
   score: { type: String, default: '' },
   judgesBy: { type: String, default: '' },
   judgesTime: { type: String, default: '' },
+  sectionPenalty: { type: [Number], default: [] },
+  sectionPenaltyTime: { type: [String], default: [] },
 })
 
 const TeamSchema = new mongoose.Schema({

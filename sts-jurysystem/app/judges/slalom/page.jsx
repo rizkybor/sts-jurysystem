@@ -73,7 +73,16 @@ const JudgesSlalomPage = () => {
     return getSlalomPositionsFromAssignments(assignments, eventId)
   }, [assignments, eventId])
 
-  const penalties = [0, 5, 50]
+  const penalties = useMemo(() => {
+    if (selectedGate === 'Start' || selectedGate === 'Finish') {
+      return [0, 10, 50]
+    } else if (selectedGate.startsWith('Gate')) {
+      return [0, 5, 50]
+    } else {
+      return [] // fallback, misal belum pilih gate
+    }
+  }, [selectedGate])
+
   const runs = [
     { label: 'Run 1', value: 1 },
     { label: 'Run 2', value: 2 },
@@ -591,7 +600,7 @@ const JudgesSlalomPage = () => {
                 {/* RUN SELECT */}
                 <div>
                   <label className='block text-gray-700 mb-2'>
-                    Select Run:
+                    Select Run :
                   </label>
                   <select
                     value={runNumber}
@@ -608,7 +617,7 @@ const JudgesSlalomPage = () => {
                 {/* SELECT CATEGORY */}
                 <div>
                   <label className='block text-gray-700 mb-2'>
-                    Select Category:
+                    Select Category :
                   </label>
                   {loadingEvent ? (
                     <p className='text-gray-500 text-sm'>
@@ -694,7 +703,7 @@ const JudgesSlalomPage = () => {
                 {/* SELECT GATE */}
                 <div>
                   <label className='block text-gray-700 mb-2'>
-                    Select Gate: {selectedGate}
+                    Select Gate :
                   </label>
                   <select
                     value={selectedGate}
