@@ -160,7 +160,7 @@ const JudgesSlalomPage = () => {
         text: `Slalom: ${teamName} - Run ${runNumber} Gate ${gateNumber} - Penalty ${selectedPenalty} detik`,
         teamId: selectedTeam,
         teamName: teamName,
-        type: 'PenaltiesUpdate',
+        type: 'PenaltyGates',
         runNumber: runNumber,
         gate: `Gate ${gateNumber}`,
         gateNumber: gateNumber,
