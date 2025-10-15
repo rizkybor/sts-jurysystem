@@ -47,7 +47,7 @@ const JudgesSprintPages = () => {
   const toastId = useRef(1)
   const socketRef = useRef(null)
 
-  const penalties = [0, 5, 50]
+  const penalties = [0, 10, 50]
 
   /** Helper: ambil posisi SPRINT untuk eventId aktif dari struktur assignments */
   function getSprintPositionFromAssignments(list, evId) {
