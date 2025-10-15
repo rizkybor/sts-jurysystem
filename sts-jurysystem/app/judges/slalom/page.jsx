@@ -106,6 +106,13 @@ const JudgesSlalomPage = () => {
     return () => socket.off('custom:event', handler)
   }, [])
 
+  /** 🔹 Helper: tentukan tipe penalty dari gate */
+  const getPenaltyType = gate => {
+    if (gate === 'Start') return 'PenaltyStart'
+    if (gate === 'Finish') return 'PenaltyFinish'
+    return 'PenaltyGates'
+  }
+
   // ✅ SEND REALTIME MESSAGE FUNCTION
   const sendRealtimeMessage = (operationType, gateNumber) => {
     const socket = socketRef.current || getSocket()
