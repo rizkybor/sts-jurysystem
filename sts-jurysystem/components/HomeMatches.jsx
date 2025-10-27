@@ -33,7 +33,7 @@ const HomeMatches = async () => {
       <section className='m-auto max-w-lg my-10 px-6'>
         <Link
           href='/matches'
-          className='block bg-black text-white text-center py-4 px-6 rounded-xl hover:bg-gray-700'
+          className='block surface-sts text-white text-center py-4 px-6 rounded-xl hover:bg-gray-700'
         >
           View All Matches
         </Link>

@@ -7,6 +7,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        sts: "#1874A5",
+      },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui"], // font default
         title: ["Poppins", "ui-sans-serif", "system-ui"], // font untuk judul

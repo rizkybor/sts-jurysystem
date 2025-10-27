@@ -35,24 +35,24 @@ const InfoBoxes = () => {
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg'>
           <InfoBox
             heading='All Events by Sustainable'
-            backgroundColor='bg-blue-100'
+            backgroundColor="bg-gray-50"
             buttonInfo={{
               text: 'History Result All Events',
               link: '/matches',
-              backgroundColor: 'bg-black',
+              backgroundColor: 'surface-sts',
             }}>
             Find all match results from sustainable timings.
           </InfoBox>
 
           <InfoBox
             heading='Jury Register'
-            backgroundColor='bg-blue-100'
+            backgroundColor="bg-gray-50"
             buttonInfo={{
               // Teks tombol akan berubah berdasarkan status sesi pengguna
               text: session ? 'Register Now' : 'Login or Register',
               // Menggunakan fungsi onClick untuk menangani logika
               onClick: handleRegisterClick,
-              backgroundColor: 'bg-blue-500',
+              backgroundColor: 'surface-sts',
             }}>
             Register as a jury in an activity.
           </InfoBox>
