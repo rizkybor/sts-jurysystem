@@ -27,7 +27,7 @@ const InfoBox = ({
         // Menggunakan <Link> jika properti 'link' ada
         <Link
           href={link}
-          className={`inline-block ${buttonBgColor} text-white rounded-lg px-4 py-2 hover:opacity-80`}
+          className={`inline-block ${buttonBgColor} text-white rounded-lg px-4 py-2 hover:btnHover-sts`}
           target={target}>
           {text}
         </Link>
@@ -35,7 +35,7 @@ const InfoBox = ({
         // Menggunakan <button> jika properti 'onClick' ada
         <button
           onClick={onClick}
-          className={`inline-block ${buttonBgColor} text-white rounded-lg px-4 py-2 hover:opacity-80`}>
+          className={`inline-block ${buttonBgColor} text-white rounded-lg px-4 py-2 hover:btnHover-sts`}>
           {text}
         </button>
       )}
