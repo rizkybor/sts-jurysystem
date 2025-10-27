@@ -13,6 +13,9 @@
   .bg-danger {
     @apply bg-red-500 text-white;
   }
+  .surface-sts {
+    @apply bg-sts;
+  }
 
   /* === FONT === */
   .font-title {
