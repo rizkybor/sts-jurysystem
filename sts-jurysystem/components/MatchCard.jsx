@@ -29,7 +29,7 @@ export default function MatchCard({ match }) {
 
   return (
     <Link href={`/matches/${id}`} className='group block'>
-      <article className='rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-gray-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200'>
+      <article className='rounded-2xl overflow-hidden bg-white shadow-lg ring-1 ring-gray-100 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200'>
         {/* Image */}
         <div className='relative h-44 w-full bg-gray-100'>
           <Image
@@ -48,7 +48,7 @@ export default function MatchCard({ match }) {
 
         {/* Body */}
         <div className='p-4'>
-          <h3 className='text-base md:text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-blue-600'>
+          <h3 className='text-base md:text-lg font-semibold text-gray-900 line-clamp-1 group-hover:surface-text-sts'>
             {name}
           </h3>
 
@@ -71,7 +71,7 @@ export default function MatchCard({ match }) {
           </div>
 
           <div className='mt-1 text-sm text-gray-600'>
-            <span className='font-medium'>Tanggal:</span> {start} — {end}
+            <span className='font-medium'>Date:</span> {start} — {end}
           </div>
 
           <div className='mt-3 flex items-center justify-between'>
@@ -86,11 +86,11 @@ export default function MatchCard({ match }) {
                   d='M12 12a5 5 0 1 0-5-5a5 5 0 0 0 5 5M6 22v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2Z'
                 />
               </svg>
-              {totalParticipant} peserta
+              {totalParticipant} Teams
             </span>
 
-            <span className='text-blue-600 text-sm font-semibold group-hover:translate-x-0.5 transition'>
-              Lihat Detail →
+            <span className='surface-text-sts text-sm font-semibold group-hover:translate-x-0.5 transition'>
+              View Detail →
             </span>
           </div>
         </div>

@@ -16,6 +16,15 @@
   .surface-sts {
     @apply bg-sts;
   }
+  .surface-text-sts {
+    @apply text-sts;
+  }
+  .btnActive-sts {
+    @apply bg-stsHighlight;
+  }
+  .btnHover-sts {
+    @apply bg-stsDarkHiglight;
+  }
 
   /* === FONT === */
   .font-title {
