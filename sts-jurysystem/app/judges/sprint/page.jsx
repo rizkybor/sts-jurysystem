@@ -11,7 +11,6 @@ const JudgesSprintPages = () => {
   const eventId = searchParams.get("eventId");
 
   // UI states
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // User / judge
@@ -37,6 +36,11 @@ const JudgesSprintPages = () => {
   const [error, setError] = useState(null);
   const [toasts, setToasts] = useState([]);
 
+  // History modal
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyData, setHistoryData] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   // Toast handler
   const pushToast = (msg, ttlMs = 4000) => {
     const id = toastId.current++;
@@ -52,6 +56,39 @@ const JudgesSprintPages = () => {
   const socketRef = useRef(null);
 
   const penalties = [0, 10, 50];
+
+  const openHistoryModal = async () => {
+    setIsHistoryOpen(true);
+    setLoadingHistory(true);
+
+    try {
+      const res = await fetch(
+        `/api/judges/judge-reports/detail?eventId=${eventId}&eventType=SPRINT`
+      );
+      const data = await res.json();
+
+      if (res.ok && data?.data) {
+        setHistoryData(data.data);
+      } else {
+        setHistoryData([]);
+        pushToast({
+          title: "Tidak ada riwayat",
+          text: "Belum ada data penalty untuk tim ini",
+          type: "info",
+        });
+      }
+    } catch (err) {
+      console.error("❌ Fetch history error:", err);
+      setHistoryData([]);
+      pushToast({
+        title: "Error",
+        text: "Gagal memuat riwayat penalty",
+        type: "error",
+      });
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   /** Helper: ambil posisi SPRINT untuk eventId aktif dari struktur assignments */
   function getSprintPositionFromAssignments(list, evId) {
@@ -174,24 +211,6 @@ const JudgesSprintPages = () => {
     };
     fetchEventDetail();
   }, [eventId]);
-
-  // Fetch sprint results ketika modal dibuka
-  useEffect(() => {
-    if (!isModalOpen) return;
-    const fetchSprintResults = async () => {
-      try {
-        // const res = await fetch('/api/judges/sprint') // menggunakan judge sprint details
-
-        // yang dibawah menggunakan report global dinamis
-        const res = await fetch("/api/judges/judge-reports/detail");
-        const data = await res.json();
-        if (res.ok) setSprintResults(data.data || []);
-      } catch {
-        // ignore
-      }
-    };
-    fetchSprintResults();
-  }, [isModalOpen]);
 
   // Socket connect
   useEffect(() => {
@@ -336,7 +355,7 @@ const JudgesSprintPages = () => {
 
     // ✅ GUNAKAN _id SEBAGAI teamId
     const formData = {
-      eventType: 'SPRINT',
+      eventType: "SPRINT",
       position: finalPosition,
       team: selectedTeam,
       penalty: selectedPenalty,
@@ -444,6 +463,15 @@ const JudgesSprintPages = () => {
 
       <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
         <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-lg relative">
+          {/* BACK */}
+          <div className="text-start my-2">
+            <Link href="/judges">
+              <button className="surface-text-sts hover:underline">
+                ← Back to Judges
+              </button>
+            </Link>
+          </div>
+
           {eventDetail && (
             <div className="mb-4 space-y-1 bg-gray-100 p-4 rounded-lg">
               <div className="font-semibold">{eventDetail.eventName}</div>
@@ -479,14 +507,14 @@ const JudgesSprintPages = () => {
             <small className="text-center">Race Number : Sprint Race</small>
           </div>
 
-          <button
+          {/* <button
             onClick={sendRealtimeMessage}
             className="mt-5 mb-5 px-5 py-2.5 w-full sm:w-auto
                    bg-blue-600 text-white rounded-xl shadow 
                    hover:shadow-lg hover:scale-105 transition-all"
           >
             Kirim Pesan ke Operator
-          </button>
+          </button> */}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* CATEGORY */}
@@ -567,47 +595,141 @@ const JudgesSprintPages = () => {
               ))}
             </div>
 
-            {/* SUBMIT */}
-            <button
-              type="submit"
-              className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold shadow-md hover:bg-blue-600 disabled:bg-gray-400"
-              disabled={
-                loading ||
-                !selectedTeam ||
-                selectedPenalty === null ||
-                !selectedCategory
-              }
-            >
-              {loading ? "Submitting..." : `Submit Penalty →`}
-            </button>
-          </form>
-
-          {/* VIEW RESULT */}
-          <div className="text-center mt-4">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="text-blue-500 hover:underline"
-            >
-              View Result
-            </button>
-          </div>
-
-          {/* BACK */}
-          <div className="text-center mt-4">
-            <Link href="/judges">
-              <button className="text-blue-500 hover:underline">
-                ← Back to Judges
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              {/* SUBMIT LEFT */}
+              <button
+                type="button"
+                onClick={openHistoryModal}
+                className="w-full sm:w-1/2 py-3 btn-outline-sts rounded-lg font-semibold shadow-md hover:btnActive-sts hover:text-white disabled:bg-gray-400 transition"
+                disabled={loading}
+              >
+                View History
               </button>
-            </Link>
-          </div>
+
+              {/* SUBMIT RIGHT */}
+              <button
+                type="button"
+                className="w-full sm:w-1/2 py-3 bg-green-500 text-white rounded-lg font-semibold shadow-md hover:bg-green-600 disabled:bg-gray-400 transition"
+                disabled={
+                  loading ||
+                  !selectedTeam ||
+                  selectedPenalty === null ||
+                  !selectedCategory
+                }
+              >
+                {loading ? "Processing..." : "Submit →"}
+              </button>
+            </div>
+          </form>
         </div>
 
-        {/* MODAL RESULT */}
-        <ResultSprint
-          isOpen={isModalOpen}
-          closeModal={() => setIsModalOpen(false)}
-          sprintResults={sprintResults}
-        />
+        {/* MODAL: HISTORY */}
+        {isHistoryOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 border-b flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">History</h2>
+                <button
+                  onClick={() => setIsHistoryOpen(false)}
+                  className="p-2 rounded-full hover:bg-red-50 text-red-500"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 max-h-[70vh] overflow-y-auto">
+                {loadingHistory ? (
+                  <p className="text-center text-gray-500 py-10">
+                    Loading history…
+                  </p>
+                ) : historyData.length === 0 ? (
+                  <p className="text-center text-gray-500 py-10">
+                    No history yet.
+                  </p>
+                ) : (
+                  <ul className="space-y-3">
+                    {historyData.map((item, idx) => {
+                      // warna ikon sesuai penalty
+                      const p = Number(item.penalty ?? 0);
+                      const color =
+                        p >= 50
+                          ? "bg-red-100 text-red-600 ring-red-200"
+                          : p >= 10
+                          ? "bg-amber-100 text-amber-600 ring-amber-200"
+                          : "bg-emerald-100 text-emerald-600 ring-emerald-200";
+
+                      const title = `${
+                        item?.divisionName || "Category"
+                      } - Sprint`; // ubah sesuai datamu
+                      const subtitle =
+                        `${item?.teamInfo?.nameTeam || "Team"} BIB ${
+                          item?.teamInfo?.bibTeam || "-"
+                        }` + ` Penalty: ${p} points`;
+                      const timeStr = item?.createdAt
+                        ? new Date(item.createdAt).toLocaleTimeString("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-";
+
+                      return (
+                        <li
+                          key={item._id || idx}
+                          className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow transition"
+                        >
+                          {/* Icon */}
+                          <div
+                            className={`grid place-items-center h-12 w-12 rounded-xl ring ${color}`}
+                          >
+                            {/* bendera kecil */}
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              className="h-6 w-6"
+                            >
+                              <path
+                                fill="currentColor"
+                                d="M6 2a1 1 0 0 0-1 1v18h2v-6h9l-1-4 1-4H7V3a1 1 0 0 0-1-1Z"
+                              />
+                            </svg>
+                          </div>
+
+                          {/* Texts */}
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-900">
+                              {title}
+                            </div>
+                            <div className="text-gray-600 text-sm">
+                              {subtitle}
+                            </div>
+                          </div>
+
+                          {/* Time */}
+                          <div className="text-xs text-gray-500 whitespace-nowrap">
+                            {timeStr}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t flex justify-end">
+                <button
+                  onClick={() => setIsHistoryOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-red-300 text-red-600 font-medium hover:bg-red-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
