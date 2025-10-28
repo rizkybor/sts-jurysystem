@@ -5,6 +5,11 @@ import TeamsRegistered from "@/models/TeamsRegistered";
 import User from "@/models/User";
 import RaceSetting from "@/models/RaceSetting";
 import { getSessionUser } from "@/utils/getSessionUser";
+import {
+  buildCreatedAtMeta,
+  getTimeZoneFromRequest,
+  formatDateByZone,
+} from "@/utils/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +29,11 @@ export const GET = async (req) => {
 
     // 🔎 Filters dasar
     const eventId = searchParams.get("eventId") || undefined;
-    const eventType = (searchParams.get("eventType") || "").toUpperCase() || undefined; // SPRINT | SLALOM | H2H | DRR
+    const eventType =
+      (searchParams.get("eventType") || "").toUpperCase() || undefined; // SPRINT | SLALOM | H2H | DRR
     const team = searchParams.get("team") || undefined;
-    const fromReport = (searchParams.get("fromReport") || "false").toLowerCase() === "true";
+    const fromReport =
+      (searchParams.get("fromReport") || "false").toLowerCase() === "true";
 
     // 👤 Filters judge (Mode A saja; Mode B implicit by session)
     const judge = searchParams.get("judge") || undefined; // exact username
@@ -40,9 +47,13 @@ export const GET = async (req) => {
 
     // 📄 Pagination & sorting
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
-    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "50", 10), 1), 200);
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get("limit") || "50", 10), 1),
+      200
+    );
     const sortBy = searchParams.get("sortBy") || "createdAt";
-    const sortOrder = (searchParams.get("sort") || "desc").toLowerCase() === "asc" ? 1 : -1;
+    const sortOrder =
+      (searchParams.get("sort") || "desc").toLowerCase() === "asc" ? 1 : -1;
     const skip = (page - 1) * limit;
 
     // =========================================================
@@ -51,13 +62,19 @@ export const GET = async (req) => {
     if (fromReport) {
       if (!eventId) {
         return new Response(
-          JSON.stringify({ success: false, message: "eventId is required for fromReport=true" }),
+          JSON.stringify({
+            success: false,
+            message: "eventId is required for fromReport=true",
+          }),
           { status: 400 }
         );
       }
       if (!eventType) {
         return new Response(
-          JSON.stringify({ success: false, message: "eventType is required for fromReport=true" }),
+          JSON.stringify({
+            success: false,
+            message: "eventType is required for fromReport=true",
+          }),
           { status: 400 }
         );
       }
@@ -65,9 +82,12 @@ export const GET = async (req) => {
       // Ambil session user
       const sessionUser = await getSessionUser();
       if (!sessionUser?.userId) {
-        return new Response(JSON.stringify({ success: false, message: "Not authenticated" }), {
-          status: 401,
-        });
+        return new Response(
+          JSON.stringify({ success: false, message: "Not authenticated" }),
+          {
+            status: 401,
+          }
+        );
       }
 
       // Tentukan nama field array di JudgeReport
@@ -80,15 +100,29 @@ export const GET = async (req) => {
       const arrayField = pushMap[eventType] || "reportSprint";
 
       // 1) Ambil JudgeReport milik user untuk eventId
-      const jr = await JudgeReport.findOne({ eventId, juryId: sessionUser.userId })
+      const jr = await JudgeReport.findOne({
+        eventId,
+        juryId: sessionUser.userId,
+      })
         .select(arrayField)
         .lean();
 
-      if (!jr || !Array.isArray(jr[arrayField]) || jr[arrayField].length === 0) {
+      if (
+        !jr ||
+        !Array.isArray(jr[arrayField]) ||
+        jr[arrayField].length === 0
+      ) {
         return new Response(
           JSON.stringify({
             success: true,
-            meta: { page, limit, total: 0, totalPages: 0, sortBy, sort: sortOrder === 1 ? "asc" : "desc" },
+            meta: {
+              page,
+              limit,
+              total: 0,
+              totalPages: 0,
+              sortBy,
+              sort: sortOrder === 1 ? "asc" : "desc",
+            },
             data: [],
             message: "No details in JudgeReport",
           }),
@@ -111,7 +145,11 @@ export const GET = async (req) => {
 
       // 3) Query + pagination
       const [items, total] = await Promise.all([
-        JudgeReportDetail.find(filterDetails).sort({ [sortBy]: sortOrder }).skip(skip).limit(limit).lean(),
+        JudgeReportDetail.find(filterDetails)
+          .sort({ [sortBy]: sortOrder })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
         JudgeReportDetail.countDocuments(filterDetails),
       ]);
 
@@ -127,11 +165,18 @@ export const GET = async (req) => {
             return {
               ...d,
               teamInfo: t
-                ? { nameTeam: t.nameTeam, bibTeam: t.bibTeam, division: t.divisionName || "N/A" }
+                ? {
+                    nameTeam: t.nameTeam,
+                    bibTeam: t.bibTeam,
+                    division: t.divisionName || "N/A",
+                  }
                 : { nameTeam: "Unknown Team", bibTeam: "N/A" },
             };
           } catch {
-            return { ...d, teamInfo: { nameTeam: "Error loading team", bibTeam: "N/A" } };
+            return {
+              ...d,
+              teamInfo: { nameTeam: "Error loading team", bibTeam: "N/A" },
+            };
           }
         })
       );
@@ -169,16 +214,22 @@ export const GET = async (req) => {
     if (mine) {
       const sessionUser = await getSessionUser();
       if (!sessionUser?.userId) {
-        return new Response(JSON.stringify({ success: false, message: "Not authenticated" }), {
-          status: 401,
-        });
+        return new Response(
+          JSON.stringify({ success: false, message: "Not authenticated" }),
+          {
+            status: 401,
+          }
+        );
       }
       const user = await User.findById(sessionUser.userId).lean();
       mineUsername = user?.username;
       if (!mineUsername) {
-        return new Response(JSON.stringify({ success: false, message: "User not found" }), {
-          status: 404,
-        });
+        return new Response(
+          JSON.stringify({ success: false, message: "User not found" }),
+          {
+            status: 404,
+          }
+        );
       }
       filter.judge = mineUsername;
     }
@@ -188,7 +239,10 @@ export const GET = async (req) => {
       if (judge) {
         filter.judge = judge;
       } else if (judgesParam) {
-        const arr = judgesParam.split(",").map((s) => s.trim()).filter(Boolean);
+        const arr = judgesParam
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
         if (arr.length > 0) filter.judge = { $in: arr };
       } else if (judgeLike) {
         filter.judge = { $regex: judgeLike, $options: "i" };
@@ -204,7 +258,11 @@ export const GET = async (req) => {
 
     // 📊 Query + pagination
     const [items, total] = await Promise.all([
-      JudgeReportDetail.find(filter).sort({ [sortBy]: sortOrder }).skip(skip).limit(limit).lean(),
+      JudgeReportDetail.find(filter)
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       JudgeReportDetail.countDocuments(filter),
     ]);
 
@@ -212,7 +270,14 @@ export const GET = async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          meta: { page, limit, total, totalPages: 0, sortBy, sort: sortOrder === 1 ? "asc" : "desc" },
+          meta: {
+            page,
+            limit,
+            total,
+            totalPages: 0,
+            sortBy,
+            sort: sortOrder === 1 ? "asc" : "desc",
+          },
           data: [],
           message: "No report details found for the given filter",
         }),
@@ -232,11 +297,18 @@ export const GET = async (req) => {
           return {
             ...d,
             teamInfo: t
-              ? { nameTeam: t.nameTeam, bibTeam: t.bibTeam, division: t.divisionName || "N/A" }
+              ? {
+                  nameTeam: t.nameTeam,
+                  bibTeam: t.bibTeam,
+                  division: t.divisionName || "N/A",
+                }
               : { nameTeam: "Unknown Team", bibTeam: "N/A" },
           };
         } catch {
-          return { ...d, teamInfo: { nameTeam: "Error loading team", bibTeam: "N/A" } };
+          return {
+            ...d,
+            teamInfo: { nameTeam: "Error loading team", bibTeam: "N/A" },
+          };
         }
       })
     );
@@ -251,7 +323,9 @@ export const GET = async (req) => {
           totalPages: Math.ceil(total / limit),
           sortBy,
           sort: sortOrder === 1 ? "asc" : "desc",
-          appliedJudge: mine ? mineUsername : judge || judgesParam || judgeLike || null,
+          appliedJudge: mine
+            ? mineUsername
+            : judge || judgesParam || judgeLike || null,
           mode: "direct",
         },
         data: enriched,
@@ -261,7 +335,11 @@ export const GET = async (req) => {
   } catch (err) {
     console.error("❌ Error fetching JudgeReportDetail:", err);
     return new Response(
-      JSON.stringify({ success: false, message: "Internal Server Error", error: err.message }),
+      JSON.stringify({
+        success: false,
+        message: "Internal Server Error",
+        error: err.message,
+      }),
       { status: 500 }
     );
   }
@@ -281,6 +359,8 @@ export const POST = async (req) => {
         { status: 401 }
       );
     }
+
+    const tz = getTimeZoneFromRequest(req);
 
     const body = await req.json();
     const {
@@ -385,9 +465,13 @@ export const POST = async (req) => {
         penaltyField,
       });
 
-      updateQuery.$set[`teams.$.${penaltyField}`] = penalty.toString();
-      updateQuery.$set["teams.$.result.judgesBy"] = username;
-      updateQuery.$set["teams.$.result.judgesTime"] = new Date().toISOString();
+      // gunakan UTC untuk simpan, dan local string opsional
+      const { createdAt, createdAtLocal } = buildCreatedAtMeta(tz);
+      updateQuery.$set["teams.$.result.judgesTime"] = createdAt.toISOString();
+      // opsional: jika schema menampung
+      updateQuery.$set["teams.$.result.judgesTimeLocal"] = createdAtLocal;
+      updateQuery.$set["teams.$.result.judgesTimeTz"] = tz;
+
       message = `Sprint ${position} penalty recorded - ${penalty}s`;
     }
 
@@ -555,6 +639,7 @@ export const POST = async (req) => {
     /* ===================================
        STEP 3: CREATE JudgeReportDetail
     ====================================*/
+    const stamp = buildCreatedAtMeta(tz);
     const detail = await JudgeReportDetail.create({
       eventId,
       eventType: normalizedType,
@@ -567,7 +652,9 @@ export const POST = async (req) => {
       remarks,
       divisionId,
       raceId,
-      createdAt: new Date(),
+      createdAt: stamp.createdAt, // UTC untuk DB
+      createdAtLocal: stamp.createdAtLocal, // opsional bila schema ada
+      createdAtTz: stamp.createdAtTz,
     });
 
     /* ===================================
@@ -590,6 +677,7 @@ export const POST = async (req) => {
       JSON.stringify({
         success: true,
         message,
+        timeZone: tz,
         data: detail,
         judgeReportId: judgeReport._id,
         updatedTeam: {
@@ -612,57 +700,3 @@ export const POST = async (req) => {
     );
   }
 };
-
-// parameter GET :
-// GET /api/judge-report/detail
-//   ?eventType=SPRINT
-//   &createdFrom=2025-10-01T00:00:00.000Z
-//   &createdTo=2025-10-28T23:59:59.999Z
-//   &page=2&limit=20&sortBy=createdAt&sort=desc
-
-// payload POST :
-// {
-//   "eventType": "SPRINT",
-//   "eventId": "E-2025-01",
-//   "team": "TEAM-07",
-//   "position": "Start",
-//   "penalty": 2.5,
-//   "raceId": "R-01",
-//   "divisionId": "DIV-A",
-//   "remarks": "jump start light"
-// }
-// {
-//   "eventType": "SPRINT",
-//   "eventId": "E-2025-01",
-//   "team": "TEAM-07",
-//   "position": "Finish",
-//   "penalty": 1,
-//   "raceId": "R-01",
-//   "divisionId": "DIV-A"
-// }
-// {
-//   "eventType": "SLALOM",
-//   "eventId": "E-2025-02",
-//   "team": "TEAM-21",
-//   "operationType": "start",
-//   "runNumber": 1,
-//   "penalty": 2
-// }
-// {
-//   "eventType": "SLALOM",
-//   "eventId": "E-2025-02",
-//   "team": "TEAM-21",
-//   "operationType": "finish",
-//   "runNumber": 2,
-//   "penalty": 3
-// }
-// {
-//   "eventType": "SLALOM",
-//   "eventId": "E-2025-02",
-//   "team": "TEAM-21",
-//   "operationType": "gate",
-//   "runNumber": 1,
-//   "gateNumber": 5,
-//   "penalty": 50,
-//   "remarks": "touch"
-// }

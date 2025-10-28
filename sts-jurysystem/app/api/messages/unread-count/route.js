@@ -8,7 +8,6 @@ export const dynamic = 'force-dynamic';
 export const GET = async (request) => {
   try {
     await connectDB();
-console.log('HELLO BOR')
     const sessionUser = await getSessionUser();
 
     if (!sessionUser || !sessionUser.user) {
