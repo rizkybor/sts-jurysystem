@@ -28,6 +28,9 @@
   .btnHover-sts {
     @apply bg-stsDarkHiglight;
   }
+    .btnNavigation-sts {
+    @apply from-sts to-stsDark;
+  }
 
     /* === BORDERED BUTTONS === */
   .btn-outline {
