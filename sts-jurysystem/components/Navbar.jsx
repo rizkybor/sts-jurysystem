@@ -319,7 +319,7 @@ const Navbar = () => {
               href="/"
               className={`${
                 pathname === "/" ? "btnActive-sts" : ""
-              } text-white block rounded-md px-3 py-2 text-base font-medium`}
+              } text-white hover:btnActive-sts block rounded-md px-3 py-2 text-base font-medium`}
             >
               Home
             </Link>
@@ -335,7 +335,7 @@ const Navbar = () => {
               href="/matches"
               className={`${
                 pathname === "/matches" ? "btnActive-sts" : ""
-              } text-white block rounded-md px-3 py-2 text-base font-medium`}
+              } text-white hover:btnActive-sts block rounded-md px-3 py-2 text-base font-medium`}
             >
               Matches
             </Link>
@@ -344,7 +344,7 @@ const Navbar = () => {
               href="/live"
               className={`${
                 pathname === "/live" ? "btnActive-sts" : ""
-              } text-white block rounded-md px-3 py-2 text-base font-medium`}
+              } text-white hover:btnActive-sts block rounded-md px-3 py-2 text-base font-medium`}
             >
               On Air
             </Link>
@@ -360,51 +360,51 @@ const Navbar = () => {
             )} */}
 
             {!session &&
-  providers &&
-  Object.values(providers).map((provider, index) => (
-    <button
-      key={index}
-      onClick={() => signIn(provider.id)}
-      className="
+              providers &&
+              Object.values(providers).map((provider, index) => (
+                <button
+                  key={index}
+                  onClick={() => signIn(provider.id)}
+                  className="
         flex items-center justify-center gap-2
         bg-white border border-gray-300 text-gray-700
         rounded-md px-4 py-2
         hover:bg-gray-200 hover:shadow-md
         transition duration-200 ease-in-out
       "
-    >
-      {/* Optional: Tampilkan logo sesuai provider */}
-      {provider.name === "Google" && (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          width="22px"
-          height="22px"
-        >
-          <path
-            fill="#EA4335"
-            d="M24 9.5c3.54 0 6.6 1.22 9.06 3.6l6.72-6.72C35.82 2.71 30.35 0 24 0 14.64 0 6.56 5.38 2.56 13.22l7.9 6.14C12.38 13.37 17.74 9.5 24 9.5z"
-          />
-          <path
-            fill="#34A853"
-            d="M46.98 24.55c0-1.56-.14-3.06-.4-4.5H24v8.52h12.94c-.56 2.88-2.22 5.32-4.7 6.96l7.24 5.63c4.24-3.9 6.7-9.64 6.7-16.61z"
-          />
-          <path
-            fill="#4A90E2"
-            d="M9.46 28.36c-.48-1.44-.76-2.96-.76-4.36s.27-2.92.76-4.36l-7.9-6.14C.93 16.9 0 20.35 0 24c0 3.65.93 7.1 2.56 10.5l6.9-6.14z"
-          />
-          <path
-            fill="#FBBC05"
-            d="M24 48c6.48 0 11.92-2.14 15.9-5.84l-7.24-5.63c-2.02 1.37-4.58 2.17-8.66 2.17-6.26 0-11.62-3.87-13.54-9.33l-7.9 6.14C6.56 42.62 14.64 48 24 48z"
-          />
-        </svg>
-      )}
+                >
+                  {/* Optional: Tampilkan logo sesuai provider */}
+                  {provider.name === "Google" && (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 48 48"
+                      width="22px"
+                      height="22px"
+                    >
+                      <path
+                        fill="#EA4335"
+                        d="M24 9.5c3.54 0 6.6 1.22 9.06 3.6l6.72-6.72C35.82 2.71 30.35 0 24 0 14.64 0 6.56 5.38 2.56 13.22l7.9 6.14C12.38 13.37 17.74 9.5 24 9.5z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M46.98 24.55c0-1.56-.14-3.06-.4-4.5H24v8.52h12.94c-.56 2.88-2.22 5.32-4.7 6.96l7.24 5.63c4.24-3.9 6.7-9.64 6.7-16.61z"
+                      />
+                      <path
+                        fill="#4A90E2"
+                        d="M9.46 28.36c-.48-1.44-.76-2.96-.76-4.36s.27-2.92.76-4.36l-7.9-6.14C.93 16.9 0 20.35 0 24c0 3.65.93 7.1 2.56 10.5l6.9-6.14z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M24 48c6.48 0 11.92-2.14 15.9-5.84l-7.24-5.63c-2.02 1.37-4.58 2.17-8.66 2.17-6.26 0-11.62-3.87-13.54-9.33l-7.9 6.14C6.56 42.62 14.64 48 24 48z"
+                      />
+                    </svg>
+                  )}
 
-      <span className="text-gray-700 font-medium">
-        Sign in with {provider.name}
-      </span>
-    </button>
-  ))}
+                  <span className="text-gray-700 font-medium">
+                    Sign in with {provider.name}
+                  </span>
+                </button>
+              ))}
           </div>
         </div>
       )}
