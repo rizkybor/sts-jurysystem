@@ -338,7 +338,7 @@ const JudgesPage = () => {
                                 key={btn.key}
                                 href={btn.href}
                                 label={btn.label}
-                                color="from-blue-600 to-blue-700"
+                                color="btnNavigation-sts"
                                 params={{
                                   eventId: event._id,
                                   userId: user?._id,
