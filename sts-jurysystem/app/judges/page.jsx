@@ -1,360 +1,377 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
-import NavigationButton from '@/components/NavigationButton'
+import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
+import Image from "next/image";
+import NavigationButton from "@/components/NavigationButton";
+
+/* === UI Utility Components === */
+const Badge = ({ children, color = "bg-gray-100 text-gray-700" }) => (
+  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${color}`}>
+    {children}
+  </span>
+);
+
+const Pill = ({ active, children }) => (
+  <span
+    className={`px-3 py-1 rounded-lg text-sm font-medium inline-block min-w-20 text-center
+      ${active ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"}
+    `}
+  >
+    {children}
+  </span>
+);
+
+const EmptyNote = ({ children }) => (
+  <div className="w-full rounded-xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3">
+    {children}
+  </div>
+);
 
 const JudgesPage = () => {
-  const [user, setUser] = useState(null)
-  const [events, setEvents] = useState([])
-  const [assignments, setAssignments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [user, setUser] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // 🔹 Helper: hitung semua role aktif dalam assignments
-  const countActiveTasks = assignments => {
-    if (!Array.isArray(assignments)) return 0
-    let count = 0
+  // === Helper: Hitung total tugas aktif ===
+  const countActiveTasks = (assignments) => {
+    if (!Array.isArray(assignments)) return 0;
+    let count = 0;
+    assignments.forEach((item) => {
+      (item.judges || []).forEach((judge) => {
+        if (judge.h2h) Object.values(judge.h2h).forEach((v) => v && count++);
+        if (judge.sprint)
+          Object.values(judge.sprint).forEach((v) => v && count++);
+        if (judge.slalom)
+          Object.values(judge.slalom).forEach((v) => v && count++);
+        if (judge.drr) Object.values(judge.drr).forEach((v) => v && count++);
+      });
+    });
+    return count;
+  };
 
-    assignments.forEach(item => {
-      ;(item.judges || []).forEach(judge => {
-        if (judge.h2h) {
-          Object.values(judge.h2h).forEach(v => {
-            if (v) count++
-          })
-        }
-        if (judge.sprint) {
-          Object.values(judge.sprint).forEach(v => {
-            if (v) count++
-          })
-        }
-        if (judge.slalom) {
-          Object.values(judge.slalom).forEach(v => {
-            if (v) count++
-          })
-        }
-        if (judge.drr) {
-          Object.values(judge.drr).forEach(v => {
-            if (v) count++
-          })
-        }
-      })
-    })
-
-    return count
-  }
-
-  // Fetch data
+  // === Fetch data ===
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setError(null)
-        const judgesRes = await fetch('/api/judges', { cache: 'no-store' })
+        setError(null);
+        const judgesRes = await fetch("/api/judges", { cache: "no-store" });
         if (!judgesRes.ok)
-          throw new Error(`Gagal memuat data judges: ${judgesRes.status}`)
-        const judgesData = await judgesRes.json()
-        setUser(judgesData.user)
-        setEvents(judgesData.events || [])
+          throw new Error(`Gagal memuat data judges: ${judgesRes.status}`);
+        const judgesData = await judgesRes.json();
+        setUser(judgesData.user);
+        setEvents(judgesData.events || []);
 
-        const userEmail = judgesData.user?.email
-        if (!userEmail) throw new Error('Email tidak ditemukan')
+        const userEmail = judgesData.user?.email;
+        if (!userEmail) throw new Error("Email tidak ditemukan");
 
         const assignmentsRes = await fetch(
           `/api/assignments?email=${encodeURIComponent(userEmail)}`,
-          { cache: 'no-store' }
-        )
+          { cache: "no-store" }
+        );
         if (!assignmentsRes.ok)
-          throw new Error(`Gagal memuat assignments: ${assignmentsRes.status}`)
-        const assignmentsData = await assignmentsRes.json()
-        setAssignments(assignmentsData.data || [])
-
-        // 🧩 Tambahkan log di bawah ini:
-        console.log(
-          '🎯 Event aktif FE:',
-          judgesData.events?.map(e => e._id)
-        )
-        console.log('🧩 Assignments:', assignmentsData.data)
-      } catch (error) {
-        console.error(error)
-        setError(error.message)
-        pushToast({
-          title: 'Error',
-          text: error.message,
-          type: 'error',
-        })
+          throw new Error(`Gagal memuat assignments: ${assignmentsRes.status}`);
+        const assignmentsData = await assignmentsRes.json();
+        setAssignments(assignmentsData.data || []);
+      } catch (e) {
+        console.error(e);
+        setError(e.message);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchData()
-  }, [])
+    };
+    fetchData();
+  }, []);
 
-  const getJudgeAssignment = eventId => {
-    if (!assignments?.length) return null
+  // === Helper: ambil assignment user per event ===
+  const getJudgeAssignment = (eventId) => {
+    if (!assignments?.length) return null;
     for (const assign of assignments) {
       if (assign.judges?.length) {
-        const judgeAssignment = assign.judges.find(j => j.eventId === eventId)
-        if (judgeAssignment) return judgeAssignment
+        const judgeAssignment = assign.judges.find(
+          (j) => j.eventId === eventId
+        );
+        if (judgeAssignment) return judgeAssignment;
       }
     }
-    return null
-  }
+    return null;
+  };
 
-  const hasAnyActiveRole = assignment => {
-    if (!assignment) return false
-    const { sprint, h2h, slalom, drr } = assignment
-
-    return (
-      (sprint && (sprint.start || sprint.finish)) ||
-      (h2h && Object.values(h2h).some(v => v === true)) ||
-      (slalom &&
-        (slalom.start ||
-          slalom.finish ||
-          (Array.isArray(slalom.gates) && slalom.gates.length > 0))) ||
-      (drr &&
-        (drr.start ||
-          drr.finish ||
-          (Array.isArray(drr.sections) && drr.sections.length > 0)))
-    )
-  }
-
+  // === Konfigurasi tombol navigasi juri ===
   const judgeButtonsConfig = useMemo(
     () => [
       {
-        key: 'sprint',
-        href: '/judges/sprint',
-        label: 'Sprint',
-        icon: '🏎️',
-        color: 'from-blue-500 to-blue-600',
-        checkActive: a => a?.sprint && (a.sprint.start || a.sprint.finish),
+        key: "sprint",
+        href: "/judges/sprint",
+        label: "Sprint",
+        checkActive: (a) => a?.sprint && (a.sprint.start || a.sprint.finish),
       },
       {
-        key: 'h2h',
-        href: '/judges/headtohead',
-        label: 'Head to Head',
-        icon: '⚔️',
-        color: 'from-green-500 to-green-600',
-        checkActive: a => a?.h2h && Object.values(a.h2h).some(v => v === true),
+        key: "h2h",
+        href: "/judges/headtohead",
+        label: "H2H",
+        checkActive: (a) =>
+          a?.h2h && Object.values(a.h2h).some((v) => v === true),
       },
       {
-        key: 'slalom',
-        href: '/judges/slalom',
-        label: 'Slalom',
-        icon: '🌀',
-        color: 'from-purple-500 to-purple-600',
-        checkActive: a =>
+        key: "slalom",
+        href: "/judges/slalom",
+        label: "Slalom",
+        checkActive: (a) =>
           a?.slalom &&
           Object.values(a.slalom).some(
-            v => v === true || (Array.isArray(v) && v.length > 0)
+            (v) => v === true || (Array.isArray(v) && v.length > 0)
           ),
       },
       {
-        key: 'drr',
-        href: '/judges/downriverrace',
-        label: 'Down River',
-        icon: '🌊',
-        color: 'from-red-500 to-red-600',
-        checkActive: a =>
+        key: "drr",
+        href: "/judges/downriverrace",
+        label: "DRR",
+        checkActive: (a) =>
           a?.drr &&
           Object.values(a.drr).some(
-            v => v === true || (Array.isArray(v) && v.length > 0)
+            (v) => v === true || (Array.isArray(v) && v.length > 0)
           ),
       },
     ],
     []
-  )
+  );
+
+  // === Helper: parse tanggal aman ===
+  const toDate = (v) => {
+    if (!v) return null;
+    if (typeof v === "number") return new Date(v);
+    if (v instanceof Date) return v;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  // === Urutkan event berdasarkan tanggal terdekat dari hari ini ===
+  const sortedEvents = useMemo(() => {
+    const arr = Array.isArray(events) ? [...events] : [];
+    const now = Date.now();
+
+    return arr.sort((a, b) => {
+      const da = toDate(a?.startDateEvent);
+      const db = toDate(b?.startDateEvent);
+
+      // kalau dua-duanya valid, bandingkan jarak absolut ke waktu sekarang
+      if (da && db) {
+        const diffA = Math.abs(da.getTime() - now);
+        const diffB = Math.abs(db.getTime() - now);
+        return diffA - diffB; // yang paling dekat dengan sekarang di urutan pertama
+      }
+
+      // kalau salah satu tidak valid
+      if (!da && db) return 1;
+      if (da && !db) return -1;
+      return (a?.eventName || "").localeCompare(b?.eventName || "");
+    });
+  }, [events]);
 
   if (loading) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-purple-100'>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-purple-100">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className='w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full'
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full"
         />
       </div>
-    )
+    );
   }
 
   if (error && !user) {
     return (
-      <div className='min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 px-6'>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 px-6">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className='text-7xl mb-4'>
+          className="text-7xl mb-4"
+        >
           😕
         </motion.div>
-        <h2 className='text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-2'>
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-2">
           Terjadi Kesalahan
         </h2>
-        <p className='text-gray-600 mb-6'>{error}</p>
+        <p className="text-gray-600 mb-6">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className='px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl shadow hover:shadow-xl hover:scale-105 transition-all'>
+          className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl shadow hover:shadow-xl hover:scale-105 transition-all"
+        >
           Coba Lagi
         </button>
       </div>
-    )
+    );
   }
 
+  const totalTasks = countActiveTasks(assignments);
+
   return (
-    <>
-      <div className='min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50'>
-        <div className='max-w-4xl px-4 sm:px-6 lg:px-8 py-10 mx-auto'>
-          {/* Profile */}
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className='bg-white/70 rounded-2xl shadow-xl p-6 border border-gray-100'>
-            <div className='flex flex-col md:flex-row items-center md:items-start gap-6'>
-              {user?.image ? (
-                <img
-                  src={user.image}
-                  alt={user.username}
-                  className='w-28 h-28 sm:w-32 sm:h-32 rounded-xl border-4 border-indigo-100 shadow-md object-cover'
-                />
-              ) : (
-                <div
-                  className='w-28 h-28 sm:w-32 sm:h-32 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-600 
-                   flex items-center justify-center 
-                   text-white text-3xl font-bold shadow-md'>
-                  {user?.username?.charAt(0) || 'U'}
-                </div>
-              )}
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <div className="max-w-6xl px-4 sm:px-6 lg:px-8 py-10 mx-auto">
+        {/* === Profile Card === */}
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100"
+        >
+          <div className="flex flex-col items-center gap-4">
+            {user?.image ? (
+              <Image
+                src={user.image}
+                alt={user.username}
+                width={112}
+                height={112}
+                className="rounded-2xl object-cover shadow"
+                unoptimized
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-28 h-28 rounded-2xl ...">
+                {user?.username?.charAt(0) || "U"}
+              </div>
+            )}
 
-              <div className='flex-1 text-center md:text-left'>
-                <h2 className='text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800'>
-                  {user?.username}
-                </h2>
-                <p className='text-sm sm:text-base text-gray-600'>
-                  {user?.email}
-                </p>
-
-                <div className='flex justify-center md:justify-start gap-2 mt-3 flex-wrap'>
-                  <span className='px-3 py-1 bg-gray-200 text-blue-600 text-xs sm:text-sm rounded-xl'>
-                    Judge
-                  </span>
-                  <span className='px-3 py-1 bg-gray-200 text-blue-600 text-xs sm:text-sm rounded-xl'>
-                    {countActiveTasks(assignments)} Tugas
-                  </span>
-                </div>
+            <div className="text-center">
+              <h2 className="text-2xl font-extrabold text-gray-900">
+                {user?.username}
+              </h2>
+              <p className="text-gray-600">{user?.email}</p>
+              <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                <Badge color="bg-orange-100 text-orange-700">
+                  {events?.length || 0} Event
+                </Badge>
+                <Badge color="bg-blue-100 text-blue-700">
+                  {totalTasks} Task
+                </Badge>
               </div>
             </div>
-          </motion.div>
+          </div>
+        </motion.div>
 
-          {/* Events */}
-          <div className='space-y-10 mt-12'>
-            {events.map(event => {
-              const assignment = getJudgeAssignment(event._id)
-              const hasActiveRole = hasAnyActiveRole(assignment)
-              const banner =
-                event.eventBanner?.trim() || '/images/logo-dummy.png'
+        {/* === Section Title === */}
+        <div className="mt-10 mb-4">
+          <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+            Recent Match
+          </h3>
+        </div>
+
+        {/* === Horizontal Scroll Cards === */}
+        <div className="relative">
+          <div
+            className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth hide-scrollbar"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {sortedEvents.map((event, index) => {
+              const assignment = getJudgeAssignment(event._id);
+              const logo = event.eventLogo?.trim() || "/images/logo-dummy.png";
+              const flags = {
+                sprint: judgeButtonsConfig[0].checkActive(assignment),
+                h2h: judgeButtonsConfig[1].checkActive(assignment),
+                slalom: judgeButtonsConfig[2].checkActive(assignment),
+                drr: judgeButtonsConfig[3].checkActive(assignment),
+              };
+              const anyActive =
+                flags.sprint || flags.h2h || flags.slalom || flags.drr;
 
               return (
                 <motion.div
                   key={event._id}
-                  initial={{ y: 20, opacity: 0 }}
+                  initial={{ y: 16, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  className='bg-white/80 flex flex-col backdrop-blur-md rounded-2xl shadow-xl hover:shadow-2xl transition-all border border-gray-100 overflow-hidden'>
-                  {/* Banner */}
-                  <div className='relative w-full h-48 sm:h-56 lg:h-64'>
+                  transition={{ delay: index * 0.05 }}
+                  className="min-w-[280px] sm:min-w-[320px] max-w-[320px] flex-shrink-0 snap-start bg-white rounded-3xl shadow-xl border border-gray-100 p-6 flex flex-col"
+                >
+                  {/* Logo */}
+                  <div className="w-20 h-20 mx-auto rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center">
                     <img
-                      src={banner}
-                      alt={event.eventName}
-                      className='w-full h-full object-cover'
+                      src={logo}
+                      alt="logo"
+                      className="w-16 h-16 object-contain"
                     />
-                    <div className='absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent'></div>
-                    <div className='absolute bottom-4 left-6'>
-                      <h2 className='text-lg sm:text-xl lg:text-2xl font-bold text-white drop-shadow'>
-                        {event.eventName}
-                      </h2>
-                      <div className='flex gap-2 mt-2'>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium shadow ${
-                            event.statusEvent === 'Activated'
-                              ? 'bg-green-500 text-white'
-                              : 'bg-red-500 text-white'
-                          }`}>
-                          {event.statusEvent}
-                        </span>
-                        <span className='px-3 py-1 bg-white/30 rounded-full text-xs text-white shadow'>
-                          {assignment ? '✅ Terassign' : '❌ Belum Assign'}
-                        </span>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Content */}
-                  <div className='p-6 flex-1 flex flex-col'>
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>
-                      <div className='space-y-2 text-sm sm:text-base text-gray-600'>
-                        <p>
-                          <strong>Lokasi:</strong> {event.riverName || 'N/A'}
-                        </p>
-                        <p>
-                          <strong>Level:</strong> {event.levelName || 'N/A'}
-                        </p>
-                      </div>
-                      <div className='space-y-2 text-sm sm:text-base text-gray-600'>
-                        <p>
-                          <strong>Status:</strong> {event.statusEvent}
-                        </p>
-                        <p>
-                          <strong>Peran Aktif:</strong>{' '}
-                          {hasActiveRole ? '✅' : '❌'}
-                        </p>
-                      </div>
-                    </div>
+                  {/* Info */}
+                  <div className="mt-4 text-center">
+                    <h4 className="font-bold text-gray-900">
+                      {event.eventName}
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      {event.dateString || event.dateRange || ""}{" "}
+                      {event.location ? ` | ${event.location}` : ""}
+                    </p>
+                  </div>
 
-                    {/* Buttons */}
-                    {assignment && hasActiveRole ? (
-                      <div>
-                        <h3 className='font-semibold text-gray-800 mb-3'>
-                          Tugas Juri:
-                        </h3>
-                        <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
-                          {judgeButtonsConfig.map(btn =>
-                            btn.checkActive(assignment) ? (
+                  <div className="mt-4 space-y-1 text-sm">
+                    <p>
+                      <span className="font-semibold">Status: </span>
+                      <span
+                        className={
+                          event.statusEvent === "Activated"
+                            ? "text-green-600"
+                            : "text-gray-500"
+                        }
+                      >
+                        {event.statusEvent === "Activated"
+                          ? "Actived"
+                          : "InActived"}
+                      </span>
+                    </p>
+                    <p>
+                      <span className="font-semibold">Activated Role: </span>
+                      <span className="text-gray-700">Judge</span>
+                    </p>
+                  </div>
+
+                  {/* Buttons / Empty */}
+                  <div className="mt-4">
+                    {assignment ? (
+                      anyActive ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {judgeButtonsConfig.map((btn) => {
+                            const isActive = btn.checkActive(assignment);
+                            return isActive ? (
                               <NavigationButton
                                 key={btn.key}
                                 href={btn.href}
                                 label={btn.label}
-                                icon={btn.icon}
-                                color={btn.color}
+                                color="from-blue-600 to-blue-700"
                                 params={{
                                   eventId: event._id,
                                   userId: user?._id,
                                   assignmentId: assignment._id,
                                 }}
-                                className='h-full'
+                                className="w-full"
                               />
-                            ) : null
-                          )}
+                            ) : (
+                              <Pill key={btn.key} active={false}>
+                                {btn.label}
+                              </Pill>
+                            );
+                          })}
                         </div>
-                      </div>
-                    ) : assignment ? (
-                      <div className='text-center py-4 bg-amber-50 rounded-lg border border-amber-200'>
-                        <p className='text-amber-700 font-medium'>
-                          ⚠️ Tidak ada peran juri aktif untuk event ini
-                        </p>
-                      </div>
+                      ) : (
+                        <EmptyNote>
+                          ⚠️ You don’t have any assignments for this event yet
+                        </EmptyNote>
+                      )
                     ) : (
-                      <div className='text-center py-4 bg-gray-50 rounded-lg border border-gray-200'>
-                        <p className='text-gray-600 font-medium'>
-                          📝 Menunggu assignment dari administrator
-                        </p>
-                      </div>
+                      <EmptyNote>
+                        ⚠️ You don’t have any assignments for this event yet
+                      </EmptyNote>
                     )}
                   </div>
                 </motion.div>
-              )
+              );
             })}
           </div>
         </div>
       </div>
-    </>
-  )
-}
+    </div>
+  );
+};
 
-export default JudgesPage
+export default JudgesPage;
