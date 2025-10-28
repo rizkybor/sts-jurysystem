@@ -51,7 +51,7 @@ const JudgesSprintPages = () => {
   const toastId = useRef(1);
   const socketRef = useRef(null);
 
-  const penalties = [0, 5, 50];
+  const penalties = [0, 10, 50];
 
   /** Helper: ambil posisi SPRINT untuk eventId aktif dari struktur assignments */
   function getSprintPositionFromAssignments(list, evId) {
@@ -183,7 +183,7 @@ const JudgesSprintPages = () => {
         // const res = await fetch('/api/judges/sprint') // menggunakan judge sprint details
 
         // yang dibawah menggunakan report global dinamis
-        const res = await fetch("/api/judge-reports/detail");
+        const res = await fetch("/api/judges/judge-reports/detail");
         const data = await res.json();
         if (res.ok) setSprintResults(data.data || []);
       } catch {
@@ -222,7 +222,7 @@ const JudgesSprintPages = () => {
         text: "Pesan realtime ke operator timing",
         teamId: selectedTeam,
         type: assignedPosition,
-        value: Number(selectedPenalty),
+        value: selectedPenalty,
         ts: new Date().toISOString(),
       },
       (ok) => {
@@ -336,9 +336,10 @@ const JudgesSprintPages = () => {
 
     // ✅ GUNAKAN _id SEBAGAI teamId
     const formData = {
+      eventType: 'SPRINT',
       position: finalPosition,
-      team: selectedTeam, // ✅ _id ini adalah teamId yang dimaksud
-      penalty: Number(selectedPenalty),
+      team: selectedTeam,
+      penalty: selectedPenalty,
       eventId: eventId,
       initialId,
       divisionId,
@@ -356,7 +357,7 @@ const JudgesSprintPages = () => {
       // }) // menggunakan judge sprint details
 
       // yang dibawah menggunakan report global dinamis
-      const res = await fetch(`/api/judge-reports/detail`, {
+      const res = await fetch(`/api/judges/judge-reports/detail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

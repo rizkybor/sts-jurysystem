@@ -412,6 +412,7 @@ const JudgesSlalomPage = () => {
 
     // ✅ PAYLOAD YANG SESUAI DENGAN API BARU
     const payload = {
+      eventType: 'SLALOM',
       runNumber,
       team: actualTeamId,
       penalty: selectedPenalty,
@@ -431,7 +432,7 @@ const JudgesSlalomPage = () => {
     setIsSubmitting(true)
 
     try {
-      const res = await fetch('/api/judges/slalom', {
+      const res = await fetch('/api/judges/judge-reports/detail', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

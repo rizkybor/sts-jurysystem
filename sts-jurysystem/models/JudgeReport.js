@@ -1,30 +1,27 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const JudgeReportSchema = new mongoose.Schema({
-  eventId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Event",
-    required: false,
+const { Schema } = mongoose;
+const ObjectId = Schema.Types.ObjectId;
+
+const JudgeReportSchema = new Schema(
+  {
+    eventId: { type: ObjectId, ref: 'Event', required: true, index: true },
+    juryId:  { type: ObjectId, ref: 'User', required: true, index: true },
+    createdBy: { type: String, default: 'Judges' },
+
+    // ⬇️ semua refer ke model tunggal: JudgeReportDetail
+    reportSprint:     [{ type: ObjectId, ref: 'JudgeReportDetail' }],
+    reportHeadToHead: [{ type: ObjectId, ref: 'JudgeReportDetail' }],
+    reportSlalom:     [{ type: ObjectId, ref: 'JudgeReportDetail' }],
+    reportDrr:        [{ type: ObjectId, ref: 'JudgeReportDetail' }],
   },
-  juryId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  createdBy: { type: String, default: "Judges" },
-  reportSprint: [
-    { type: mongoose.Schema.Types.ObjectId, ref: "JudgeReportSprintDetail" },
-  ],
-  reportHeadToHead: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "JudgeReportHeadToHeadDetail",
-    },
-  ],
-  reportSlalom: [
-    { type: mongoose.Schema.Types.ObjectId, ref: "JudgeReportSlalomDetail" },
-  ],
-  reportDrr: [
-    { type: mongoose.Schema.Types.ObjectId, ref: "JudgeReportDrrDetail" },
-  ],
-  createdAt: { type: Date, default: Date.now },
-});
+  {
+    timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },
+  }
+);
+
+// Komposit index mempermudah lookup laporan per event & juri
+JudgeReportSchema.index({ eventId: 1, juryId: 1 });
 
 export default mongoose.models.JudgeReport ||
-  mongoose.model("JudgeReport", JudgeReportSchema);
+  mongoose.model('JudgeReport', JudgeReportSchema);

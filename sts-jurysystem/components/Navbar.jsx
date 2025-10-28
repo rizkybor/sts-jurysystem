@@ -254,7 +254,7 @@ const Navbar = () => {
                           setIsProfileMenuOpen(false);
                         }}
                       >
-                        Your Profile
+                        Profile Detail
                       </Link>
 
                       <Link
@@ -267,7 +267,7 @@ const Navbar = () => {
                           setIsProfileMenuOpen(false);
                         }}
                       >
-                        Judge Page
+                        Task Detail
                       </Link>
 
                       <button
