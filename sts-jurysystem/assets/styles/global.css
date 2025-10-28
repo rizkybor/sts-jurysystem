@@ -16,6 +16,9 @@
   .surface-sts {
     @apply bg-sts;
   }
+  .surface-border-sts {
+    @apply border-sts;
+  }
   .surface-text-sts {
     @apply text-sts;
   }
@@ -24,6 +27,27 @@
   }
   .btnHover-sts {
     @apply bg-stsDarkHiglight;
+  }
+
+    /* === BORDERED BUTTONS === */
+  .btn-outline {
+    @apply btn border border-gray-400 text-gray-700 bg-transparent hover:bg-gray-100 focus:ring-2 focus:ring-gray-300;
+  }
+
+  .btn-outline-sts {
+    @apply btn border surface-border-sts surface-text-sts bg-transparent hover:bg-blue-50 focus:ring-2 focus:ring-blue-300;
+  }
+
+  .btn-outline-danger {
+    @apply btn border border-red-500 text-red-600 bg-transparent hover:bg-red-50 focus:ring-2 focus:ring-red-300;
+  }
+
+  .btn-outline-success {
+    @apply btn border border-green-500 text-green-600 bg-transparent hover:bg-green-50 focus:ring-2 focus:ring-green-300;
+  }
+
+  .btn-outline-disabled {
+    @apply btn border border-gray-200 text-gray-400 bg-transparent cursor-not-allowed;
   }
 
   /* === FONT === */
