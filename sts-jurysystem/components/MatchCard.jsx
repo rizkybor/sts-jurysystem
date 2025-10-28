@@ -15,6 +15,20 @@ function fmtDate(s) {
       })
 }
 
+// 🎨 Mapping warna badge untuk masing-masing classification
+const levelColors = {
+  A: 'bg-gradient-to-r from-green-500 to-green-600 text-white',
+  B: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white',
+  C: 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-800',
+  D: 'bg-gradient-to-r from-orange-400 to-orange-500 text-white',
+  E: 'bg-gradient-to-r from-red-500 to-rose-600 text-white',
+  F: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white',
+  G: 'bg-gradient-to-r from-cyan-400 to-sky-500 text-gray-900',
+  H: 'bg-gradient-to-r from-pink-400 to-pink-600 text-white',
+  I: 'bg-gradient-to-r from-gray-400 to-gray-500 text-white',
+}
+const defaultLevelColor = 'bg-gray-200 text-gray-800'
+
 export default function MatchCard({ match }) {
   const id = String(match?.id ?? match?._id ?? '')
   const name = match?.eventName ?? 'Untitled'
@@ -23,10 +37,10 @@ export default function MatchCard({ match }) {
   const prov = match?.addressProvince || ''
   const start = fmtDate(match?.startDateEvent)
   const end = fmtDate(match?.endDateEvent)
-  const totalParticipant = Array.isArray(match?.participant)
-    ? match.participant.length
-    : 0
 
+ // Ambil huruf classification terakhir setelah tanda "-"
+  const classification = level.split('-').pop().trim()
+  const badgeClass = levelColors[classification] || defaultLevelColor
   return (
     <Link href={`/matches/${id}`} className='group block'>
       <article className='rounded-2xl overflow-hidden bg-white shadow-lg ring-1 ring-gray-100 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200'>
@@ -40,8 +54,9 @@ export default function MatchCard({ match }) {
             sizes='(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw'
             priority={false}
           />
-          {/* level badge */}
-          <span className='absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/90 text-gray-800 shadow'>
+          {/* 🏷 Badge Classification */}
+          <span
+            className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold shadow-md backdrop-blur-sm ${badgeClass}`}>
             {level}
           </span>
         </div>
@@ -74,8 +89,8 @@ export default function MatchCard({ match }) {
             <span className='font-medium'>Date:</span> {start} — {end}
           </div>
 
-          <div className='mt-3 flex items-center justify-between'>
-            <span className='inline-flex items-center gap-2 text-sm text-gray-700'>
+          <div className='mt-3 flex items-center justify-end'>
+            {/* <span className='inline-flex items-center gap-2 text-sm text-gray-700'>
               <svg
                 width='18'
                 height='18'
@@ -87,7 +102,7 @@ export default function MatchCard({ match }) {
                 />
               </svg>
               {totalParticipant} Teams
-            </span>
+            </span> */}
 
             <span className='surface-text-sts text-sm font-semibold group-hover:translate-x-0.5 transition'>
               View Detail →
