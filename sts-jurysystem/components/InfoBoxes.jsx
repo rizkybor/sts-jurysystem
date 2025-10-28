@@ -37,7 +37,7 @@ const InfoBoxes = () => {
             heading='All Events by Sustainable'
             backgroundColor="bg-gray-50"
             buttonInfo={{
-              text: 'History Result All Events',
+              text: 'All Events',
               link: '/matches',
               backgroundColor: 'surface-sts',
             }}>
