@@ -57,38 +57,68 @@ const JudgesSprintPages = () => {
 
   const penalties = [0, 10, 50];
 
-  const openHistoryModal = async () => {
-    setIsHistoryOpen(true);
-    setLoadingHistory(true);
+  // const openHistoryModal = async () => {
+  //   setIsHistoryOpen(true);
+  //   setLoadingHistory(true);
 
-    try {
-      const res = await fetch(
-        `/api/judges/judge-reports/detail?eventId=${eventId}&eventType=SPRINT`
-      );
-      const data = await res.json();
+  //   try {
+  //     const res = await fetch(
+  //       `/api/judges/judge-reports/detail?eventId=${eventId}&eventType=SPRINT`
+  //     );
+  //     const data = await res.json();
 
-      if (res.ok && data?.data) {
-        setHistoryData(data.data);
-      } else {
-        setHistoryData([]);
-        pushToast({
-          title: "Tidak ada riwayat",
-          text: "Belum ada data penalty untuk tim ini",
-          type: "info",
-        });
-      }
-    } catch (err) {
-      console.error("❌ Fetch history error:", err);
+  //     if (res.ok && data?.data) {
+  //       setHistoryData(data.data);
+  //     } else {
+  //       setHistoryData([]);
+  //       pushToast({
+  //         title: "Tidak ada riwayat",
+  //         text: "Belum ada data penalty untuk tim ini",
+  //         type: "info",
+  //       });
+  //     }
+  //   } catch (err) {
+  //     console.error("❌ Fetch history error:", err);
+  //     setHistoryData([]);
+  //     pushToast({
+  //       title: "Error",
+  //       text: "Gagal memuat riwayat penalty",
+  //       type: "error",
+  //     });
+  //   } finally {
+  //     setLoadingHistory(false);
+  //   }
+  // };
+const openHistoryModal = async () => {
+  setIsHistoryOpen(true);
+  setLoadingHistory(true);
+
+  try {
+    const url = new URL(`/api/judges/judge-reports/detail`, window.location.origin);
+    url.searchParams.set('fromReport', 'true'); // ← mode baru
+    url.searchParams.set('eventId', eventId);
+    url.searchParams.set('eventType', 'SPRINT');
+    // Optional jika mau 1 tim saja:
+    // if (selectedTeam) url.searchParams.set('team', selectedTeam);
+
+    const res = await fetch(url.toString(), { cache: 'no-store' });
+    const data = await res.json();
+
+    if (res.ok && Array.isArray(data?.data)) {
+      setHistoryData(data.data); // ini adalah array dari JudgeReportDetail
+    } else {
       setHistoryData([]);
-      pushToast({
-        title: "Error",
-        text: "Gagal memuat riwayat penalty",
-        type: "error",
-      });
-    } finally {
-      setLoadingHistory(false);
+      pushToast({ title: 'Tidak ada riwayat', text: 'Belum ada data penalty', type: 'info' });
     }
-  };
+  } catch (err) {
+    console.error('❌ Fetch history error:', err);
+    setHistoryData([]);
+    pushToast({ title: 'Error', text: 'Gagal memuat riwayat penalty', type: 'error' });
+  } finally {
+    setLoadingHistory(false);
+  }
+};
+
 
   /** Helper: ambil posisi SPRINT untuk eventId aktif dari struktur assignments */
   function getSprintPositionFromAssignments(list, evId) {
