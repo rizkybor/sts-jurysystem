@@ -586,7 +586,7 @@ const JudgesSprintPages = () => {
                   onClick={() => setSelectedPenalty(pen)}
                   className={`w-full py-3 rounded-lg border ${
                     selectedPenalty === pen
-                      ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold"
+                      ? "bg-blue-100 surface-border-sts surface-text-sts font-semibold"
                       : "bg-white border-gray-300 text-gray-700"
                   }`}
                 >
