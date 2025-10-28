@@ -59,6 +59,10 @@ export default function MatchCard({ match }) {
   const startStr = fmtDate(match?.startDateEvent)
   const endStr = fmtDate(match?.endDateEvent)
 
+  // poster_url prioritas utama, lalu variasi lain, terakhir fallback local
+  const posterUrl =
+    match?.poster_url || match?.posterUrl || match?.imageUrl || DEFAULT_IMG
+
   const classification = level.split('-').pop().trim()
   const badgeClass = levelColors[classification] || defaultLevelColor
 
@@ -68,41 +72,43 @@ export default function MatchCard({ match }) {
     <Link href={`/matches/${id}`} className="group block">
       <article
         className="
-      relative overflow-hidden rounded-2xl
-    bg-white text-gray-900
-    shadow-md ring-1 ring-gray-200/70
-    transition-all duration-500 ease-out
-    hover:-translate-y-1 hover:scale-[1.02]
-    hover:ring-[2px] hover:ring-[#4690B7]/70
-    hover:shadow-[0_0_40px_rgba(70,144,183,0.45)]
+          relative overflow-hidden rounded-2xl
+          bg-white text-gray-900
+          shadow-md ring-1 ring-gray-200/70
+          transition-all duration-500 ease-out
+          hover:-translate-y-1 hover:scale-[1.02]
+          hover:ring-[2px] hover:ring-[#4690B7]/70
+          hover:shadow-[0_0_40px_rgba(70,144,183,0.45)]
         "
       >
         {/* 🔹 Glow gradient overlay saat hover */}
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none"
-  style={{
-    background:
-      'radial-gradient(circle at 50% -20%, rgba(70,144,183,0.25), rgba(24,116,165,0.1), transparent 70%)',
-  }}
+          style={{
+            background:
+              'radial-gradient(circle at 50% -20%, rgba(70,144,183,0.25), rgba(24,116,165,0.1), transparent 70%)',
+          }}
         />
 
         {/* Gambar */}
-<div className="relative h-44 w-full bg-gray-100 overflow-hidden border-b border-gray-200">
-  <Image
-    src={DEFAULT_IMG}
-    alt={name}
-    fill
-    className="object-cover transition-transform duration-300"
-    sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-  />
+        <div className="relative h-44 w-full bg-gray-100 overflow-hidden border-b border-gray-200">
+          <Image
+            src={posterUrl}
+            alt={name}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+            priority={false}
+            unoptimized={/^https?:\/\//.test(posterUrl)} // amanin kalau domain eksternal belum di next.config
+          />
 
-  {/* 🏷 Level Badge */}
-  <span
-    className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold shadow-md backdrop-blur-sm ${badgeClass}`}
-  >
-    {level}
-  </span>
-</div>
+          {/* 🏷 Level Badge */}
+          <span
+            className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold shadow-md backdrop-blur-sm ${badgeClass}`}
+          >
+            {level}
+          </span>
+        </div>
 
         {/* Isi Card */}
         <div className="relative p-4 z-10">
