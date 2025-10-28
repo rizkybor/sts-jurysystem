@@ -1,7 +1,27 @@
 {
   "name": "sts-jurysystem",
   "version": "0.1.0",
+  "description": "Sustainable Timing System - Jury System for Sprint, Slalom, Head-to-Head, and Down River Race events.",
+  "keywords": [
+    "nextjs",
+    "jury-system",
+    "sports-timing",
+    "rafting",
+    "arusderas",
+    "arungjeram",
+    "faji",
+    "slalom",
+    "sprint",
+    "race",
+    "timing-system"
+  ],
+  "author": "JendelaKode",
+  "license": "MIT",
   "private": true,
+  "engines": {
+    "node": "16.20.2",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
