@@ -1,20 +1,20 @@
-'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const MatchSearchForm = () => {
-  const [keyword, setKeyword] = useState('');
-  const [level, setLevel] = useState('All');
+  const [keyword, setKeyword] = useState("");
+  const [level, setLevel] = useState("All");
   const router = useRouter();
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     const params = new URLSearchParams();
-    if (keyword.trim()) params.set('q', keyword.trim());
-    if (level && level !== 'All') params.set('level', level);
+    if (keyword.trim()) params.set("q", keyword.trim());
+    if (level && level !== "All") params.set("level", level);
 
-    router.push(`/matches${params.toString() ? `?${params.toString()}` : ''}`);
+    router.push(`/matches${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   return (
@@ -31,7 +31,7 @@ const MatchSearchForm = () => {
           type="text"
           id="keyword"
           placeholder="Enter keyword or event name"
-          className="w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
+          className="w-full px-4 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-stsHighlight"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
         />
@@ -44,7 +44,7 @@ const MatchSearchForm = () => {
         </label>
         <select
           id="level"
-          className="w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
+          className="w-full px-4 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-stsHighlight cursor-pointer"
           value={level}
           onChange={(e) => setLevel(e.target.value)}
         >
@@ -61,9 +61,19 @@ const MatchSearchForm = () => {
         </select>
       </div>
 
+      {/* Tombol Search */}
       <button
         type="submit"
-        className="md:ml-4 mt-4 md:mt-0 w-full md:w-auto px-6 py-3 rounded-lg bg-white surface-text-sts hover:btnHover-sts hover:text-white focus:outline-none focus:ring focus:btnHover-sts"
+        className="
+    md:ml-4 mt-4 md:mt-0 w-full md:w-auto
+    px-6 py-2 rounded-xl
+    bg-white text-black
+    hover:bg-stsDarkHiglight hover:text-white
+    focus:outline-none focus:ring-2 focus:ring-stsDark
+    transition-all duration-300 ease-out
+    shadow-sm hover:shadow-[0_4px_12px_rgba(24,116,165,0.25)]
+    cursor-pointer
+  "
       >
         Search
       </button>
