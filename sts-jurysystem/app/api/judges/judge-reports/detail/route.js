@@ -24,10 +24,11 @@ export const GET = async (req) => {
 
     // 🔎 Filters dasar
     const eventId = searchParams.get("eventId") || undefined;
-    const eventType = searchParams.get("eventType") || undefined; // SPRINT | SLALOM | H2H | DRR
+    const eventType = (searchParams.get("eventType") || "").toUpperCase() || undefined; // SPRINT | SLALOM | H2H | DRR
     const team = searchParams.get("team") || undefined;
+    const fromReport = (searchParams.get("fromReport") || "false").toLowerCase() === "true";
 
-    // 👤 Filters judge
+    // 👤 Filters judge (Mode A saja; Mode B implicit by session)
     const judge = searchParams.get("judge") || undefined; // exact username
     const judgesParam = searchParams.get("judges") || undefined; // "alice,bob"
     const judgeLike = searchParams.get("judgeLike") || undefined; // partial (regex)
@@ -39,19 +40,128 @@ export const GET = async (req) => {
 
     // 📄 Pagination & sorting
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
-    const limit = Math.min(
-      Math.max(parseInt(searchParams.get("limit") || "50", 10), 1),
-      200
-    );
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "50", 10), 1), 200);
     const sortBy = searchParams.get("sortBy") || "createdAt";
-    const sortOrder =
-      (searchParams.get("sort") || "desc").toLowerCase() === "asc" ? 1 : -1;
+    const sortOrder = (searchParams.get("sort") || "desc").toLowerCase() === "asc" ? 1 : -1;
     const skip = (page - 1) * limit;
 
-    // 🧱 Bangun filter query
+    // =========================================================
+    // MODE B — dari JudgeReport (fromReport=true)
+    // =========================================================
+    if (fromReport) {
+      if (!eventId) {
+        return new Response(
+          JSON.stringify({ success: false, message: "eventId is required for fromReport=true" }),
+          { status: 400 }
+        );
+      }
+      if (!eventType) {
+        return new Response(
+          JSON.stringify({ success: false, message: "eventType is required for fromReport=true" }),
+          { status: 400 }
+        );
+      }
+
+      // Ambil session user
+      const sessionUser = await getSessionUser();
+      if (!sessionUser?.userId) {
+        return new Response(JSON.stringify({ success: false, message: "Not authenticated" }), {
+          status: 401,
+        });
+      }
+
+      // Tentukan nama field array di JudgeReport
+      const pushMap = {
+        SPRINT: "reportSprint",
+        SLALOM: "reportSlalom",
+        H2H: "reportHeadToHead",
+        DRR: "reportDrr",
+      };
+      const arrayField = pushMap[eventType] || "reportSprint";
+
+      // 1) Ambil JudgeReport milik user untuk eventId
+      const jr = await JudgeReport.findOne({ eventId, juryId: sessionUser.userId })
+        .select(arrayField)
+        .lean();
+
+      if (!jr || !Array.isArray(jr[arrayField]) || jr[arrayField].length === 0) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            meta: { page, limit, total: 0, totalPages: 0, sortBy, sort: sortOrder === 1 ? "asc" : "desc" },
+            data: [],
+            message: "No details in JudgeReport",
+          }),
+          { status: 200 }
+        );
+      }
+
+      // 2) Siapkan filter ke JudgeReportDetail berdasar id di array + filter tambahan
+      const filterDetails = {
+        _id: { $in: jr[arrayField] },
+        eventId,
+        eventType,
+      };
+      if (team) filterDetails.team = team;
+      if (createdFrom || createdTo) {
+        filterDetails.createdAt = {};
+        if (createdFrom) filterDetails.createdAt.$gte = new Date(createdFrom);
+        if (createdTo) filterDetails.createdAt.$lte = new Date(createdTo);
+      }
+
+      // 3) Query + pagination
+      const [items, total] = await Promise.all([
+        JudgeReportDetail.find(filterDetails).sort({ [sortBy]: sortOrder }).skip(skip).limit(limit).lean(),
+        JudgeReportDetail.countDocuments(filterDetails),
+      ]);
+
+      // 4) Enrich info tim (opsional, seperti sebelumnya)
+      const enriched = await Promise.all(
+        items.map(async (d) => {
+          try {
+            const teamDoc = await TeamsRegistered.findOne(
+              { eventId: d.eventId, "teams.teamId": d.team },
+              { "teams.$": 1 }
+            ).lean();
+            const t = teamDoc?.teams?.[0];
+            return {
+              ...d,
+              teamInfo: t
+                ? { nameTeam: t.nameTeam, bibTeam: t.bibTeam, division: t.divisionName || "N/A" }
+                : { nameTeam: "Unknown Team", bibTeam: "N/A" },
+            };
+          } catch {
+            return { ...d, teamInfo: { nameTeam: "Error loading team", bibTeam: "N/A" } };
+          }
+        })
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          meta: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            sortBy,
+            sort: sortOrder === 1 ? "asc" : "desc",
+            mode: "fromReport",
+          },
+          data: enriched,
+        }),
+        { status: 200 }
+      );
+    }
+
+    // =========================================================
+    // MODE A — perilaku lama (filter langsung ke JudgeReportDetail)
+    // =========================================================
+
+    // 🧱 Bangun filter query (lama)
     const filter = {};
     if (eventId) filter.eventId = eventId;
-    if (eventType) filter.eventType = eventType.toUpperCase();
+    if (eventType) filter.eventType = eventType;
     if (team) filter.team = team;
 
     // 👤 Resolve "mine" → username dari session
@@ -59,31 +169,26 @@ export const GET = async (req) => {
     if (mine) {
       const sessionUser = await getSessionUser();
       if (!sessionUser?.userId) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Not authenticated" }),
-          { status: 401 }
-        );
+        return new Response(JSON.stringify({ success: false, message: "Not authenticated" }), {
+          status: 401,
+        });
       }
       const user = await User.findById(sessionUser.userId).lean();
       mineUsername = user?.username;
       if (!mineUsername) {
-        return new Response(
-          JSON.stringify({ success: false, message: "User not found" }),
-          { status: 404 }
-        );
+        return new Response(JSON.stringify({ success: false, message: "User not found" }), {
+          status: 404,
+        });
       }
       filter.judge = mineUsername;
     }
 
-    // 🎯 Filter judge lain (hanya dipakai jika bukan "mine")
+    // 🎯 Filter judge lain (jika bukan "mine")
     if (!mine) {
       if (judge) {
         filter.judge = judge;
       } else if (judgesParam) {
-        const arr = judgesParam
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
+        const arr = judgesParam.split(",").map((s) => s.trim()).filter(Boolean);
         if (arr.length > 0) filter.judge = { $in: arr };
       } else if (judgeLike) {
         filter.judge = { $regex: judgeLike, $options: "i" };
@@ -99,11 +204,7 @@ export const GET = async (req) => {
 
     // 📊 Query + pagination
     const [items, total] = await Promise.all([
-      JudgeReportDetail.find(filter)
-        .sort({ [sortBy]: sortOrder })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      JudgeReportDetail.find(filter).sort({ [sortBy]: sortOrder }).skip(skip).limit(limit).lean(),
       JudgeReportDetail.countDocuments(filter),
     ]);
 
@@ -111,14 +212,7 @@ export const GET = async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          meta: {
-            page,
-            limit,
-            total,
-            totalPages: 0,
-            sortBy,
-            sort: sortOrder === 1 ? "asc" : "desc",
-          },
+          meta: { page, limit, total, totalPages: 0, sortBy, sort: sortOrder === 1 ? "asc" : "desc" },
           data: [],
           message: "No report details found for the given filter",
         }),
@@ -126,7 +220,7 @@ export const GET = async (req) => {
       );
     }
 
-    // 🧩 Enrich info tim dari TeamsRegistered (opsional)
+    // 🧩 Enrich info tim (opsional)
     const enriched = await Promise.all(
       items.map(async (d) => {
         try {
@@ -138,18 +232,11 @@ export const GET = async (req) => {
           return {
             ...d,
             teamInfo: t
-              ? {
-                  nameTeam: t.nameTeam,
-                  bibTeam: t.bibTeam,
-                  division: t.divisionName || "N/A",
-                }
+              ? { nameTeam: t.nameTeam, bibTeam: t.bibTeam, division: t.divisionName || "N/A" }
               : { nameTeam: "Unknown Team", bibTeam: "N/A" },
           };
         } catch {
-          return {
-            ...d,
-            teamInfo: { nameTeam: "Error loading team", bibTeam: "N/A" },
-          };
+          return { ...d, teamInfo: { nameTeam: "Error loading team", bibTeam: "N/A" } };
         }
       })
     );
@@ -164,9 +251,8 @@ export const GET = async (req) => {
           totalPages: Math.ceil(total / limit),
           sortBy,
           sort: sortOrder === 1 ? "asc" : "desc",
-          appliedJudge: mine
-            ? mineUsername
-            : judge || judgesParam || judgeLike || null,
+          appliedJudge: mine ? mineUsername : judge || judgesParam || judgeLike || null,
+          mode: "direct",
         },
         data: enriched,
       }),
@@ -175,11 +261,7 @@ export const GET = async (req) => {
   } catch (err) {
     console.error("❌ Error fetching JudgeReportDetail:", err);
     return new Response(
-      JSON.stringify({
-        success: false,
-        message: "Internal Server Error",
-        error: err.message,
-      }),
+      JSON.stringify({ success: false, message: "Internal Server Error", error: err.message }),
       { status: 500 }
     );
   }
