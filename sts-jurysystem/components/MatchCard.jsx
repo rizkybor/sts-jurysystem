@@ -90,20 +90,6 @@ export default function MatchCard({ match }) {
           </div>
 
           <div className='mt-3 flex items-center justify-end'>
-            {/* <span className='inline-flex items-center gap-2 text-sm text-gray-700'>
-              <svg
-                width='18'
-                height='18'
-                viewBox='0 0 24 24'
-                className='text-emerald-600'>
-                <path
-                  fill='currentColor'
-                  d='M12 12a5 5 0 1 0-5-5a5 5 0 0 0 5 5M6 22v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2Z'
-                />
-              </svg>
-              {totalParticipant} Teams
-            </span> */}
-
             <span className='surface-text-sts text-sm font-semibold group-hover:translate-x-0.5 transition'>
               View Detail →
             </span>
