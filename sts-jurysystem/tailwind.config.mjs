@@ -10,7 +10,8 @@ module.exports = {
       colors: {
         sts: "#1874A5",
         stsHighlight: "#4690B7",
-        stsDarkHiglight: "#085076"
+        stsDarkHiglight: "#085076",
+        stsDark: "#1558B0",
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui"], // font default
