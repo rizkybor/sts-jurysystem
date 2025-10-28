@@ -3,66 +3,72 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const MatchSearchForm = () => {
-  const [location, setLocation] = useState('');
-  const [propertyType, setPropertyType] = useState('All');
-
+  const [keyword, setKeyword] = useState('');
+  const [level, setLevel] = useState('All');
   const router = useRouter();
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (location === '' && propertyType === 'All') {
-      router.push('/properties');
-    } else {
-      const query = `?location=${location}&propertyType=${propertyType}`;
+    const params = new URLSearchParams();
+    if (keyword.trim()) params.set('q', keyword.trim());
+    if (level && level !== 'All') params.set('level', level);
 
-      router.push(`/properties/search-results${query}`);
-    }
+    router.push(`/matches${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className='mt-3 mx-auto max-w-2xl w-full flex flex-col md:flex-row items-center'
+      className="mt-3 mx-auto max-w-2xl w-full flex flex-col md:flex-row items-center"
     >
-      <div className='w-full md:w-3/5 md:pr-2 mb-4 md:mb-0'>
-        <label htmlFor='location' className='sr-only'>
-          Location
+      {/* Input pencarian keyword */}
+      <div className="w-full md:w-3/5 md:pr-2 mb-4 md:mb-0">
+        <label htmlFor="keyword" className="sr-only">
+          Keyword / Event Name
         </label>
         <input
-          type='text'
-          id='location'
-          placeholder='Enter Keywords or Event'
-          className='w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-blue-500'
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
+          type="text"
+          id="keyword"
+          placeholder="Enter keyword or event name"
+          className="w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
         />
       </div>
-      <div className='w-full md:w-2/5 md:pl-2'>
-        <label htmlFor='property-type' className='sr-only'>
-          Property Type
+
+      {/* Dropdown Level Classification */}
+      <div className="w-full md:w-2/5 md:pl-2">
+        <label htmlFor="level" className="sr-only">
+          Classification Level
         </label>
         <select
-          id='property-type'
-          className='w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-blue-500'
-          value={propertyType}
-          onChange={(e) => setPropertyType(e.target.value)}
+          id="level"
+          className="w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
+          value={level}
+          onChange={(e) => setLevel(e.target.value)}
         >
-          <option value='All'>All</option>
-          <option value='Rafting'>Rafting</option>
-          <option value='Kayak'>Kayak</option>
-          <option value='Canoe'>Canoe</option>
-          <option value='River Boarding'>River Boarding</option>
-          <option value='Other'>Other</option>
+          <option value="All">All Levels</option>
+          <option value="Classification - A">Classification - A</option>
+          <option value="Classification - B">Classification - B</option>
+          <option value="Classification - C">Classification - C</option>
+          <option value="Classification - D">Classification - D</option>
+          <option value="Classification - E">Classification - E</option>
+          <option value="Classification - F">Classification - F</option>
+          <option value="Classification - G">Classification - G</option>
+          <option value="Classification - H">Classification - H</option>
+          <option value="Classification - I">Classification - I</option>
         </select>
       </div>
-      {/* <button
-        type='submit'
-        className='md:ml-4 mt-4 md:mt-0 w-full md:w-auto px-6 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-500'
+
+      <button
+        type="submit"
+        className="md:ml-4 mt-4 md:mt-0 w-full md:w-auto px-6 py-3 rounded-lg bg-white surface-text-sts hover:btnHover-sts hover:text-white focus:outline-none focus:ring focus:btnHover-sts"
       >
         Search
-      </button> */}
+      </button>
     </form>
   );
 };
+
 export default MatchSearchForm;
