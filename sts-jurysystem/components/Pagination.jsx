@@ -31,7 +31,7 @@ const Pagination = ({ page, pageSize, totalItems, onPageChange }) => {
           ${
             page === 1
               ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-              : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-600"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-stsDarkHiglight"
           }`}
       >
         ← Previous
@@ -47,7 +47,7 @@ const Pagination = ({ page, pageSize, totalItems, onPageChange }) => {
               ${
                 num === page
                   ? "surface-sts text-white shadow-sm"
-                  : "bg-white border border-gray-300 text-gray-700 hover:bg-blue-50 hover:surface-text-sts"
+                  : "bg-white border border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-stsDarkHiglight"
               }`}
           >
             {num}
@@ -63,7 +63,7 @@ const Pagination = ({ page, pageSize, totalItems, onPageChange }) => {
           ${
             page === totalPages
               ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-              : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-600"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-stsDarkHiglight"
           }`}
       >
         Next →
