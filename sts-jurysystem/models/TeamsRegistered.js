@@ -12,6 +12,8 @@ const ResultSchema = new mongoose.Schema({
   startTime: { type: String, default: '' },
   finishTime: { type: String, default: '' },
   raceTime: { type: String, default: '' },
+  startPenalty: { type: String, default: "" },
+  finishPenalty: { type: String, default: "" },
   penaltyTime: { type: String, default: '' },
   penaltyTotal: { type: PenaltyTotalSchema, default: () => ({}) }, // 🆕 sesuai struktur real
   totalTime: { type: String, default: '' },

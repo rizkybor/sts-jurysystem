@@ -94,4 +94,22 @@
   .card-hover {
     @apply hover:shadow-lg hover:-translate-y-1;
   }
+
+  /* === HORIZONTAL SCROLL HELPER === */
+  .hide-scrollbar {
+    scrollbar-width: none; /* Firefox */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* Optional: smooth scroll dan snap */
+  .scroll-snap-x {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  .scroll-snap-item {
+    scroll-snap-align: start;
+  }
 }

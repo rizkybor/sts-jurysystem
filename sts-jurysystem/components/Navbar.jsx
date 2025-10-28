@@ -117,16 +117,7 @@ const Navbar = () => {
                 >
                   On Air
                 </Link>
-                {session && (
-                  // <Link
-                  //   href='/properties/add'
-                  //   className={`${
-                  //     pathname === '/properties/add' ? 'bg-black' : ''
-                  //   } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
-                  // >
-                  //   Add Property
-                  // </Link>
-
+                {/* {session && (
                   <Link
                     href="/judges"
                     className={`${
@@ -135,7 +126,7 @@ const Navbar = () => {
                   >
                     Judges
                   </Link>
-                )}
+                )} */}
               </div>
             </div>
           </div>
@@ -192,8 +183,6 @@ const Navbar = () => {
           {/* <!-- Right Side Menu (Logged In) --> */}
           {session && (
             <div className="absolute inset-y-0 right-0 flex items-center pr-2 md:static md:inset-auto md:ml-6 md:pr-0">
-             
-
               {/* <!-- Profile dropdown button --> */}
               <div className="relative mr-3">
                 {/* Profile trigger */}
@@ -237,64 +226,68 @@ const Navbar = () => {
                 {isProfileMenuOpen && (
                   <div
                     id="user-menu"
-                    className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    className="absolute right-0 z-10 mt-2 w-52 origin-top-right rounded-xl bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none divide-y divide-gray-100"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="user-menu-button"
                     tabIndex="-1"
                   >
-                    {/* Mobile-only Notification item */}
-                    <Link
-                      href="/messages"
-                      className="md:hidden block px-4 py-2 text-sm text-gray-700"
-                      role="menuitem"
-                      tabIndex="-1"
-                      onClick={() => setIsProfileMenuOpen(false)}
-                    >
-                      Notifications
-                    </Link>
+                    <div className="py-1">
+                      {/* Mobile-only Notification item */}
+                      <Link
+                        href="/messages"
+                        className="md:hidden block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-sts active:bg-gray-200 active:scale-[0.98] transition-all duration-150 ease-in-out rounded-t-md"
+                        role="menuitem"
+                        tabIndex="-1"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                      >
+                        Notifications
+                      </Link>
 
-                    <Link
-                      href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700"
-                      role="menuitem"
-                      tabIndex="-1"
-                      id="user-menu-item-0"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                      }}
-                    >
-                      Your Profile
-                    </Link>
-                    {/* <Link
-                      href="/properties/saved"
-                      className="block px-4 py-2 text-sm text-gray-700"
-                      role="menuitem"
-                      tabIndex="-1"
-                      id="user-menu-item-2"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                      }}
-                    >
-                      Saved Properties
-                    </Link> */}
-                    <button
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        signOut();
-                      }}
-                      className="block px-4 py-2 text-sm text-gray-700"
-                      role="menuitem"
-                      tabIndex="-1"
-                      id="user-menu-item-2"
-                    >
-                      Sign Out
-                    </button>
+                      <Link
+                        href="/profile"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-sts active:bg-gray-200 active:scale-[0.98] transition-all duration-150 ease-in-out"
+                        role="menuitem"
+                        tabIndex="-1"
+                        id="user-menu-item-0"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                        }}
+                      >
+                        Profile Detail
+                      </Link>
+
+                      <Link
+                        href="/judges"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-sts active:bg-gray-200 active:scale-[0.98] transition-all duration-150 ease-in-out"
+                        role="menuitem"
+                        tabIndex="-1"
+                        id="user-menu-item-2"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                        }}
+                      >
+                        Task Detail
+                      </Link>
+
+                      <button
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          signOut({ callbackUrl: "/" });
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 active:bg-red-100 active:scale-[0.98] transition-all duration-150 ease-in-out rounded-b-md"
+                        role="menuitem"
+                        tabIndex="-1"
+                        id="user-menu-item-3"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
 
-               <Link href="/messages" className="relative group hidden md:block">
+              <Link href="/messages" className="relative group hidden md:block">
                 <button
                   type="button"
                   className="relative rounded-full btnHover-sts p-1 text-gray-400 hover:text-white hover:btnActive-sts focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800"
@@ -355,16 +348,7 @@ const Navbar = () => {
             >
               On Air
             </Link>
-            {session && (
-              // <Link
-              //   href="/properties/add"
-              //   className={`${
-              //     pathname === "/properties/add" ? "bg-black" : ""
-              //   } text-white block rounded-md px-3 py-2 text-base font-medium`}
-              // >
-              //   Add Property
-              // </Link>
-
+            {/* {session && (
               <Link
                 href="/judges"
                 className={`${
@@ -373,7 +357,7 @@ const Navbar = () => {
               >
                 Judges
               </Link>
-            )}
+            )} */}
 
             {!session &&
               providers &&
