@@ -235,7 +235,7 @@ const Navbar = () => {
                     <div className="py-1">
                       {/* Mobile-only Notification item */}
                       <Link
-                        href="/messages"
+                        href="/histories"
                         className="md:hidden block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-sts active:bg-gray-200 active:scale-[0.98] transition-all duration-150 ease-in-out rounded-t-md"
                         role="menuitem"
                         tabIndex="-1"
@@ -287,7 +287,7 @@ const Navbar = () => {
                 )}
               </div>
 
-              <Link href="/messages" className="relative group hidden md:block">
+              <Link href="/histories" className="relative group hidden md:block">
                 <button
                   type="button"
                   className="relative rounded-full btnHover-sts p-1 text-gray-400 hover:text-white hover:btnActive-sts focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800"

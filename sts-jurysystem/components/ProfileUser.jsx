@@ -1,23 +1,27 @@
-'use client';
-import { useState, useEffect, useMemo } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useSession } from 'next-auth/react';
-import profileDefault from '@/assets/images/profile.png';
-import Spinner from '@/components/Spinner';
+"use client";
+import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+import profileDefault from "@/assets/images/profile.png";
+import Spinner from "@/components/Spinner";
 
-const DEFAULT_IMG = '/images/logo-dummy.png';
+const DEFAULT_IMG = "/images/logo-dummy.png";
 
 function fmtDate(s) {
-  if (!s) return '-';
+  if (!s) return "-";
   const d = new Date(s);
   return isNaN(d)
     ? s
-    : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    : d.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
 }
 
 async function fetchEventById(id) {
-  const res = await fetch(`/api/matches/${id}`, { cache: 'no-store' });
+  const res = await fetch(`/api/matches/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch event ${id}`);
   const data = await res.json();
   return data.event || data;
@@ -25,10 +29,12 @@ async function fetchEventById(id) {
 
 const ProfileUser = () => {
   const { data: session } = useSession();
-  const profileName = session?.user?.name || 'User';
-  const profileEmail = session?.user?.email || '-';
+  const profileName = session?.user?.name || "User";
+  const profileEmail = session?.user?.email || "-";
   const profileImage =
-    typeof session?.user?.image === 'string' ? session.user.image : profileDefault.src;
+    typeof session?.user?.image === "string"
+      ? session.user.image
+      : profileDefault.src;
 
   const [userDetail, setUserDetail] = useState(null);
   const [events, setEvents] = useState([]);
@@ -40,12 +46,12 @@ const ProfileUser = () => {
     let abort = false;
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/user', { cache: 'no-store' });
+        const res = await fetch("/api/user", { cache: "no-store" });
         if (!res.ok) return;
         const data = await res.json();
         if (!abort) setUserDetail(data);
       } catch (e) {
-        if (!abort) console.error('GET /api/user error:', e);
+        if (!abort) console.error("GET /api/user error:", e);
       }
     };
     fetchUser();
@@ -66,19 +72,22 @@ const ProfileUser = () => {
           if (!abort) setEvents([]);
           return;
         }
-        const results = await Promise.allSettled(ids.map((id) => fetchEventById(id)));
+        const results = await Promise.allSettled(
+          ids.map((id) => fetchEventById(id))
+        );
         const okEvents = results
-          .filter((r) => r.status === 'fulfilled' && r.value)
+          .filter((r) => r.status === "fulfilled" && r.value)
           .map((r) => r.value);
 
         const normalized = okEvents.map((e) => {
-          const posterUrl = e.poster_url || e.posterUrl || e.imageUrl || DEFAULT_IMG;
+          const posterUrl =
+            e.poster_url || e.posterUrl || e.imageUrl || DEFAULT_IMG;
           return {
             id: String(e.id ?? e._id),
-            name: e.eventName ?? 'Untitled',
+            name: e.eventName ?? "Untitled",
             posterUrl,
-            city: e.addressCity || '',
-            province: e.addressProvince || '',
+            city: e.addressCity || "",
+            province: e.addressProvince || "",
             start: e.startDateEvent || e.startDate || null,
             end: e.endDateEvent || e.endDate || null,
             levelName: e.levelName || null,
@@ -114,7 +123,9 @@ const ProfileUser = () => {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-800">Please sign in to view your profile</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">
+            Please sign in to view your profile
+          </h1>
           <Link
             href="/auth"
             className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-sts text-white hover:bg-stsHighlight transition-colors"
@@ -134,7 +145,11 @@ const ProfileUser = () => {
           <div className="flex flex-col md:flex-row md:items-center gap-6">
             <div className="relative h-24 w-24 md:h-28 md:w-28 rounded-full ring-4 ring-white/30 overflow-hidden shadow-lg">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={profileImage} alt={profileName} className="w-full h-full object-cover" />
+              <img
+                src={profileImage}
+                alt={profileName}
+                className="w-full h-full object-cover"
+              />
             </div>
 
             <div className="flex-1">
@@ -156,23 +171,23 @@ const ProfileUser = () => {
                   Profile Settings
                 </Link>
                 <Link
-                  href="/bookmarks"
+                  href="/histories"
                   className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/30 transition-all"
                 >
-                  My Bookmarks
+                  History
                 </Link>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 gap-3 md:gap-4">
               <div className="rounded-xl bg-white/10 px-4 py-3 text-center ring-1 ring-white/20">
                 <p className="text-2xl font-bold">{stats.myEvents}</p>
                 <p className="text-sm text-white/90">My Events</p>
               </div>
-              <div className="rounded-xl bg-white/10 px-4 py-3 text-center ring-1 ring-white/20">
+              {/* <div className="rounded-xl bg-white/10 px-4 py-3 text-center ring-1 ring-white/20">
                 <p className="text-2xl font-bold">{stats.bookmarks}</p>
                 <p className="text-sm text-white/90">Bookmarks</p>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -182,17 +197,28 @@ const ProfileUser = () => {
       <div className="container m-auto px-4 py-8">
         {userDetail?.mainEvents?.length ? (
           <div className="mb-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-2">Pinned Events</h2>
+            <h2 className="text-sm font-semibold text-gray-700 mb-2">
+              Pinned Events
+            </h2>
             <div className="flex flex-wrap gap-2">
-              {userDetail.mainEvents.map((id) => (
-                <Link
-                  key={id}
-                  href={`/matches/${id}`}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
-                >
-                  #{String(id).slice(0, 6)}
-                </Link>
-              ))}
+              {userDetail.mainEvents.slice(0, 3).map((id) => {
+                const ev = events.find((e) => String(e.id) === String(id));
+                return (
+                  <Link
+                    key={id}
+                    href={`/matches/${id}`}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                  >
+                    #{String(id).slice(0, 6)} {ev ? ev.name : ""}
+                  </Link>
+                );
+              })}
+
+              {userDetail.mainEvents.length > 3 && (
+                <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
+                  ...
+                </span>
+              )}
             </div>
           </div>
         ) : null}
@@ -217,12 +243,24 @@ const ProfileUser = () => {
             ) : events.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-16">
                 <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <svg width="24" height="24" viewBox="0 0 24 24" className="text-gray-400">
-                    <path fill="currentColor" d="M12 3l9 6v12H3V9l9-6m0 2.2L5 10v9h14v-9l-7-4.8Z" />
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    className="text-gray-400"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M12 3l9 6v12H3V9l9-6m0 2.2L5 10v9h14v-9l-7-4.8Z"
+                    />
                   </svg>
                 </div>
-                <h4 className="text-lg font-semibold text-gray-700">No events pinned</h4>
-                <p className="text-gray-500 mt-1">Pin your favorite events so they appear here.</p>
+                <h4 className="text-lg font-semibold text-gray-700">
+                  No events pinned
+                </h4>
+                <p className="text-gray-500 mt-1">
+                  Pin your favorite events so they appear here.
+                </p>
                 <Link
                   href="/matches"
                   className="mt-4 px-5 py-2.5 rounded-lg bg-sts text-white hover:bg-stsHighlight transition-colors"
@@ -304,13 +342,14 @@ const EventCard = ({ ev }) => (
       {(ev.city || ev.province) && (
         <p className="text-sm text-gray-600 mt-1">
           {ev.city}
-          {ev.city && ev.province ? ', ' : ''}
+          {ev.city && ev.province ? ", " : ""}
           {ev.province}
         </p>
       )}
       {(ev.start || ev.end) && (
         <p className="text-sm text-gray-600 mt-1">
-          <span className="font-medium">Date:</span> {fmtDate(ev.start)} — {fmtDate(ev.end)}
+          <span className="font-medium">Date:</span> {fmtDate(ev.start)} —{" "}
+          {fmtDate(ev.end)}
         </p>
       )}
     </div>
