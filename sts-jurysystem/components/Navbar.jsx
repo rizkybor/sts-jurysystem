@@ -106,7 +106,7 @@ const Navbar = () => {
                     pathname === "/matches" ? "btnActive-sts" : ""
                   } text-white hover:btnActive-sts hover:text-white rounded-md px-3 py-2`}
                 >
-                  Matches
+                  Events
                 </Link>
 
                 <Link
@@ -337,7 +337,7 @@ const Navbar = () => {
                 pathname === "/matches" ? "btnActive-sts" : ""
               } text-white hover:btnActive-sts block rounded-md px-3 py-2 text-base font-medium`}
             >
-              Matches
+              Events
             </Link>
 
             <Link
