@@ -37,7 +37,20 @@ const JudgesDRRPages = () => {
   const [historyData, setHistoryData] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const penalties = [0, -10, 10, 50];
+  // Full palette (keperluan internal). We'll compute displayedPenalties berdasarkan selectedSection.
+  const ALL_PENALTIES = useMemo(() => [0, 5, 10, -10, 50], []);
+  const START_FINISH_PENALTIES = useMemo(() => [0, 10, 50], []);
+
+  // displayedPenalties berubah saat selectedSection berubah
+  const displayedPenalties = useMemo(() => {
+    if (!selectedSection) {
+      // jika belum dipilih section -> tampilkan opsi section (default)
+      return ALL_PENALTIES;
+    }
+    const s = String(selectedSection).trim().toLowerCase();
+    if (s === "start" || s === "finish") return START_FINISH_PENALTIES;
+    return ALL_PENALTIES;
+  }, [selectedSection, ALL_PENALTIES, START_FINISH_PENALTIES]);
 
   // Toast handler
   const pushToast = (msg, ttlMs = 4000) => {
@@ -56,7 +69,7 @@ const JudgesDRRPages = () => {
     if (!Array.isArray(list) || !evId) return [];
     const allJudges = list.flatMap((item) => item.judges || []);
     const match = allJudges.find((j) => String(j.eventId) === String(evId));
-    if (!match?.drr) return [];
+    if (!match || !match.drr) return [];
 
     const positions = [];
     if (Array.isArray(match.drr.sections)) {
@@ -77,10 +90,10 @@ const JudgesDRRPages = () => {
     socketRef.current = socket;
 
     const handler = (msg) => {
-      if (msg?.senderId && msg.senderId === socketRef.current?.id) return;
+      if (msg && msg.senderId && socketRef.current && msg.senderId === socketRef.current.id) return;
       pushToast({
-        title: msg.from ? `Pesan dari ${msg.from}` : "Notifikasi",
-        text: msg.text || "Pesan baru diterima",
+        title: msg && msg.from ? `Pesan dari ${msg.from}` : "Notifikasi",
+        text: msg && msg.text ? msg.text : "Pesan baru diterima",
         type: "info",
       });
     };
@@ -95,9 +108,9 @@ const JudgesDRRPages = () => {
     if (!socket) return;
 
     const selectedTeamData = teams.find((t) => t._id === selectedTeam);
-    const teamName = selectedTeamData?.nameTeam || "Unknown Team";
+    const teamName = selectedTeamData && selectedTeamData.nameTeam ? selectedTeamData.nameTeam : "Unknown Team";
 
-    // ✅ ubah section menjadi angka saja jika format "Section X"
+    // ubah section menjadi angka saja jika format "Section X"
     let sectionValue = selectedSection;
     if (selectedSection && selectedSection.startsWith("Section ")) {
       sectionValue = selectedSection.replace("Section ", "");
@@ -148,7 +161,7 @@ const JudgesDRRPages = () => {
       );
 
       const data = await res.json();
-      if (res.ok && data?.success) {
+      if (res.ok && data && data.success) {
         setTeams(data.teams || []);
       }
     } catch (error) {
@@ -163,19 +176,19 @@ const JudgesDRRPages = () => {
         setLoading(true);
         const judgesRes = await fetch("/api/judges", { cache: "no-store" });
         const judgesData = await judgesRes.json();
-        if (judgesData.user) setUser(judgesData.user);
-        setEvents(judgesData.events || []);
-        const userEmail = judgesData.user?.email;
+        if (judgesData && judgesData.user) setUser(judgesData.user);
+        setEvents((judgesData && judgesData.events) || []);
+        const userEmail = judgesData && judgesData.user && judgesData.user.email;
         if (!userEmail) throw new Error("Email tidak ditemukan");
         const assignmentsRes = await fetch(
           `/api/assignments?email=${encodeURIComponent(userEmail)}`,
           { cache: "no-store" }
         );
         const assignmentsData = await assignmentsRes.json();
-        setAssignments(assignmentsData.data || []);
+        setAssignments((assignmentsData && assignmentsData.data) || []);
       } catch (err) {
         console.error(err);
-        setError(err.message);
+        setError(err && err.message ? err.message : String(err));
       } finally {
         setLoading(false);
       }
@@ -194,7 +207,7 @@ const JudgesDRRPages = () => {
         );
         const data = await res.json();
 
-        if (res.ok && data?.success) {
+        if (res.ok && data && data.success) {
           setTeams(data.teams || []);
           console.log("🔍 DRR Teams loaded:", data.teams);
         } else {
@@ -228,7 +241,7 @@ const JudgesDRRPages = () => {
       try {
         const res = await fetch(`/api/matches/${eventId}`);
         const data = await res.json();
-        setEventDetail(data.event || data);
+        setEventDetail((data && (data.event || data)) || null);
       } catch {
         setEventDetail(null);
       } finally {
@@ -252,9 +265,9 @@ const JudgesDRRPages = () => {
 
   const combinedCategories = useMemo(() => {
     const list = [];
-    const initials = eventDetail?.categoriesInitial || [];
-    const divisions = eventDetail?.categoriesDivision || [];
-    const races = eventDetail?.categoriesRace || [];
+    const initials = (eventDetail && eventDetail.categoriesInitial) || [];
+    const divisions = (eventDetail && eventDetail.categoriesDivision) || [];
+    const races = (eventDetail && eventDetail.categoriesRace) || [];
     initials.forEach((initial) => {
       divisions.forEach((division) => {
         races.forEach((race) => {
@@ -306,10 +319,9 @@ const JudgesDRRPages = () => {
       return;
     }
 
-    // ✅ CEK APAKAH TEAM VALID (PUNYA teamId)
     const selectedTeamData = teams.find((t) => t._id === selectedTeam);
 
-    if (!selectedTeamData?.hasValidTeamId) {
+    if (!selectedTeamData || !selectedTeamData.hasValidTeamId) {
       pushToast({
         title: "Team Tidak Valid",
         text: `Team ${selectedTeamData?.nameTeam} tidak memiliki ID yang valid dan tidak bisa submit penalty. Silakan pilih team lain.`,
@@ -322,11 +334,9 @@ const JudgesDRRPages = () => {
     const [initialId, divisionId, raceId] = selectedCategory.split("|");
     const actualTeamId = selectedTeamData.teamId;
 
-    // ✅ EXTRACT SECTION NUMBER (jika "Section X")
-    // ✅ Tentukan jenis operasi berdasarkan pilihan
     let operationType = "section";
     let sectionNumber = selectedSection;
-    if (selectedSection.startsWith("Section ")) {
+    if (selectedSection && selectedSection.startsWith("Section ")) {
       sectionNumber = parseInt(selectedSection.replace("Section ", ""));
     } else if (selectedSection === "Start") {
       operationType = "start";
@@ -338,12 +348,12 @@ const JudgesDRRPages = () => {
       eventType: "DRR",
       team: actualTeamId,
       penalty: selectedPenalty,
-      section: sectionNumber, // bisa null kalau bukan section
+      section: sectionNumber,
       eventId,
       initialId,
       divisionId,
       raceId,
-      operationType, // 'section' | 'start' | 'finish'
+      operationType,
     };
 
     setLoading(true);
@@ -362,15 +372,15 @@ const JudgesDRRPages = () => {
         // non-JSON response
       }
 
-      if (res.ok && data?.success) {
+      if (res.ok && data && data.success) {
         pushToast({
           title: "Berhasil!",
           text: `✅ ${selectedSection}: Penalty ${selectedPenalty} berhasil disimpan!`,
           type: "success",
         });
 
-        // ✅ KIRIM REALTIME MESSAGE KE OPERATOR
-        sendRealtimeMessage();
+        // KIRIM REALTIME MESSAGE KE OPERATOR
+        sendRealtimeMessage(operationType, sectionNumber);
 
         // Refresh teams data
         await refreshTeams();
@@ -378,7 +388,7 @@ const JudgesDRRPages = () => {
         // Reset form (opsional)
         setSelectedPenalty(null);
       } else {
-        const msg = data?.message || `HTTP ${res.status}`;
+        const msg = (data && data.message) || `HTTP ${res.status}`;
         pushToast({
           title: "Error Submit",
           text: `❌ ${msg}`,
@@ -410,12 +420,11 @@ const JudgesDRRPages = () => {
       url.searchParams.set("fromReport", "true");
       if (eventId) url.searchParams.set("eventId", eventId);
       url.searchParams.set("eventType", "DRR");
-      // optional: if (selectedTeam) url.searchParams.set('team', selectedTeam)
 
       const res = await fetch(url.toString(), { cache: "no-store" });
       const data = await res.json();
 
-      if (res.ok && Array.isArray(data?.data)) {
+      if (res.ok && Array.isArray(data && data.data ? data.data : [])) {
         setHistoryData(data.data);
       } else {
         setHistoryData([]);
@@ -526,7 +535,11 @@ const JudgesDRRPages = () => {
           {/* ✅ BUTTON TEST REALTIME MESSAGE */}
           <div className="mb-6 text-center">
             <button
-              onClick={sendRealtimeMessage}
+              onClick={() => sendRealtimeMessage(
+                // if user presses test but hasn't chosen operationType, derive from selectedSection
+                selectedSection === "Start" ? "start" : selectedSection === "Finish" ? "finish" : "section",
+                selectedSection && selectedSection.startsWith("Section ") ? Number(selectedSection.replace("Section ", "")) : selectedSection
+              )}
               disabled={!selectedTeam || !selectedSection}
               className={`px-5 py-2.5 w-full rounded-xl shadow transition-all ${
                 !selectedTeam || !selectedSection
@@ -635,7 +648,11 @@ const JudgesDRRPages = () => {
               </label>
               <select
                 value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
+                onChange={(e) => {
+                  setSelectedSection(e.target.value);
+                  // reset penalty when section changes
+                  setSelectedPenalty(null);
+                }}
                 className="w-full px-4 py-2 border rounded-lg"
                 required
               >
@@ -651,9 +668,9 @@ const JudgesDRRPages = () => {
             {/* PENALTY */}
             <div className="space-y-2">
               <div className="text-sm text-gray-600 mb-2">Select Penalty:</div>
-              {penalties.map((pen) => (
+              {displayedPenalties.map((pen) => (
                 <button
-                  key={pen}
+                  key={String(pen)}
                   type="button"
                   onClick={() => setSelectedPenalty(pen)}
                   className={`w-full py-3 rounded-lg border ${
@@ -691,14 +708,6 @@ const JudgesDRRPages = () => {
               </button>
             </div>
           </form>
-
-          {/* <div className='text-center mt-4'>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className='text-blue-500 hover:underline'>
-              View Result
-            </button>
-          </div> */}
         </div>
 
         {/* Modal Result */}
@@ -795,7 +804,7 @@ const JudgesDRRPages = () => {
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 border-t flex justify-end">
+              <div className="px-6 py-2 border-t flex justify-end">
                 <button
                   onClick={() => setIsHistoryOpen(false)}
                   className="px-5 py-2.5 rounded-xl border border-red-300 text-red-600 font-medium hover:bg-red-50"
