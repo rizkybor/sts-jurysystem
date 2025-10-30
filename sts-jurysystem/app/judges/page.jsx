@@ -213,7 +213,7 @@ const JudgesPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <div className="max-w-6xl px-4 sm:px-6 lg:px-8 py-10 mx-auto">
         {/* === Profile Card === */}
-        <motion.div
+        {/* <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100"
@@ -247,6 +247,77 @@ const JudgesPage = () => {
                 <Badge color="bg-blue-100 text-blue-700">
                   {totalTasks} Task
                 </Badge>
+              </div>
+            </div>
+          </div>
+        </motion.div> */}
+
+        <motion.div
+          initial={{ scale: 0.97, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.32, ease: "easeOut" }}
+          className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100 max-w-md mx-auto"
+        >
+          <div className="flex flex-col items-center gap-4">
+            {/* Avatar */}
+            {user?.image ? (
+              <div className="relative w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-indigo-50 shadow-sm">
+                <Image
+                  src={user.image}
+                  alt={user.username || "User avatar"}
+                  width={112}
+                  height={112}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : (
+              <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center text-3xl font-extrabold text-indigo-700 shadow-inner">
+                {user?.username?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+            )}
+
+            {/* Name & Email */}
+            <div className="text-center">
+              <h2 className="text-2xl font-extrabold text-gray-900 leading-tight">
+                {user?.username || "Unknown"}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">{user?.email || "—"}</p>
+
+              {/* Quick stats */}
+              <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-100">
+                  <span className="w-2 h-2 rounded-full bg-orange-300" />
+                  <div className="text-xs text-orange-700 font-medium">
+                    {events?.length || 0} Event
+                  </div>
+                </div>
+
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100">
+                  <svg
+                    className="w-3 h-3 text-blue-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 2a1 1 0 00-1 1v3h10V3a1 1 0 00-1-1H6zM4 8v7a2 2 0 002 2h8a2 2 0 002-2V8H4z" />
+                  </svg>
+                  <div className="text-xs text-blue-700 font-medium">
+                    {totalTasks ?? 0} Task
+                  </div>
+                </div>
+              </div>
+
+              {/* small actions (optional) */}
+              <div className="mt-5 flex items-center justify-center">
+                <a
+                  href="/profile"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white text-sm font-medium shadow-md hover:from-indigo-700 hover:to-indigo-600 transition-all duration-300"
+                >
+                  View Profile
+                </a>
               </div>
             </div>
           </div>
