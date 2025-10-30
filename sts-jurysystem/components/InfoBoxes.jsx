@@ -45,7 +45,7 @@ const InfoBoxes = () => {
 
           {/* Judges Profile / Jury Register */}
           <InfoBox
-            heading={session ? "Judges Profile" : "Jury Register"}
+            heading={session ? "Judges Profile" : "Judges Register"}
             backgroundColor="bg-gray-50"
             buttonInfo={
               session
@@ -104,7 +104,7 @@ const InfoBoxes = () => {
                 </div>
               </div>
             ) : (
-              "Register as a jury in an activity."
+              "Register as a judges in an activity."
             )}
           </InfoBox>
         </div>
