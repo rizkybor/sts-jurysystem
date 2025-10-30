@@ -7,7 +7,6 @@ import logo from "@/assets/images/logo-white.png";
 import profileDefault from "@/assets/images/profile.png";
 import { FaGoogle } from "react-icons/fa";
 import { signIn, signOut, useSession, getProviders } from "next-auth/react";
-import UnreadMessageCount from "./UnreadMessageCount";
 
 const Navbar = () => {
   const { data: session } = useSession();
@@ -304,7 +303,6 @@ const Navbar = () => {
                     <path d="M12 24a2.4 2.4 0 0 0 2.4-2.4h-4.8A2.4 2.4 0 0 0 12 24zM18 16v-5c0-3.07-1.63-5.64-4.5-6.32V4a1.5 1.5 0 1 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
                   </svg>
                 </button>
-                <UnreadMessageCount session={session} />
               </Link>
             </div>
           )}
