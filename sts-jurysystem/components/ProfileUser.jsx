@@ -164,12 +164,12 @@ const ProfileUser = () => {
                 >
                   Judges Dashboard
                 </Link>
-                <Link
+                {/* <Link
                   href="/profile/edit"
                   className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/30 transition-all"
                 >
                   Profile Settings
-                </Link>
+                </Link> */}
                 <Link
                   href="/histories"
                   className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/30 transition-all"
