@@ -60,11 +60,6 @@ const JudgesSlalomPage = () => {
   const toastId = useRef(1);
   const socketRef = useRef(null);
 
-  // --- History state (ditambahkan sesuai permintaan) ---
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [historyData, setHistoryData] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
   // Toast handler
   const pushToast = (msg, ttlMs = 4000) => {
     const id = toastId.current++;
@@ -84,7 +79,7 @@ const JudgesSlalomPage = () => {
 
   const penalties = useMemo(() => {
     if (selectedGate === "Start" || selectedGate === "Finish") {
-      return [0, 10, 50];
+      return [0, 5, 50];
     } else if (selectedGate.startsWith("Gate")) {
       return [0, 5, 50];
     } else {
@@ -365,48 +360,7 @@ const JudgesSlalomPage = () => {
     }));
   };
 
-  /** 🔹 Open History (disimpan & diposisikan seperti sebelumnya) */
-  const openHistoryModal = async () => {
-    setIsHistoryOpen(true);
-    setLoadingHistory(true);
-
-    try {
-      const url = new URL(
-        `/api/judges/judge-reports/detail`,
-        window.location.origin
-      );
-      url.searchParams.set("fromReport", "true");
-      if (eventId) url.searchParams.set("eventId", eventId);
-      url.searchParams.set("eventType", "SLALOM");
-      // optional: if (selectedTeam) url.searchParams.set("team", selectedTeam);
-
-      const res = await fetch(url.toString(), { cache: "no-store" });
-      const data = await res.json();
-
-      if (res.ok && Array.isArray(data?.data)) {
-        setHistoryData(data.data);
-      } else {
-        setHistoryData([]);
-        pushToast({
-          title: "Tidak ada riwayat",
-          text: "Belum ada data penalty",
-          type: "info",
-        });
-      }
-    } catch (err) {
-      console.error("❌ Fetch history error:", err);
-      setHistoryData([]);
-      pushToast({
-        title: "Error",
-        text: "Gagal memuat riwayat penalty",
-        type: "error",
-      });
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  /** 🔹 SUBMIT HANDLER YANG SUDAH DIPERBAIKI (tidak diubah) */
+  /** 🔹 SUBMIT HANDLER YANG SUDAH DIPERBAIKI */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (
@@ -476,14 +430,6 @@ const JudgesSlalomPage = () => {
     // ✅ HANYA TAMBAH gateNumber UNTUK OPERASI GATES
     if (operationType === "gate") {
       payload.gateNumber = gateNumber;
-    }
-
-    if (selectedGate === "Start") {
-      payload.gateNumber = 100;
-    }
-
-    if (selectedGate === "Finish") {
-      payload.gateNumber = 200;
     }
 
     console.log("🔍 Submitting SLALOM penalty:", payload);
@@ -595,16 +541,6 @@ const JudgesSlalomPage = () => {
 
       <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
         <div className="w-full max-w-xl bg-white p-6 rounded-2xl shadow-lg">
-          {/* Back */}
-          <div className="text-start my-2">
-            <Link href={`/judges`}>
-              <button className="text-blue-500 hover:underline">
-                ← Back to Judges
-              </button>
-            </Link>
-          </div>
-
-          {/* Event header */}
           {eventDetail && (
             <div className="mb-4 space-y-1 bg-gray-100 p-4 rounded-lg">
               <div className="font-semibold">{eventDetail.eventName}</div>
@@ -659,6 +595,37 @@ const JudgesSlalomPage = () => {
               Race Number:{" "}
               <span className="font-medium text-gray-700">Slalom Race</span>
             </small>
+          </div>
+
+          {/* ✅ BUTTON TEST REALTIME MESSAGE */}
+          <div className="mb-6 text-center">
+            {/* <button
+              onClick={() => {
+                let operationType = ''
+                let gateNumber = undefined
+
+                if (selectedGate === 'Start') {
+                  operationType = 'start'
+                } else if (selectedGate === 'Finish') {
+                  operationType = 'finish'
+                } else {
+                  operationType = 'gate'
+                  gateNumber = parseInt(selectedGate.replace('Gate ', ''))
+                }
+
+                sendRealtimeMessage(operationType, gateNumber)
+              }}
+              disabled={!selectedTeam || !selectedGate}
+              className={`px-5 py-2.5 w-full sm:w-auto rounded-xl shadow transition-all ${
+                !selectedTeam || !selectedGate
+                  ? 'bg-gray-400 cursor-not-allowed text-white'
+                  : 'bg-blue-600 text-white hover:shadow-lg hover:scale-105'
+              }`}>
+              Test Kirim Pesan ke Operator
+            </button> */}
+            {/* <p className='text-xs text-gray-500 mt-2'>
+              *Button untuk test mengirim pesan realtime ke operator timing
+            </p> */}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -812,37 +779,65 @@ const JudgesSlalomPage = () => {
                   ))}
                 </div>
 
-                {/* --- ACTIONS: View History (left) + Submit (right) - posisi sesuai permintaan --- */}
-                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                {/* SUBMIT */}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full py-3 rounded-lg font-semibold shadow-md transition duration-300 ${
+                    isSubmitting
+                      ? "bg-gray-400 cursor-not-allowed text-white"
+                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                  }`}
+                >
+                  {isSubmitting ? "Submitting..." : "Submit →"}
+                </button>
+
+                {/* View Result */}
+                <div className="text-center mt-4">
                   <button
                     type="button"
-                    onClick={openHistoryModal}
-                    className="w-full sm:w-1/2 py-3 btn-outline-sts rounded-lg font-semibold shadow-md hover:btnActive-sts hover:text-white disabled:bg-gray-400 transition"
-                    disabled={isSubmitting}
+                    onClick={() => setIsModalOpen(true)}
+                    className="text-blue-500 hover:underline"
                   >
-                    View History
+                    View Result
                   </button>
+                </div>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`w-full sm:w-1/2 py-3 rounded-lg font-semibold shadow-md transition duration-300 ${
-                      isSubmitting
-                        ? "bg-gray-400 cursor-not-allowed text-white"
-                        : "bg-blue-500 hover:bg-blue-600 text-white"
-                    }`}
-                  >
-                    {isSubmitting ? "Submitting..." : "Submit →"}
-                  </button>
+                {/* Back */}
+                <div className="text-center mt-4">
+                  <Link href={`/judges?eventId=${eventId}&userId=${userId}`}>
+                    <button className="text-blue-500 hover:underline">
+                      ← Back to Judges
+                    </button>
+                  </Link>
                 </div>
               </div>
 
               {/* 🚣‍♂️ RIGHT VIEW */}
-              {/* (dikosongkan / dikomentari seperti semula — tidak diubah) */}
+              {/* <div className="w-full md:w-1/2 flex flex-col items-center">
+                <h2 className="text-lg font-semibold mb-4">Penalties Detail</h2>
+                <div className="relative w-64 h-96 bg-green-300 rounded-full shadow-inner border-8 border-green-600">
+                  {["P1", "P2", "P3", "P4"].map((pos, index) => (
+                    <div
+                      key={index}
+                      onClick={() => handleClick(pos)}
+                      className={`absolute w-14 h-14 flex items-center justify-center rounded-full cursor-pointer font-bold ${
+                        clickedCircles[pos] ? "bg-red-500" : "bg-yellow-300"
+                      } hover:scale-105 transition`}
+                      style={{
+                        top: index < 2 ? "10%" : "70%",
+                        left: index % 2 === 0 ? "20%" : "60%",
+                      }}
+                    >
+                      {pos}
+                    </div>
+                  ))}
+                </div>
+              </div> */}
             </div>
           </form>
 
-          {/* Modal Result (tetap ada, tapi kamu sudah menghapus tombol View Result sehingga modal tidak otomatis terbuka) */}
+          {/* Modal Result */}
           <ResultSlalom
             isOpen={isModalOpen}
             closeModal={() => setIsModalOpen(false)}
@@ -855,133 +850,6 @@ const JudgesSlalomPage = () => {
               runNumber,
             }}
           />
-
-          {/* Modal: History (posisi & fungsi sama seperti file sebelumnya) */}
-          {isHistoryOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-              <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-                {/* Header */}
-                <div className="px-6 py-4 border-b flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    History
-                  </h2>
-                  <button
-                    onClick={() => setIsHistoryOpen(false)}
-                    className="p-2 rounded-full hover:bg-red-50 text-red-500"
-                    aria-label="Close"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Body */}
-                <div className="p-4 max-h-[70vh] overflow-y-auto">
-                  {loadingHistory ? (
-                    <p className="text-center text-gray-500 py-10">
-                      Loading history…
-                    </p>
-                  ) : historyData.length === 0 ? (
-                    <p className="text-center text-gray-500 py-10">
-                      No history yet.
-                    </p>
-                  ) : (
-                    <ul className="space-y-3">
-                      {historyData.map((item, idx) => {
-                        const p = Number(item.penalty ?? 0);
-                        const color =
-                          p >= 50
-                            ? "bg-red-100 text-red-600 ring-red-200"
-                            : p >= 10
-                            ? "bg-amber-100 text-amber-600 ring-amber-200"
-                            : "bg-emerald-100 text-emerald-600 ring-emerald-200";
-
-                        const title = `Slalom Penalty`;
-
-                        const subtitle =
-                          `${item?.teamInfo?.nameTeam || "Team"} BIB ${
-                            item?.teamInfo?.bibTeam || "-"
-                          }` + ` • Penalty: ${p} points`;
-                        const timeStr = item?.createdAt
-                          ? new Date(item.createdAt).toLocaleTimeString(
-                              "id-ID",
-                              {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )
-                          : "-";
-
-                        const runSection = `Run : ${
-                          item?.runNumber || "Undefined"
-                        }`;
-
-                        const gateNumber = `Gates : ${
-                          item?.gateNumber == 100
-                            ? "Start"
-                            : item?.gateNumber == 200
-                            ? "Finish"
-                            : item?.gateNumber
-                        }`;
-
-                        const createdPenaltyBy = `Created By : ${
-                          item?.judge || "Undefined"
-                        }`;
-
-                        return (
-                          <li
-                            key={item._id || idx}
-                            className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow transition"
-                          >
-                            <div
-                              className={`grid place-items-center h-12 w-12 rounded-xl ring ${color}`}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                className="h-6 w-6"
-                              >
-                                <path
-                                  fill="currentColor"
-                                  d="M6 2a1 1 0 0 0-1 1v18h2v-6h9l-1-4 1-4H7V3a1 1 0 0 0-1-1Z"
-                                />
-                              </svg>
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-900">
-                                {title} - {runSection}
-                              </div>
-                              <div className="text-gray-600 text-sm">
-                                Team : {subtitle}
-                              </div>
-                              <div className="text-gray-600 text-sm">
-                                {gateNumber}
-                              </div>
-                              <small className="text-gray-600">
-                                {createdPenaltyBy}
-                              </small>
-                            </div>
-                            <div className="text-xs text-gray-500 whitespace-nowrap">
-                              Timestamp : {timeStr}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 py-4 border-t flex justify-end">
-                  <button
-                    onClick={() => setIsHistoryOpen(false)}
-                    className="px-5 py-2.5 rounded-xl border border-red-300 text-red-600 font-medium hover:bg-red-50"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </>
