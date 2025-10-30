@@ -374,6 +374,7 @@ export const POST = async (req) => {
       raceId,
       divisionId,
       operationType,
+      section, // <-- untuk DRR (bisa '1' | 1 | 'Section 1')
       remarks,
     } = body;
 
@@ -387,7 +388,7 @@ export const POST = async (req) => {
       );
     }
 
-    const normalizedType = eventType.toUpperCase();
+    const normalizedType = String(eventType).toUpperCase();
     if (penalty === undefined || penalty === null) {
       return new Response(
         JSON.stringify({
@@ -455,36 +456,23 @@ export const POST = async (req) => {
        STEP 1: UPDATE TeamsRegistered
     ====================================*/
     if (normalizedType === "SPRINT") {
-      const penaltyField =
-        position === "Start" ? "result.startPenalty" : "result.finishPenalty";
-
-      console.log("🔍 Searching for team:", {
-        eventId,
-        team,
-        position,
-        penaltyField,
-      });
-
-      // gunakan UTC untuk simpan, dan local string opsional
       const { createdAt, createdAtLocal } = buildCreatedAtMeta(tz);
       updateQuery.$set["teams.$.result.judgesTime"] = createdAt.toISOString();
-      // opsional: jika schema menampung
       updateQuery.$set["teams.$.result.judgesTimeLocal"] = createdAtLocal;
       updateQuery.$set["teams.$.result.judgesTimeTz"] = tz;
-
       message = `Sprint ${position} penalty recorded - ${penalty}s`;
     }
 
     if (normalizedType === "HEADTOHEAD") {
+      // no specific update here (kept intentionally empty)
     }
 
     if (normalizedType === "SLALOM") {
       const runIdx = (runNumber || 1) - 1;
 
-      // Ambil dokumen tim untuk membaca kondisi saat ini (khusus SLALOM)
       const teamDoc = await TeamsRegistered.findOne(
         { eventId, eventName: "SLALOM", "teams.teamId": team },
-        { "teams.$": 1 } // ambil hanya tim yang match
+        { "teams.$": 1 }
       );
 
       if (!teamDoc) {
@@ -497,32 +485,26 @@ export const POST = async (req) => {
         );
       }
 
-      // Ambil total gate dari setting (default 14 jika tidak ada)
       const raceSetting = await RaceSetting.findOne({ eventId });
       const totalGates = raceSetting?.settings?.slalom?.totalGate || 14;
 
-      // Kondisi saat ini
       const currentRun =
         teamDoc.teams?.[0]?.result?.[runIdx]?.penaltyTotal || {};
       const currentGates = Array.isArray(currentRun.gates)
         ? currentRun.gates
         : [];
 
-      // Pastikan kita tidak menimpa updateQuery dari SPRINT
-      // (gunakan yang sudah dideklarasi di atas: let updateQuery = { $set: {} })
-      // Tambahkan ke $set / $inc yang sama
-      if (operationType === "start") {
-        // simpan pada penaltyTotal.start
+      const opTypeSlalom = operationType ? String(operationType).toLowerCase() : null;
+
+      if (opTypeSlalom === "start") {
         updateQuery.$set[`teams.$.result.${runIdx}.penaltyTotal.start`] =
           Number(penalty);
         message = `Slalom START penalty - Run ${runIdx + 1}: ${penalty}s`;
-      } else if (operationType === "finish") {
-        // simpan pada penaltyTotal.finish
+      } else if (opTypeSlalom === "finish") {
         updateQuery.$set[`teams.$.result.${runIdx}.penaltyTotal.finish`] =
           Number(penalty);
         message = `Slalom FINISH penalty - Run ${runIdx + 1}: ${penalty}s`;
-      } else if (operationType === "gate") {
-        // validasi gate
+      } else if (opTypeSlalom === "gate") {
         const gateIdx = Number(gateNumber) - 1;
         if (
           !Number.isInteger(gateIdx) ||
@@ -538,9 +520,7 @@ export const POST = async (req) => {
           );
         }
 
-        // 3 skenario update gates:
         if (currentGates.length === 0) {
-          // 1) belum ada array → init
           const newGates = Array(totalGates).fill(0);
           newGates[gateIdx] = Number(penalty);
           updateQuery.$set[`teams.$.result.${runIdx}.penaltyTotal.gates`] =
@@ -549,7 +529,6 @@ export const POST = async (req) => {
             gateIdx + 1
           }: ${penalty}s`;
         } else if (currentGates.length !== totalGates) {
-          // 2) size tidak match → resize (copy yang ada)
           const resized = Array(totalGates).fill(0);
           for (let i = 0; i < Math.min(currentGates.length, totalGates); i++) {
             resized[i] = currentGates[i];
@@ -561,7 +540,6 @@ export const POST = async (req) => {
             gateIdx + 1
           }: ${penalty}s`;
         } else {
-          // 3) array sudah sesuai → update 1 index
           updateQuery.$set[
             `teams.$.result.${runIdx}.penaltyTotal.gates.${gateIdx}`
           ] = Number(penalty);
@@ -570,7 +548,6 @@ export const POST = async (req) => {
           }: ${penalty}s`;
         }
 
-        // akumulasi total
         if (!updateQuery.$inc) updateQuery.$inc = {};
         if (
           typeof updateQuery.$inc[
@@ -591,15 +568,144 @@ export const POST = async (req) => {
         );
       }
 
-      // Common metadata untuk run tsb
       updateQuery.$set[`teams.$.result.${runIdx}.judgesBy`] = username;
       updateQuery.$set[`teams.$.result.${runIdx}.judgesTime`] =
         new Date().toISOString();
     }
 
+    /* =========================
+       DRR — implemented here (robust parsing & save)
+    ==========================*/
     if (normalizedType === "DRR") {
+      // Validasi dasar khusus DRR
+      if (!divisionId || !raceId) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "DRR requires divisionId and raceId",
+          }),
+          { status: 400 }
+        );
+      }
+
+      // Ambil totalSections dari RaceSetting (default 6)
+      const raceSetting = await RaceSetting.findOne({ eventId });
+      const totalSections = raceSetting?.settings?.drr?.totalSection || 6;
+
+      // Ambil dokumen tim DRR
+      const teamDoc = await TeamsRegistered.findOne(
+        { eventId, eventName: "DRR", "teams.teamId": team },
+        { "teams.$": 1 }
+      );
+
+      if (!teamDoc) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "Team not found in TeamsRegistered collection (DRR)",
+          }),
+          { status: 404 }
+        );
+      }
+
+      const targetTeam = teamDoc.teams?.[0];
+      const currentSectionPenalty = targetTeam?.result?.[0]?.sectionPenalty;
+
+      const { createdAt, createdAtLocal } = buildCreatedAtMeta(tz);
+      updateQuery.$set["teams.$.result.0.judgesBy"] = username;
+      updateQuery.$set["teams.$.result.0.judgesTime"] = createdAt.toISOString();
+      updateQuery.$set["teams.$.result.0.judgesTimeLocal"] = createdAtLocal;
+      updateQuery.$set["teams.$.result.0.judgesTimeTz"] = tz;
+
+      if (!operationType) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "operationType is required for DRR (start|finish|section)",
+          }),
+          { status: 400 }
+        );
+      }
+
+      const opType = String(operationType).toLowerCase();
+
+      if (opType === "start") {
+        updateQuery.$set["teams.$.result.0.startPenalty"] = Number(penalty);
+        // updateQuery.$set["teams.$.result.0.startTime"] =
+        //   new Date().toISOString();
+        message = `DRR START penalty recorded: ${penalty}s`;
+      } else if (opType === "finish") {
+        updateQuery.$set["teams.$.result.0.finishPenalty"] = Number(penalty);
+        // updateQuery.$set["teams.$.result.0.finishTime"] =
+        //   new Date().toISOString();
+        message = `DRR FINISH penalty recorded: ${penalty}s`;
+      } else if (opType === "section") {
+        // robust parse of section: accept number | "1" | "Section 1"
+        if (section === undefined || section === null) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message:
+                "Section number is required for DRR operationType=section",
+            }),
+            { status: 400 }
+          );
+        }
+
+        let parsedSection;
+        if (typeof section === "number") {
+          parsedSection = section;
+        } else if (typeof section === "string") {
+          const m = section.match(/(\d+)/);
+          parsedSection = m ? parseInt(m[1], 10) : NaN;
+        } else {
+          parsedSection = Number(section);
+        }
+
+        if (!Number.isInteger(parsedSection) || parsedSection <= 0) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message:
+                "Section number is required for DRR operationType=section",
+            }),
+            { status: 400 }
+          );
+        }
+
+        const sectionIndex = parsedSection - 1;
+
+        // init / resize / update logic
+        if (!Array.isArray(currentSectionPenalty)) {
+          const newSectionArray = Array(totalSections).fill(null);
+          newSectionArray[sectionIndex] = Number(penalty);
+          updateQuery.$set["teams.$.result.0.sectionPenalty"] = newSectionArray;
+        } else {
+          const resized = Array.from(currentSectionPenalty || []);
+          if (resized.length < totalSections) {
+            const tmp = Array(totalSections).fill(null);
+            for (let i = 0; i < resized.length; i++) tmp[i] = resized[i];
+            for (let i = 0; i < totalSections; i++) resized[i] = tmp[i];
+          }
+          resized[sectionIndex] = Number(penalty);
+          updateQuery.$set["teams.$.result.0.sectionPenalty"] = resized;
+        }
+
+        // keep parsedSection local for JudgeReportDetail creation below
+        body._parsedSection = parsedSection;
+        message = `DRR SECTION ${parsedSection} penalty recorded: ${penalty}s`;
+      } else {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: `Invalid operationType for DRR: ${operationType}`,
+          }),
+          { status: 400 }
+        );
+      }
     }
 
+    // Persist update to TeamsRegistered
     const updatedTeam = await TeamsRegistered.findOneAndUpdate(
       { eventId, eventName: normalizedType, "teams.teamId": team },
       updateQuery,
@@ -640,22 +746,43 @@ export const POST = async (req) => {
        STEP 3: CREATE JudgeReportDetail
     ====================================*/
     const stamp = buildCreatedAtMeta(tz);
-    const detail = await JudgeReportDetail.create({
+
+    // determine final section value for saving detail (if any)
+    const parsedSectionFinal =
+      typeof body._parsedSection !== "undefined"
+        ? body._parsedSection
+        : (typeof section !== "undefined" && section !== null
+            ? (typeof section === "string"
+                ? (section.match(/(\d+)/) ? parseInt(section.match(/(\d+)/)[1], 10) : undefined)
+                : Number(section))
+            : undefined);
+
+    const detailPayload = {
       eventId,
       eventType: normalizedType,
       team,
       position,
       runNumber,
       gateNumber,
-      penalty: penalty,
+      penalty: Number(penalty),
       judge: username,
       remarks,
       divisionId,
       raceId,
-      createdAt: stamp.createdAt, // UTC untuk DB
-      createdAtLocal: stamp.createdAtLocal, // opsional bila schema ada
+      createdAt: stamp.createdAt,
+      createdAtLocal: stamp.createdAtLocal,
       createdAtTz: stamp.createdAtTz,
-    });
+    };
+
+    // attach DRR-specific detail fields when present
+    if (typeof parsedSectionFinal === "number" && Number.isInteger(parsedSectionFinal)) {
+      detailPayload.section = parsedSectionFinal;
+    }
+    if (operationType) {
+      detailPayload.operationType = String(operationType).toLowerCase();
+    }
+
+    const detail = await JudgeReportDetail.create(detailPayload);
 
     /* ===================================
        STEP 4: PUSH KE BIDANG SESUAI EVENT TYPE
@@ -668,7 +795,6 @@ export const POST = async (req) => {
     };
     const arrayField = pushMap[normalizedType] || "reportSprint";
 
-    // pastikan field array ada
     if (!judgeReport[arrayField]) judgeReport[arrayField] = [];
     judgeReport[arrayField].push(detail._id);
     await judgeReport.save();
