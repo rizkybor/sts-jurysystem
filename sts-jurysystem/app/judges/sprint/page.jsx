@@ -506,6 +506,10 @@ const JudgesSprintPages = () => {
           )}
 
           <div className="mb-6 bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
+              <small className="block text-sm text-gray-500 tracking-wide">
+              Race Number:{" "}
+              <span className="font-medium text-gray-700">Sprint Race</span>
+            </small>
             {/* Title */}
             <div className="text-l font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
               Judge Task :

@@ -537,6 +537,10 @@ const JudgesDRRPages = () => {
 
           {/* Styled header ( Judges + gates ) */}
           <div className="mb-6 bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
+              <small className="block text-sm text-gray-500 tracking-wide">
+              Race Number:{" "}
+              <span className="font-medium text-gray-700">Down River Race</span>
+            </small>
             <div className="text-l font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
               Judge Task :
             </div>
@@ -557,22 +561,6 @@ const JudgesDRRPages = () => {
                 <span className="text-gray-500 italic">No gates selected</span>
               )}
             </h1>
-
-            <small className="block text-sm text-gray-500 tracking-wide">
-              Race Number:{" "}
-              <span className="font-medium text-gray-700">DRR Race</span>
-            </small>
-          </div>
-
-          <div className="text-center mb-6">
-            <div className="inline-block bg-gradient-to-r from-indigo-100 to-blue-50 border border-indigo-200 px-6 py-3 rounded-xl shadow-sm">
-              <span className="block text-sm uppercase tracking-wide text-indigo-600 font-semibold mb-1">
-                Assign Penalty
-              </span>
-              <span className="text-lg font-bold text-gray-800">
-                {selectedSection || "Pilih Select Section"}
-              </span>
-            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -684,6 +672,17 @@ const JudgesDRRPages = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="text-center mb-6">
+              <div className="inline-block bg-gradient-to-r from-indigo-100 to-blue-50 border border-indigo-200 px-6 py-3 rounded-xl shadow-sm">
+                <span className="block text-sm uppercase tracking-wide text-indigo-600 font-semibold mb-1">
+                  Assign Penalty
+                </span>
+                <span className="text-lg font-bold text-gray-800">
+                  {selectedSection || "Pilih Select Section"}
+                </span>
+              </div>
             </div>
 
             {/* PENALTY */}
