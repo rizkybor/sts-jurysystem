@@ -94,55 +94,32 @@ const JudgesDRRPages = () => {
     const socket = socketRef.current || getSocket();
     if (!socket) return;
 
-    // ✅ Dapatkan nama team untuk message yang lebih informatif
     const selectedTeamData = teams.find((t) => t._id === selectedTeam);
     const teamName = selectedTeamData?.nameTeam || "Unknown Team";
 
-    let messageData = {};
-
-    if (operationType === "start") {
-      messageData = {
-        senderId: socket.id,
-        from: "Judges Dashboard - DRR",
-        text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
-        teamId: selectedTeam,
-        teamName: teamName,
-        type: "PenaltyStart",
-        value: selectedPenalty,
-        section: selectedSection,
-        penalty: Number(selectedPenalty),
-        eventId: eventId,
-        ts: new Date().toISOString(),
-      };
-    } else if (operationType === "finish") {
-      messageData = {
-        senderId: socket.id,
-        from: "Judges Dashboard - DRR",
-        text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
-        teamId: selectedTeam,
-        teamName: teamName,
-        type: "PenaltyFinish",
-        value: selectedPenalty,
-        section: selectedSection,
-        penalty: Number(selectedPenalty),
-        eventId: eventId,
-        ts: new Date().toISOString(),
-      };
-    } else {
-      messageData = {
-        senderId: socket.id,
-        from: "Judges Dashboard - DRR",
-        text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
-        teamId: selectedTeam,
-        teamName: teamName,
-        type: "PenaltyGates",
-        value: selectedPenalty,
-        section: selectedSection,
-        penalty: Number(selectedPenalty),
-        eventId: eventId,
-        ts: new Date().toISOString(),
-      };
+    // ✅ ubah section menjadi angka saja jika format "Section X"
+    let sectionValue = selectedSection;
+    if (selectedSection && selectedSection.startsWith("Section ")) {
+      sectionValue = selectedSection.replace("Section ", "");
     }
+
+    let messageData = {
+      senderId: socket.id,
+      from: "Judges Dashboard - DRR",
+      text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
+      teamId: selectedTeam,
+      teamName: teamName,
+      value: selectedPenalty,
+      section: sectionValue,
+      penalty: Number(selectedPenalty),
+      eventId: eventId,
+      ts: new Date().toISOString(),
+    };
+
+    // Tentukan tipe message
+    if (operationType === "start") messageData.type = "PenaltyStart";
+    else if (operationType === "finish") messageData.type = "PenaltyFinish";
+    else messageData.type = "PenaltyGates";
 
     socket.emit("custom:event", messageData, (ok) => {
       if (ok) {
