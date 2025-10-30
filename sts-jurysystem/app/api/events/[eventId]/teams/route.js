@@ -11,13 +11,16 @@ export async function GET(req, { params }) {
 
     const eventDocs = await TeamsRegistered.find({ eventId })
 
+    // Jika tidak ada data, tetap balikin response sukses dengan array kosong
     if (!eventDocs || eventDocs.length === 0) {
       return new Response(
         JSON.stringify({
-          success: false,
-          message: 'Teams not found for this event',
+          success: true,
+          teams: [],
+          eventMetadata: [],
+          totalUniqueParticipants: 0,
         }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
@@ -74,9 +77,11 @@ export async function GET(req, { params }) {
       JSON.stringify({
         success: false,
         message: 'Error fetching teams',
+        teams: [],
+        eventMetadata: [],
+        totalUniqueParticipants: 0,
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
-

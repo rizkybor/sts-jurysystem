@@ -1,9 +1,5 @@
 import connectDB from "@/config/database";
 import Event from "@/models/Event";
-import Category from "@/models/Category";
-import Division from "@/models/Division";
-import Type from "@/models/Type";
-import Initial from "@/models/Initial";
 import { getSessionUser } from "@/utils/getSessionUser";
 import cloudinary from "@/config/cloudinary";
 import mongoose from "mongoose";
