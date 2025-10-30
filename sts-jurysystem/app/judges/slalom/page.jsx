@@ -599,7 +599,7 @@ const JudgesSlalomPage = () => {
           <div className="text-start my-2">
             <Link href={`/judges`}>
               <button className="text-blue-500 hover:underline">
-                ← Back to Judges
+                ← Back to Judge Dashboard
               </button>
             </Link>
           </div>
@@ -634,11 +634,10 @@ const JudgesSlalomPage = () => {
           )}
 
           <div className="mb-6 bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
+            <div className="text-l font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
+              Judge Task :
+            </div>
             <h1 className="text-2xl font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
-              <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium">
-                Judges
-              </span>
-
               {gateOptions.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {gateOptions.map((gate, i) => (

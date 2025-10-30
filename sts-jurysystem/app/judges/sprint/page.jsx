@@ -471,7 +471,7 @@ const JudgesSprintPages = () => {
           <div className="text-start my-2">
             <Link href="/judges">
               <button className="surface-text-sts hover:underline">
-                ← Back to Judges
+                ← Back to Judge Dashboard
               </button>
             </Link>
           </div>
@@ -488,8 +488,8 @@ const JudgesSprintPages = () => {
                     month: "long",
                     year: "numeric",
                   }
-                )}
-                {" – "}
+                )}{" "}
+                –{" "}
                 {new Date(eventDetail.endDateEvent).toLocaleDateString(
                   "id-ID",
                   {
@@ -505,14 +505,24 @@ const JudgesSprintPages = () => {
             </div>
           )}
 
-          {/* Title */}
-          <div className="text-center mb-5">
-            <h1 className="text-2xl font-bold text-gray-800">
-              Judges {assignedPosition || "—"}
+          <div className="mb-6 bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
+            {/* Title */}
+            <div className="text-l font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
+              Judge Task :
+            </div>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
+              <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium">
+                {assignedPosition || "—"}
+              </span>
             </h1>
-            <small className="text-center">Race Number : Sprint Race</small>
+
+            <small className="block text-gray-500">
+              Race Number :{" "}
+              <span className="font-medium text-gray-700">Sprint Race</span>
+            </small>
+
             {!assignedPosition && (
-              <div className="mt-2 text-xs text-red-600">
+              <div className="mt-2 text-xs text-red-600 font-medium">
                 Posisi belum ter-assign untuk event ini. Hubungi admin
                 assignment.
               </div>
@@ -711,9 +721,9 @@ const JudgesSprintPages = () => {
                             <div className="text-gray-600 text-sm">
                               Team : {subtitle}
                             </div>
-                             <small className="text-gray-600">
-                                {createdPenaltyBy}
-                              </small>
+                            <small className="text-gray-600">
+                              {createdPenaltyBy}
+                            </small>
                           </div>
                           <div className="text-xs text-gray-500 whitespace-nowrap">
                             Timestamp : {timeStr}

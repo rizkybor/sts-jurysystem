@@ -90,7 +90,13 @@ const JudgesDRRPages = () => {
     socketRef.current = socket;
 
     const handler = (msg) => {
-      if (msg && msg.senderId && socketRef.current && msg.senderId === socketRef.current.id) return;
+      if (
+        msg &&
+        msg.senderId &&
+        socketRef.current &&
+        msg.senderId === socketRef.current.id
+      )
+        return;
       pushToast({
         title: msg && msg.from ? `Pesan dari ${msg.from}` : "Notifikasi",
         text: msg && msg.text ? msg.text : "Pesan baru diterima",
@@ -108,7 +114,10 @@ const JudgesDRRPages = () => {
     if (!socket) return;
 
     const selectedTeamData = teams.find((t) => t._id === selectedTeam);
-    const teamName = selectedTeamData && selectedTeamData.nameTeam ? selectedTeamData.nameTeam : "Unknown Team";
+    const teamName =
+      selectedTeamData && selectedTeamData.nameTeam
+        ? selectedTeamData.nameTeam
+        : "Unknown Team";
 
     // ubah section menjadi angka saja jika format "Section X"
     let sectionValue = selectedSection;
@@ -178,7 +187,8 @@ const JudgesDRRPages = () => {
         const judgesData = await judgesRes.json();
         if (judgesData && judgesData.user) setUser(judgesData.user);
         setEvents((judgesData && judgesData.events) || []);
-        const userEmail = judgesData && judgesData.user && judgesData.user.email;
+        const userEmail =
+          judgesData && judgesData.user && judgesData.user.email;
         if (!userEmail) throw new Error("Email tidak ditemukan");
         const assignmentsRes = await fetch(
           `/api/assignments?email=${encodeURIComponent(userEmail)}`,
@@ -491,12 +501,12 @@ const JudgesDRRPages = () => {
           <div className="text-start my-4">
             <Link href="/judges">
               <button className="text-blue-500 hover:underline">
-                ← Back to Judges
+                ← Back to Judge Dashboard
               </button>
             </Link>
           </div>
 
-          {/* DETAIL EVENTS  */}
+          {/* Event header */}
           {eventDetail && (
             <div className="mb-4 space-y-1 bg-gray-100 p-4 rounded-lg">
               <div className="font-semibold">{eventDetail.eventName}</div>
@@ -525,33 +535,44 @@ const JudgesDRRPages = () => {
             </div>
           )}
 
-          <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">
-            Judges {assignedPositions.join(", ") || "DRR"}
-          </h1>
-          <small className="text-center block mb-4">
-            Race Number : DRR Race
-          </small>
+          {/* Styled header ( Judges + gates ) */}
+          <div className="mb-6 bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
+            <div className="text-l font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
+              Judge Task :
+            </div>
 
-          {/* ✅ BUTTON TEST REALTIME MESSAGE */}
-          <div className="mb-6 text-center">
-            <button
-              onClick={() => sendRealtimeMessage(
-                // if user presses test but hasn't chosen operationType, derive from selectedSection
-                selectedSection === "Start" ? "start" : selectedSection === "Finish" ? "finish" : "section",
-                selectedSection && selectedSection.startsWith("Section ") ? Number(selectedSection.replace("Section ", "")) : selectedSection
+            <h1 className="text-2xl font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
+              {assignedPositions && assignedPositions.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {assignedPositions.map((gate, i) => (
+                    <span
+                      key={i}
+                      className="px-3 py-1 bg-gradient-to-r from-blue-100 to-indigo-200 text-indigo-800 rounded-full text-sm font-medium shadow-sm"
+                    >
+                      {gate}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-gray-500 italic">No gates selected</span>
               )}
-              disabled={!selectedTeam || !selectedSection}
-              className={`px-5 py-2.5 w-full rounded-xl shadow transition-all ${
-                !selectedTeam || !selectedSection
-                  ? "bg-gray-400 cursor-not-allowed text-white"
-                  : "bg-blue-600 text-white hover:shadow-lg hover:scale-105"
-              }`}
-            >
-              Test Kirim Pesan ke Operator
-            </button>
-            <p className="text-xs text-gray-500 mt-2">
-              *Button untuk test mengirim pesan realtime ke operator timing
-            </p>
+            </h1>
+
+            <small className="block text-sm text-gray-500 tracking-wide">
+              Race Number:{" "}
+              <span className="font-medium text-gray-700">DRR Race</span>
+            </small>
+          </div>
+
+          <div className="text-center mb-6">
+            <div className="inline-block bg-gradient-to-r from-indigo-100 to-blue-50 border border-indigo-200 px-6 py-3 rounded-xl shadow-sm">
+              <span className="block text-sm uppercase tracking-wide text-indigo-600 font-semibold mb-1">
+                Assign Penalty
+              </span>
+              <span className="text-lg font-bold text-gray-800">
+                {selectedSection || "Pilih Select Section"}
+              </span>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
