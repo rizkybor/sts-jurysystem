@@ -90,7 +90,7 @@ const JudgesDRRPages = () => {
   }, []);
 
   // ✅ SEND REALTIME MESSAGE FUNCTION
-  const sendRealtimeMessage = () => {
+  const sendRealtimeMessage = (operationType, sectionNumber) => {
     const socket = socketRef.current || getSocket();
     if (!socket) return;
 
@@ -98,21 +98,51 @@ const JudgesDRRPages = () => {
     const selectedTeamData = teams.find((t) => t._id === selectedTeam);
     const teamName = selectedTeamData?.nameTeam || "Unknown Team";
 
-    const messageData = {
-      senderId: socket.id,
-      from: "Judges Dashboard - DRR",
-      text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
-      teamId: selectedTeam,
-      teamName: teamName,
-      type: "DRR",
-      value: selectedPenalty,
-      section: selectedSection,
-      penalty: Number(selectedPenalty),
-      eventId: eventId,
-      ts: new Date().toISOString(),
-    };
+    let messageData = {};
 
-    console.log("📡 [DRR SOCKET] Sending realtime message:", messageData);
+    if (operationType === "start") {
+      messageData = {
+        senderId: socket.id,
+        from: "Judges Dashboard - DRR",
+        text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
+        teamId: selectedTeam,
+        teamName: teamName,
+        type: "PenaltyStart",
+        value: selectedPenalty,
+        section: selectedSection,
+        penalty: Number(selectedPenalty),
+        eventId: eventId,
+        ts: new Date().toISOString(),
+      };
+    } else if (operationType === "finish") {
+      messageData = {
+        senderId: socket.id,
+        from: "Judges Dashboard - DRR",
+        text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
+        teamId: selectedTeam,
+        teamName: teamName,
+        type: "PenaltyFinish",
+        value: selectedPenalty,
+        section: selectedSection,
+        penalty: Number(selectedPenalty),
+        eventId: eventId,
+        ts: new Date().toISOString(),
+      };
+    } else {
+      messageData = {
+        senderId: socket.id,
+        from: "Judges Dashboard - DRR",
+        text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
+        teamId: selectedTeam,
+        teamName: teamName,
+        type: "PenaltyGates",
+        value: selectedPenalty,
+        section: selectedSection,
+        penalty: Number(selectedPenalty),
+        eventId: eventId,
+        ts: new Date().toISOString(),
+      };
+    }
 
     socket.emit("custom:event", messageData, (ok) => {
       if (ok) {
@@ -338,8 +368,6 @@ const JudgesDRRPages = () => {
       raceId,
       operationType, // 'section' | 'start' | 'finish'
     };
-
-    console.log("🔍 Submitting DRR penalty:", payload);
 
     setLoading(true);
 
