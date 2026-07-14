@@ -1,12 +1,14 @@
 // app/lib/socket.js
 import { io } from 'socket.io-client'
 
-// const BROKER_URL =
-//   process.env.NODE_ENV === "production"
-//     ? process.env.NEXT_PUBLIC_RT_URL
-//     : "http://localhost:4000";
-
-const BROKER_URL = process.env.NEXT_PUBLIC_RT_URL
+// Di production selalu pakai broker yang di-deploy (NEXT_PUBLIC_RT_URL).
+// Di dev, pakai broker lokal (NEXT_PUBLIC_RT_URL_DEV, default localhost:4000)
+// supaya bisa dites bareng sts-timingsystem & sts-racehub yang jalan lokal,
+// tanpa bergantung pada broker production yang mungkin sedang down/suspended.
+const BROKER_URL =
+  process.env.NODE_ENV === 'production'
+    ? process.env.NEXT_PUBLIC_RT_URL
+    : process.env.NEXT_PUBLIC_RT_URL_DEV || 'http://localhost:4000'
 
 let socket
 

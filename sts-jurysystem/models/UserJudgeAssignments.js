@@ -26,6 +26,9 @@ const JudgeRoleSchema = new Schema(
       finish: { type: Boolean, default: false },
       sections: { type: [Number], default: [] },
     },
+    rx: {
+      gates: { type: [Number], default: [] },
+    },
   },
   { _id: false }
 )

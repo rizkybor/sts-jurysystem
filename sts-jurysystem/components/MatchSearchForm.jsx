@@ -1,20 +1,38 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const MatchSearchForm = () => {
-  const [keyword, setKeyword] = useState("");
-  const [level, setLevel] = useState("All");
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [keyword, setKeyword] = useState(searchParams.get("q") || "");
+  const [level, setLevel] = useState(searchParams.get("level") || "All");
+
+  // Sinkronkan form dengan URL (mis. saat reload halaman dengan ?level=... di URL)
+  useEffect(() => {
+    setKeyword(searchParams.get("q") || "");
+    setLevel(searchParams.get("level") || "All");
+  }, [searchParams]);
+
+  const navigate = (nextKeyword, nextLevel) => {
+    const params = new URLSearchParams();
+    if (nextKeyword.trim()) params.set("q", nextKeyword.trim());
+    if (nextLevel && nextLevel !== "All") params.set("level", nextLevel);
+
+    router.push(`/matches${params.toString() ? `?${params.toString()}` : ""}`);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    navigate(keyword, level);
+  };
 
-    const params = new URLSearchParams();
-    if (keyword.trim()) params.set("q", keyword.trim());
-    if (level && level !== "All") params.set("level", level);
-
-    router.push(`/matches${params.toString() ? `?${params.toString()}` : ""}`);
+  // Dropdown level langsung mem-filter saat dipilih, tidak perlu klik Search
+  const handleLevelChange = (e) => {
+    const nextLevel = e.target.value;
+    setLevel(nextLevel);
+    navigate(keyword, nextLevel);
   };
 
   return (
@@ -46,7 +64,7 @@ const MatchSearchForm = () => {
           id="level"
           className="w-full px-4 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-stsHighlight cursor-pointer"
           value={level}
-          onChange={(e) => setLevel(e.target.value)}
+          onChange={handleLevelChange}
         >
           <option value="All">All Levels</option>
           <option value="Classification - A">Classification - A</option>

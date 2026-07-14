@@ -14,6 +14,7 @@ const JudgeReportSchema = new Schema(
     reportHeadToHead: [{ type: ObjectId, ref: 'JudgeReportDetail' }],
     reportSlalom:     [{ type: ObjectId, ref: 'JudgeReportDetail' }],
     reportDrr:        [{ type: ObjectId, ref: 'JudgeReportDetail' }],
+    reportRaftingCross: [{ type: ObjectId, ref: 'JudgeReportDetail' }],
   },
   {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },
