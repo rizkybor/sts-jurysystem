@@ -18,6 +18,9 @@ const raceSettingSchema = new mongoose.Schema({
     drr: {
       totalSection: { type: Number, default: 6 },
     },
+    rx: {
+      totalGate: { type: Number, default: 2 },
+    },
   },
   updatedAt: {
     type: Date,

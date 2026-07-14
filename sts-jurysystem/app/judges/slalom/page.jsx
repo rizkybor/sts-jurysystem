@@ -594,12 +594,15 @@ const JudgesSlalomPage = () => {
       </div>
 
       <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
-        <div className="w-full max-w-xl bg-white p-6 rounded-2xl shadow-lg">
+        <div className="w-full max-w-md sm:max-w-lg md:max-w-xl bg-white p-6 md:p-8 rounded-2xl shadow-lg">
           {/* Back */}
           <div className="text-start my-2">
             <Link href={`/judges`}>
-              <button className="text-blue-500 hover:underline">
-                ← Back to Judge Dashboard
+              <button className="inline-flex items-center gap-1 py-2 text-sm font-medium surface-text-sts hover:underline">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
+                </svg>
+                Back to Judge Dashboard
               </button>
             </Link>
           </div>
@@ -671,7 +674,7 @@ const JudgesSlalomPage = () => {
                   <select
                     value={runNumber}
                     onChange={(e) => setRunNumber(Number(e.target.value))}
-                    className="w-full px-4 py-2 border rounded-lg"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
                   >
                     {runs.map((r) => (
                       <option key={r.value} value={r.value}>
@@ -694,7 +697,7 @@ const JudgesSlalomPage = () => {
                     <select
                       value={selectedCategory}
                       onChange={(e) => handleCategoryChange(e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
                       required
                     >
                       <option value="">Select Category</option>
@@ -719,7 +722,7 @@ const JudgesSlalomPage = () => {
                   {loadingTeams ? (
                     <select
                       disabled
-                      className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-400"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base bg-gray-100 text-gray-400"
                     >
                       <option>Loading teams...</option>
                     </select>
@@ -727,7 +730,7 @@ const JudgesSlalomPage = () => {
                     <select
                       value={selectedTeam}
                       onChange={(e) => setSelectedTeam(e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
                       required
                     >
                       <option value="">Select Team</option>
@@ -749,7 +752,7 @@ const JudgesSlalomPage = () => {
                   ) : (
                     <select
                       disabled
-                      className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-400"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base bg-gray-100 text-gray-400"
                     >
                       <option>No teams available for this category</option>
                     </select>
@@ -780,7 +783,7 @@ const JudgesSlalomPage = () => {
                   <select
                     value={selectedGate}
                     onChange={(e) => setSelectedGate(e.target.value)}
-                    className="w-full px-4 py-2 border rounded-lg"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
                     required
                   >
                     <option value="">Select Gate</option>
@@ -810,7 +813,7 @@ const JudgesSlalomPage = () => {
                       key={index}
                       type="button"
                       onClick={() => setSelectedPenalty(penalty)}
-                      className={`w-full py-3 rounded-lg border ${
+                      className={`w-full min-h-[48px] py-3 rounded-lg border text-base ${
                         selectedPenalty === penalty
                           ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold"
                           : "bg-white border-gray-300 text-gray-700"
@@ -826,7 +829,7 @@ const JudgesSlalomPage = () => {
                   <button
                     type="button"
                     onClick={openHistoryModal}
-                    className="w-full sm:w-1/2 py-3 btn-outline-sts rounded-lg font-semibold shadow-md hover:btnActive-sts hover:text-white disabled:bg-gray-400 transition"
+                    className="w-full sm:w-1/2 min-h-[48px] py-3 text-base btn-outline-sts rounded-lg font-semibold shadow-md hover:btnActive-sts hover:text-white disabled:bg-gray-400 transition"
                     disabled={isSubmitting}
                   >
                     View History
@@ -835,7 +838,7 @@ const JudgesSlalomPage = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`w-full sm:w-1/2 py-3 rounded-lg font-semibold shadow-md transition duration-300 ${
+                    className={`w-full sm:w-1/2 min-h-[48px] py-3 text-base rounded-lg font-semibold shadow-md transition duration-300 ${
                       isSubmitting
                         ? "bg-gray-400 cursor-not-allowed text-white"
                         : "bg-blue-500 hover:bg-blue-600 text-white"

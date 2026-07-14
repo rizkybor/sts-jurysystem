@@ -6,7 +6,7 @@ const JudgeReportDetailSchema = new mongoose.Schema(
     eventId: { type: String, required: true },
     eventType: {
       type: String,
-      enum: ["SPRINT", "SLALOM", "H2H", "DRR"],
+      enum: ["SPRINT", "SLALOM", "H2H", "DRR", "RX"],
       required: true,
     },
     team: { type: String, required: true },
@@ -20,7 +20,7 @@ const JudgeReportDetailSchema = new mongoose.Schema(
     section: { type: Number }, // untuk DRR (Section 1, 2, ...)
     operationType: {
       type: String,
-      enum: ["start", "finish", "section"],
+      enum: ["start", "finish", "section", "gate1", "gate2"],
       // optional: tidak required agar tetap kompatibel dengan existing records
     },
 

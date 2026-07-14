@@ -47,6 +47,10 @@ const JudgesPage = () => {
         if (judge.slalom)
           Object.values(judge.slalom).forEach((v) => v && count++);
         if (judge.drr) Object.values(judge.drr).forEach((v) => v && count++);
+        if (judge.rx)
+          Object.values(judge.rx).forEach(
+            (v) => (v === true || (Array.isArray(v) && v.length > 0)) && count++
+          );
       });
     });
     return count;
@@ -134,6 +138,13 @@ const JudgesPage = () => {
           Object.values(a.drr).some(
             (v) => v === true || (Array.isArray(v) && v.length > 0)
           ),
+      },
+      {
+        key: "rx",
+        href: "/judges/raftingcross",
+        label: "Rafting Cross",
+        checkActive: (a) =>
+          a?.rx && Array.isArray(a.rx.gates) && a.rx.gates.length > 0,
       },
     ],
     []
@@ -333,7 +344,7 @@ const JudgesPage = () => {
         {/* === Horizontal Scroll Cards === */}
         <div className="relative">
           <div
-            className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth hide-scrollbar"
+            className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth hide-scrollbar sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {sortedEvents.map((event, index) => {
@@ -344,9 +355,14 @@ const JudgesPage = () => {
                 h2h: judgeButtonsConfig[1].checkActive(assignment),
                 slalom: judgeButtonsConfig[2].checkActive(assignment),
                 drr: judgeButtonsConfig[3].checkActive(assignment),
+                rx: judgeButtonsConfig[4].checkActive(assignment),
               };
               const anyActive =
-                flags.sprint || flags.h2h || flags.slalom || flags.drr;
+                flags.sprint ||
+                flags.h2h ||
+                flags.slalom ||
+                flags.drr ||
+                flags.rx;
 
               return (
                 <motion.div
@@ -354,7 +370,7 @@ const JudgesPage = () => {
                   initial={{ y: 16, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: index * 0.05 }}
-                  className="min-w-[280px] sm:min-w-[320px] max-w-[320px] flex-shrink-0 snap-start bg-white rounded-3xl shadow-xl border border-gray-100 p-6 flex flex-col"
+                  className="min-w-[280px] sm:min-w-0 max-w-[320px] sm:max-w-none flex-shrink-0 sm:flex-shrink snap-start bg-white rounded-3xl shadow-xl border border-gray-100 p-6 flex flex-col"
                 >
                   {/* Logo */}
                   <div className="w-20 h-20 mx-auto rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center">
