@@ -96,6 +96,7 @@ export const GET = async (req) => {
         SLALOM: "reportSlalom",
         H2H: "reportHeadToHead",
         DRR: "reportDrr",
+        RX: "reportRaftingCross",
       };
       const arrayField = pushMap[eventType] || "reportSprint";
 
@@ -705,6 +706,74 @@ export const POST = async (req) => {
       }
     }
 
+    /* =========================
+       RX (Rafting Cross) — penalty Gate 1 / Gate 2
+    ==========================*/
+    if (normalizedType === "RX") {
+      const teamDoc = await TeamsRegistered.findOne(
+        { eventId, eventName: "RX", "teams.teamId": team },
+        { "teams.$": 1 }
+      );
+
+      if (!teamDoc) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "Team not found in TeamsRegistered collection (RX)",
+          }),
+          { status: 404 }
+        );
+      }
+
+      const raceSetting = await RaceSetting.findOne({ eventId });
+      const totalGates = raceSetting?.settings?.rx?.totalGate || 2;
+
+      const opTypeRx = operationType ? String(operationType).toLowerCase() : null;
+      if (opTypeRx !== "gate1" && opTypeRx !== "gate2") {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "RX requires operationType: gate1 | gate2",
+          }),
+          { status: 400 }
+        );
+      }
+
+      const gateIdx = opTypeRx === "gate1" ? 0 : 1;
+      if (gateIdx >= totalGates) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: `Invalid gate for RX. Must be within 1-${totalGates}`,
+          }),
+          { status: 400 }
+        );
+      }
+
+      const currentGates = teamDoc.teams?.[0]?.result?.[0]?.penaltyTotal?.gates;
+
+      if (!Array.isArray(currentGates) || currentGates.length === 0) {
+        const newGates = Array(totalGates).fill(0);
+        newGates[gateIdx] = Number(penalty);
+        updateQuery.$set["teams.$.result.0.penaltyTotal.gates"] = newGates;
+      } else if (currentGates.length !== totalGates) {
+        const resized = Array(totalGates).fill(0);
+        for (let i = 0; i < Math.min(currentGates.length, totalGates); i++) {
+          resized[i] = currentGates[i];
+        }
+        resized[gateIdx] = Number(penalty);
+        updateQuery.$set["teams.$.result.0.penaltyTotal.gates"] = resized;
+      } else {
+        updateQuery.$set[`teams.$.result.0.penaltyTotal.gates.${gateIdx}`] =
+          Number(penalty);
+      }
+
+      updateQuery.$set["teams.$.result.0.judgesBy"] = username;
+      updateQuery.$set["teams.$.result.0.judgesTime"] = new Date().toISOString();
+
+      message = `RX ${opTypeRx.toUpperCase()} penalty recorded: ${penalty}s`;
+    }
+
     // Persist update to TeamsRegistered
     const updatedTeam = await TeamsRegistered.findOneAndUpdate(
       { eventId, eventName: normalizedType, "teams.teamId": team },
@@ -739,6 +808,7 @@ export const POST = async (req) => {
         reportHeadToHead: [],
         reportSlalom: [],
         reportDrr: [],
+        reportRaftingCross: [],
       });
     }
 
@@ -792,6 +862,7 @@ export const POST = async (req) => {
       SLALOM: "reportSlalom",
       H2H: "reportHeadToHead",
       DRR: "reportDrr",
+      RX: "reportRaftingCross",
     };
     const arrayField = pushMap[normalizedType] || "reportSprint";
 

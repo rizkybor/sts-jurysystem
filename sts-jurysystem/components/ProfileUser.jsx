@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -39,6 +39,29 @@ const ProfileUser = () => {
   const [userDetail, setUserDetail] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  const scrollByCard = (direction) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const card = el.querySelector("[data-event-card]");
+    const step = card ? card.getBoundingClientRect().width + 20 : el.clientWidth * 0.8;
+    el.scrollBy({ left: direction * step, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    updateScrollButtons();
+  }, [events, updateScrollButtons]);
 
   // Fetch user detail
   useEffect(() => {
@@ -226,7 +249,17 @@ const ProfileUser = () => {
         {/* MY EVENTS */}
         <div className="rounded-2xl bg-white ring-1 ring-gray-200 shadow-md overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">My Events</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">My Events</h3>
+              {events.length > 3 && (
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                    <path d="M3 10a.75.75 0 0 1 .75-.75h10.638L11.29 6.16a.75.75 0 1 1 1.08-1.04l4.5 4.75a.75.75 0 0 1 0 1.04l-4.5 4.75a.75.75 0 1 1-1.08-1.04l3.098-3.09H3.75A.75.75 0 0 1 3 10Z" />
+                  </svg>
+                  Geser untuk melihat event lainnya
+                </p>
+              )}
+            </div>
             <Link
               href="/matches"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sts text-white hover:bg-stsHighlight transition-colors"
@@ -275,17 +308,58 @@ const ProfileUser = () => {
                 ))}
               </div>
             ) : (
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent" />
-                <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent" />
+              <div className="relative group/scroll">
+                <div
+                  className={`pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent z-10 transition-opacity ${
+                    canScrollLeft ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+                <div
+                  className={`pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent z-10 transition-opacity ${
+                    canScrollRight ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+
+                {/* Tombol panah navigasi */}
+                <button
+                  type="button"
+                  onClick={() => scrollByCard(-1)}
+                  aria-label="Geser ke kiri"
+                  className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white shadow-md ring-1 ring-gray-200 flex items-center justify-center text-gray-600 hover:bg-sts hover:text-white transition-all ${
+                    canScrollLeft
+                      ? "opacity-100"
+                      : "opacity-0 pointer-events-none"
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1 0 1.06L9.06 10l3.73 3.71a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollByCard(1)}
+                  aria-label="Geser ke kanan"
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white shadow-md ring-1 ring-gray-200 flex items-center justify-center text-gray-600 hover:bg-sts hover:text-white transition-all ${
+                    canScrollRight
+                      ? "opacity-100"
+                      : "opacity-0 pointer-events-none"
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 0-1.06L10.94 10 7.21 6.29a.75.75 0 1 1 1.06-1.06l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
+                  </svg>
+                </button>
 
                 <div
-                  className="events-scroll flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 pr-2"
+                  ref={scrollRef}
+                  onScroll={updateScrollButtons}
+                  className="events-scroll flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-3 pr-2"
                   aria-label="My events horizontal list"
                 >
                   {events.map((ev) => (
                     <div
                       key={ev.id}
+                      data-event-card
                       className="snap-start flex-shrink-0 w-[85%] sm:w-[70%] md:w-[32%] lg:w-[32%]"
                     >
                       <EventCard ev={ev} />
@@ -295,10 +369,18 @@ const ProfileUser = () => {
 
                 <style jsx>{`
                   .events-scroll {
-                    scrollbar-width: none;
+                    scrollbar-width: thin;
+                    scrollbar-color: #cbd5e1 transparent;
                   }
                   .events-scroll::-webkit-scrollbar {
-                    display: none;
+                    height: 6px;
+                  }
+                  .events-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                  }
+                  .events-scroll::-webkit-scrollbar-thumb {
+                    background-color: #cbd5e1;
+                    border-radius: 9999px;
                   }
                 `}</style>
               </div>

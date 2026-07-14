@@ -466,12 +466,15 @@ const JudgesSprintPages = () => {
       </div>
 
       <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
-        <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-lg relative">
+        <div className="w-full max-w-md sm:max-w-lg md:max-w-xl bg-white p-6 md:p-8 rounded-2xl shadow-lg relative">
           {/* Back */}
           <div className="text-start my-2">
             <Link href="/judges">
-              <button className="surface-text-sts hover:underline">
-                ← Back to Judge Dashboard
+              <button className="inline-flex items-center gap-1 py-2 text-sm font-medium surface-text-sts hover:underline">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
+                </svg>
+                Back to Judge Dashboard
               </button>
             </Link>
           </div>
@@ -544,7 +547,7 @@ const JudgesSprintPages = () => {
                 <select
                   value={selectedCategory}
                   onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
                   required
                 >
                   <option value="">Select Category</option>
@@ -567,7 +570,7 @@ const JudgesSprintPages = () => {
               {loadingTeams ? (
                 <select
                   disabled
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base bg-gray-100 text-gray-400"
                 >
                   <option>Select Teams...</option>
                 </select>
@@ -575,7 +578,7 @@ const JudgesSprintPages = () => {
                 <select
                   value={selectedTeam}
                   onChange={(e) => setSelectedTeam(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
                   required
                 >
                   <option value="" disabled>
@@ -590,7 +593,7 @@ const JudgesSprintPages = () => {
               ) : (
                 <select
                   disabled
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base bg-gray-100 text-gray-400"
                 >
                   <option>No teams available for this category.</option>
                 </select>
@@ -607,7 +610,7 @@ const JudgesSprintPages = () => {
                   onClick={() =>
                     setSelectedPenalty((prev) => (prev === pen ? null : pen))
                   }
-                  className={`w-full py-3 rounded-lg border ${
+                  className={`w-full min-h-[48px] py-3 rounded-lg border text-base ${
                     selectedPenalty === pen
                       ? "bg-blue-100 surface-border-sts surface-text-sts font-semibold"
                       : "bg-white border-gray-300 text-gray-700"
@@ -629,7 +632,7 @@ const JudgesSprintPages = () => {
               <button
                 type="button"
                 onClick={openHistoryModal}
-                className="w-full sm:w-1/2 py-3 btn-outline-sts rounded-lg font-semibold shadow-md hover:btnActive-sts hover:text-white disabled:bg-gray-400 transition"
+                className="w-full sm:w-1/2 min-h-[48px] py-3 text-base btn-outline-sts rounded-lg font-semibold shadow-md hover:btnActive-sts hover:text-white disabled:bg-gray-400 transition"
                 disabled={loading}
               >
                 View History
@@ -637,7 +640,7 @@ const JudgesSprintPages = () => {
 
               <button
                 type="submit"
-                className="w-full sm:w-1/2 py-3 bg-green-500 text-white rounded-lg font-semibold shadow-md hover:bg-green-600 disabled:bg-gray-400 transition"
+                className="w-full sm:w-1/2 min-h-[48px] py-3 text-base bg-green-500 text-white rounded-lg font-semibold shadow-md hover:bg-green-600 disabled:bg-gray-400 transition"
                 disabled={isSubmitDisabled}
               >
                 {loading ? "Processing..." : "Submit →"}

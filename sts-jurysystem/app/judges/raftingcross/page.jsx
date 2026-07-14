@@ -3,10 +3,10 @@ import Link from "next/link";
 import getSocket from "@/utils/socket";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useMemo, useRef } from "react";
-import ResultDRR from "@/components/ResultDRR";
+import ResultRaftingCross from "@/components/ResultRaftingCross";
 import { motion } from "framer-motion";
 
-const JudgesDRRPages = () => {
+const JudgesRaftingCrossPage = () => {
   const searchParams = useSearchParams();
   const eventId = searchParams.get("eventId");
 
@@ -22,9 +22,8 @@ const JudgesDRRPages = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
   const [selectedPenalty, setSelectedPenalty] = useState(null);
-  const [selectedSection, setSelectedSection] = useState("");
+  const [selectedGate, setSelectedGate] = useState("");
 
-  const [drrResults, setDrrResults] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [events, setEvents] = useState([]);
   const [error, setError] = useState(null);
@@ -32,27 +31,12 @@ const JudgesDRRPages = () => {
   const toastId = useRef(1);
   const socketRef = useRef(null);
 
-  // History states (ditambahkan)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Full palette (keperluan internal). We'll compute displayedPenalties berdasarkan selectedSection.
-  const ALL_PENALTIES = useMemo(() => [0, 5, 10, -10, 50], []);
-  const START_FINISH_PENALTIES = useMemo(() => [0, 10, 50], []);
+  const GATE_PENALTIES = useMemo(() => [0, 5, 50], []);
 
-  // displayedPenalties berubah saat selectedSection berubah
-  const displayedPenalties = useMemo(() => {
-    if (!selectedSection) {
-      // jika belum dipilih section -> tampilkan opsi section (default)
-      return ALL_PENALTIES;
-    }
-    const s = String(selectedSection).trim().toLowerCase();
-    if (s === "start" || s === "finish") return START_FINISH_PENALTIES;
-    return ALL_PENALTIES;
-  }, [selectedSection, ALL_PENALTIES, START_FINISH_PENALTIES]);
-
-  // Toast handler
   const pushToast = (msg, ttlMs = 4000) => {
     const id = toastId.current++;
     setToasts((prev) => [...prev, { id, ...msg }]);
@@ -64,24 +48,22 @@ const JudgesDRRPages = () => {
   const removeToast = (id) =>
     setToasts((prev) => prev.filter((t) => t.id !== id));
 
-  // ✅ GET DRR POSITIONS (Sections, Start, Finish)
-  function getDRRPositionsFromAssignments(list, evId) {
+  // ✅ GET RX POSITIONS (Gate 1, Gate 2)
+  function getRXPositionsFromAssignments(list, evId) {
     if (!Array.isArray(list) || !evId) return [];
     const allJudges = list.flatMap((item) => item.judges || []);
     const match = allJudges.find((j) => String(j.eventId) === String(evId));
-    if (!match || !match.drr) return [];
+    if (!match || !match.rx) return [];
 
     const positions = [];
-    if (Array.isArray(match.drr.sections)) {
-      positions.push(...match.drr.sections.map((s) => `Section ${s}`));
+    if (Array.isArray(match.rx.gates)) {
+      positions.push(...match.rx.gates.map((g) => `Gate ${g}`));
     }
-    if (match.drr.start) positions.push("Start");
-    if (match.drr.finish) positions.push("Finish");
     return positions;
   }
 
   const assignedPositions = useMemo(() => {
-    return getDRRPositionsFromAssignments(assignments, eventId);
+    return getRXPositionsFromAssignments(assignments, eventId);
   }, [assignments, eventId]);
 
   // ✅ SOCKET CONNECTION
@@ -97,6 +79,7 @@ const JudgesDRRPages = () => {
         msg.senderId === socketRef.current.id
       )
         return;
+      if (msg && msg.type === "chat") return;
       pushToast({
         title: msg && msg.from ? `Pesan dari ${msg.from}` : "Notifikasi",
         text: msg && msg.text ? msg.text : "Pesan baru diterima",
@@ -108,8 +91,9 @@ const JudgesDRRPages = () => {
     return () => socket.off("custom:event", handler);
   }, []);
 
-  // ✅ SEND REALTIME MESSAGE FUNCTION
-  const sendRealtimeMessage = (operationType, sectionNumber) => {
+  // ✅ SEND REALTIME MESSAGE FUNCTION — kontrak persis applyPenaltyFromSocketRX
+  // (sts-timingsystem RaftingCross.vue)
+  const sendRealtimeMessage = (gateNumber) => {
     const socket = socketRef.current || getSocket();
     if (!socket) return;
 
@@ -118,36 +102,29 @@ const JudgesDRRPages = () => {
       selectedTeamData && selectedTeamData.nameTeam
         ? selectedTeamData.nameTeam
         : "Unknown Team";
+    const actualTeamId =
+      selectedTeamData && selectedTeamData.teamId
+        ? selectedTeamData.teamId
+        : selectedTeam;
 
-    // ubah section menjadi angka saja jika format "Section X"
-    let sectionValue = selectedSection;
-    if (selectedSection && selectedSection.startsWith("Section ")) {
-      sectionValue = selectedSection.replace("Section ", "");
-    }
-
-    let messageData = {
+    const messageData = {
       senderId: socket.id,
-      from: "Judges Dashboard - DRR",
-      text: `DRR: ${teamName} - ${selectedSection} - Penalty ${selectedPenalty}`,
-      teamId: selectedTeam,
+      from: "Judges Dashboard - Rafting Cross",
+      text: `RX: ${teamName} - Gate ${gateNumber} - Penalty ${selectedPenalty}`,
+      teamId: actualTeamId,
       teamName: teamName,
-      value: selectedPenalty,
-      section: sectionValue,
-      penalty: Number(selectedPenalty),
+      type: gateNumber === 1 ? "PenaltyGate1" : "PenaltyGate2",
+      gate: gateNumber === 1 ? "gate1" : "gate2",
+      value: Number(selectedPenalty),
       eventId: eventId,
       ts: new Date().toISOString(),
     };
 
-    // Tentukan tipe message
-    if (operationType === "start") messageData.type = "PenaltyStart";
-    else if (operationType === "finish") messageData.type = "PenaltyFinish";
-    else messageData.type = "PenaltyGates";
-
     socket.emit("custom:event", messageData, (ok) => {
       if (ok) {
-        console.log("✅ [DRR SOCKET] Message delivered to operator");
+        console.log("✅ [RX SOCKET] Message delivered to operator");
       } else {
-        console.log("❌ [DRR SOCKET] Message failed to deliver");
+        console.log("❌ [RX SOCKET] Message failed to deliver");
         pushToast({
           title: "Peringatan",
           text: "Pesan tidak terkirim ke operator",
@@ -163,10 +140,8 @@ const JudgesDRRPages = () => {
 
     try {
       const [initialId, divisionId, raceId] = selectedCategory.split("|");
-      const catEvent = "DRR";
-
       const res = await fetch(
-        `/api/events/${eventId}/judge-tasks?initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}&eventName=${catEvent}&t=${Date.now()}`
+        `/api/events/${eventId}/judge-tasks?initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}&eventName=RX&t=${Date.now()}`
       );
 
       const data = await res.json();
@@ -174,7 +149,7 @@ const JudgesDRRPages = () => {
         setTeams(data.teams || []);
       }
     } catch (error) {
-      console.error("❌ Failed to refresh DRR teams:", error);
+      console.error("❌ Failed to refresh RX teams:", error);
     }
   };
 
@@ -211,15 +186,13 @@ const JudgesDRRPages = () => {
     const fetchTeams = async () => {
       try {
         const [initialId, divisionId, raceId] = selectedCategory.split("|");
-        const catEvent = "DRR";
         const res = await fetch(
-          `/api/events/${eventId}/judge-tasks?initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}&eventName=${catEvent}`
+          `/api/events/${eventId}/judge-tasks?initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}&eventName=RX`
         );
         const data = await res.json();
 
         if (res.ok && data && data.success) {
           setTeams(data.teams || []);
-          console.log("🔍 DRR Teams loaded:", data.teams);
         } else {
           setTeams([]);
           pushToast({
@@ -229,7 +202,7 @@ const JudgesDRRPages = () => {
           });
         }
       } catch (err) {
-        console.error("❌ Failed to fetch DRR teams:", err);
+        console.error("❌ Failed to fetch RX teams:", err);
         setTeams([]);
         pushToast({
           title: "Error",
@@ -261,18 +234,6 @@ const JudgesDRRPages = () => {
     fetchEventDetail();
   }, [eventId]);
 
-  useEffect(() => {
-    if (!isModalOpen) return;
-    const fetchDRRResults = async () => {
-      try {
-        const res = await fetch("/api/judges/drr");
-        const data = await res.json();
-        if (res.ok) setDrrResults(data.data || []);
-      } catch {}
-    };
-    fetchDRRResults();
-  }, [isModalOpen]);
-
   const combinedCategories = useMemo(() => {
     const list = [];
     const initials = (eventDetail && eventDetail.categoriesInitial) || [];
@@ -294,7 +255,7 @@ const JudgesDRRPages = () => {
   const handleCategoryChange = (value) => {
     setSelectedCategory(value);
     setSelectedTeam("");
-    setSelectedSection("");
+    setSelectedGate("");
     setSelectedPenalty(null);
     setTeams([]);
     setLoadingTeams(true);
@@ -311,19 +272,18 @@ const JudgesDRRPages = () => {
     );
   }, [selectedCategory, teams]);
 
-  // ✅ SUBMIT HANDLER YANG DIPERBAIKI
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (
       !selectedCategory ||
       !selectedTeam ||
-      !selectedSection ||
+      !selectedGate ||
       selectedPenalty === null
     ) {
       pushToast({
         title: "Data Belum Lengkap",
-        text: "Harap pilih kategori, tim, section, dan penalty sebelum submit",
+        text: "Harap pilih kategori, tim, gate, dan penalty sebelum submit",
         type: "error",
       });
       return;
@@ -343,22 +303,13 @@ const JudgesDRRPages = () => {
 
     const [initialId, divisionId, raceId] = selectedCategory.split("|");
     const actualTeamId = selectedTeamData.teamId;
-
-    let operationType = "section";
-    let sectionNumber = selectedSection;
-    if (selectedSection && selectedSection.startsWith("Section ")) {
-      sectionNumber = parseInt(selectedSection.replace("Section ", ""));
-    } else if (selectedSection === "Start") {
-      operationType = "start";
-    } else if (selectedSection === "Finish") {
-      operationType = "finish";
-    }
+    const gateNumber = parseInt(selectedGate.replace("Gate ", ""), 10);
+    const operationType = gateNumber === 1 ? "gate1" : "gate2";
 
     const payload = {
-      eventType: "DRR",
+      eventType: "RX",
       team: actualTeamId,
       penalty: selectedPenalty,
-      section: sectionNumber,
       eventId,
       initialId,
       divisionId,
@@ -385,17 +336,14 @@ const JudgesDRRPages = () => {
       if (res.ok && data && data.success) {
         pushToast({
           title: "Berhasil!",
-          text: `✅ ${selectedSection}: Penalty ${selectedPenalty} berhasil disimpan!`,
+          text: `✅ ${selectedGate}: Penalty ${selectedPenalty} berhasil disimpan!`,
           type: "success",
         });
 
-        // KIRIM REALTIME MESSAGE KE OPERATOR
-        sendRealtimeMessage(operationType, sectionNumber);
+        sendRealtimeMessage(gateNumber);
 
-        // Refresh teams data
         await refreshTeams();
 
-        // Reset form (opsional)
         setSelectedPenalty(null);
       } else {
         const msg = (data && data.message) || `HTTP ${res.status}`;
@@ -417,7 +365,6 @@ const JudgesDRRPages = () => {
     }
   };
 
-  /* ========== OPEN HISTORY (fungsi & modal, sama seperti sebelumnya) ========== */
   const openHistoryModal = async () => {
     setIsHistoryOpen(true);
     setLoadingHistory(true);
@@ -429,7 +376,7 @@ const JudgesDRRPages = () => {
       );
       url.searchParams.set("fromReport", "true");
       if (eventId) url.searchParams.set("eventId", eventId);
-      url.searchParams.set("eventType", "DRR");
+      url.searchParams.set("eventType", "RX");
 
       const res = await fetch(url.toString(), { cache: "no-store" });
       const data = await res.json();
@@ -509,27 +456,18 @@ const JudgesDRRPages = () => {
             </Link>
           </div>
 
-          {/* Event header */}
           {eventDetail && (
             <div className="mb-4 space-y-1 bg-gray-100 p-4 rounded-lg">
               <div className="font-semibold">{eventDetail.eventName}</div>
               <div className="text-sm text-gray-600">
                 {new Date(eventDetail.startDateEvent).toLocaleDateString(
                   "id-ID",
-                  {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  }
+                  { day: "2-digit", month: "long", year: "numeric" }
                 )}{" "}
                 –{" "}
                 {new Date(eventDetail.endDateEvent).toLocaleDateString(
                   "id-ID",
-                  {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  }
+                  { day: "2-digit", month: "long", year: "numeric" }
                 )}
               </div>
               <div className="text-sm text-gray-600">
@@ -538,11 +476,12 @@ const JudgesDRRPages = () => {
             </div>
           )}
 
-          {/* Styled header ( Judges + gates ) */}
           <div className="mb-6 bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
-              <small className="block text-sm text-gray-500 tracking-wide">
+            <small className="block text-sm text-gray-500 tracking-wide">
               Race Number:{" "}
-              <span className="font-medium text-gray-700">Down River Race</span>
+              <span className="font-medium text-gray-700">
+                Rafting Cross
+              </span>
             </small>
             <div className="text-l font-semibold text-gray-900 mb-3 flex items-center gap-3 flex-wrap">
               Judge Task :
@@ -567,7 +506,6 @@ const JudgesDRRPages = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* CATEGORY */}
             <div>
               <label className="block text-gray-700 mb-2">
                 Select Category:
@@ -595,7 +533,6 @@ const JudgesDRRPages = () => {
               )}
             </div>
 
-            {/* TEAM */}
             <div>
               <label className="block text-gray-700 mb-2">Select Team:</label>
               {loadingTeams ? (
@@ -637,7 +574,6 @@ const JudgesDRRPages = () => {
                 </select>
               )}
 
-              {/* WARNING MESSAGE */}
               {selectedTeam &&
                 !filteredTeams.find((t) => t._id === selectedTeam)
                   ?.hasValidTeamId && (
@@ -653,22 +589,18 @@ const JudgesDRRPages = () => {
                 )}
             </div>
 
-            {/* SECTION */}
             <div>
-              <label className="block text-gray-700 mb-2">
-                Select Section:
-              </label>
+              <label className="block text-gray-700 mb-2">Select Gate:</label>
               <select
-                value={selectedSection}
+                value={selectedGate}
                 onChange={(e) => {
-                  setSelectedSection(e.target.value);
-                  // reset penalty when section changes
+                  setSelectedGate(e.target.value);
                   setSelectedPenalty(null);
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
                 required
               >
-                <option value="">Select Section</option>
+                <option value="">Select Gate</option>
                 {assignedPositions.map((position, index) => (
                   <option key={index} value={position}>
                     {position}
@@ -683,15 +615,14 @@ const JudgesDRRPages = () => {
                   Assign Penalty
                 </span>
                 <span className="text-lg font-bold text-gray-800">
-                  {selectedSection || "Pilih Select Section"}
+                  {selectedGate || "Pilih Select Gate"}
                 </span>
               </div>
             </div>
 
-            {/* PENALTY */}
             <div className="space-y-2">
               <div className="text-sm text-gray-600 mb-2">Select Penalty:</div>
-              {displayedPenalties.map((pen) => (
+              {GATE_PENALTIES.map((pen) => (
                 <button
                   key={String(pen)}
                   type="button"
@@ -707,7 +638,6 @@ const JudgesDRRPages = () => {
               ))}
             </div>
 
-            {/* ACTIONS: View History + Submit (posisi sama seperti sebelumnya) */}
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <button
                 type="button"
@@ -733,18 +663,15 @@ const JudgesDRRPages = () => {
           </form>
         </div>
 
-        {/* Modal Result */}
-        <ResultDRR
+        <ResultRaftingCross
           isOpen={isModalOpen}
           closeModal={() => setIsModalOpen(false)}
           resultData={{ team: selectedTeam, penalty: selectedPenalty }}
         />
 
-        {/* Modal: History */}
         {isHistoryOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
             <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-              {/* Header */}
               <div className="px-6 py-4 border-b flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">History</h2>
                 <button
@@ -756,7 +683,6 @@ const JudgesDRRPages = () => {
                 </button>
               </div>
 
-              {/* Body */}
               <div className="p-4 max-h-[70vh] overflow-y-auto">
                 {loadingHistory ? (
                   <p className="text-center text-gray-500 py-10">
@@ -777,7 +703,7 @@ const JudgesDRRPages = () => {
                           ? "bg-amber-100 text-amber-600 ring-amber-200"
                           : "bg-emerald-100 text-emerald-600 ring-emerald-200";
 
-                      const title = `${item?.divisionName || "Category"} - DRR`;
+                      const title = `${item?.divisionName || "Category"} - RX`;
                       const subtitle =
                         `${item?.teamInfo?.nameTeam || "Team"} BIB ${
                           item?.teamInfo?.bibTeam || "-"
@@ -826,7 +752,6 @@ const JudgesDRRPages = () => {
                 )}
               </div>
 
-              {/* Footer */}
               <div className="px-6 py-2 border-t flex justify-end">
                 <button
                   onClick={() => setIsHistoryOpen(false)}
@@ -843,4 +768,4 @@ const JudgesDRRPages = () => {
   );
 };
 
-export default JudgesDRRPages;
+export default JudgesRaftingCrossPage;
