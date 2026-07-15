@@ -36,8 +36,14 @@ const InfoBox = ({
   const buttons = normalizeButtons(buttonInfo)
 
   return (
-    <div className={`${backgroundColor} p-6 rounded-lg shadow-md ${className}`}>
-      {heading ? <h2 className={`${textColor} text-2xl font-bold`}>{heading}</h2> : null}
+    <div
+      className={`${backgroundColor} p-6 sm:p-7 rounded-2xl shadow-sm ring-1 ring-gray-200/70 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 ${className}`}
+    >
+      {heading ? (
+        <h2 className={`${textColor} text-xl sm:text-2xl font-bold tracking-tight`}>
+          {heading}
+        </h2>
+      ) : null}
 
       <div className={`${isPlainText ? '' : 'mt-2'} ${contentClassName}`}>
         {isPlainText ? (

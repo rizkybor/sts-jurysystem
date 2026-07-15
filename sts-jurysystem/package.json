@@ -1,7 +1,7 @@
 {
   "name": "sts-jurysystem",
   "version": "0.1.0",
-  "description": "Sustainable Timing System - Jury System for Sprint, Slalom, Head-to-Head, and Down River Race events.",
+  "description": "STiming Scoring - Jury System for Sprint, Slalom, Head-to-Head, and Down River Race events.",
   "keywords": [
     "nextjs",
     "jury-system",

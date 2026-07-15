@@ -38,15 +38,61 @@ export const GET = async (request) => {
       filter.levelName = new RegExp(`^\\s*${level}\\s*$`, "i");
     }
 
-    // 🔄 eksekusi query dengan pagination
-    const [total, events] = await Promise.all([
-      Event.countDocuments(filter),
-      Event.find(filter)
-        .sort({ startDateEvent: 1, createdAt: -1 })
-        .skip(skip)
-        .limit(pageSize)
-        .lean(),
-    ]);
+    // sort=nearest -> urutkan mulai dari tanggal event yang paling dekat
+    // dengan hari ini (event mendatang dulu, dari yang paling cepat mulai;
+    // baru setelah itu event yang sudah lewat, dari yang paling baru lewat).
+    // Opt-in lewat query param supaya konsumen /api/matches yang lain
+    // (halaman judges, ProfileUser, dsb) tidak terpengaruh & tetap pakai
+    // urutan lama secara default.
+    const sortMode = sp.get("sort") || "";
+
+    let total;
+    let events;
+
+    if (sortMode === "nearest") {
+      const now = new Date();
+      [total, events] = await Promise.all([
+        Event.countDocuments(filter),
+        Event.aggregate([
+          { $match: filter },
+          {
+            // startDateEvent di sebagian dokumen tersimpan sebagai string
+            // (bukan Date asli walau schema-nya Date) — konversi eksplisit
+            // dengan fallback aman biar dokumen "nyeleneh" tidak bikin
+            // seluruh query gagal.
+            $addFields: {
+              _startDate: {
+                $convert: {
+                  input: "$startDateEvent",
+                  to: "date",
+                  onError: new Date(0),
+                  onNull: new Date(0),
+                },
+              },
+            },
+          },
+          {
+            $addFields: {
+              _isPast: { $cond: [{ $lt: ["$_startDate", now] }, 1, 0] },
+              _distance: { $abs: { $subtract: ["$_startDate", now] } },
+            },
+          },
+          { $sort: { _isPast: 1, _distance: 1 } },
+          { $skip: skip },
+          { $limit: pageSize },
+          { $project: { _isPast: 0, _distance: 0, _startDate: 0 } },
+        ]),
+      ]);
+    } else {
+      [total, events] = await Promise.all([
+        Event.countDocuments(filter),
+        Event.find(filter)
+          .sort({ startDateEvent: 1, createdAt: -1 })
+          .skip(skip)
+          .limit(pageSize)
+          .lean(),
+      ]);
+    }
 
     return new Response(
       JSON.stringify({

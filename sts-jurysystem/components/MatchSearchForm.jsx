@@ -2,6 +2,18 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+const LEVELS = [
+  "Classification - A",
+  "Classification - B",
+  "Classification - C",
+  "Classification - D",
+  "Classification - E",
+  "Classification - F",
+  "Classification - G",
+  "Classification - H",
+  "Classification - I",
+];
+
 const MatchSearchForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,72 +41,105 @@ const MatchSearchForm = () => {
   };
 
   // Dropdown level langsung mem-filter saat dipilih, tidak perlu klik Search
-  const handleLevelChange = (e) => {
-    const nextLevel = e.target.value;
+  const handleLevelChange = (nextLevel) => {
     setLevel(nextLevel);
     navigate(keyword, nextLevel);
   };
 
+  const hasActiveFilter = Boolean(keyword.trim()) || level !== "All";
+
+  const resetFilters = () => {
+    setKeyword("");
+    setLevel("All");
+    router.push("/matches");
+  };
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mt-3 mx-auto max-w-2xl w-full flex flex-col md:flex-row items-center"
-    >
-      {/* Input pencarian keyword */}
-      <div className="w-full md:w-3/5 md:pr-2 mb-4 md:mb-0">
-        <label htmlFor="keyword" className="sr-only">
-          Keyword / Event Name
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Keyword */}
+      <div>
+        <label htmlFor="keyword" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          Keyword
         </label>
-        <input
-          type="text"
-          id="keyword"
-          placeholder="Enter keyword or event name"
-          className="w-full px-4 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-stsHighlight"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
+        <div className="relative">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z" />
+          </svg>
+          <input
+            type="text"
+            id="keyword"
+            placeholder="Event name..."
+            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-stsHighlight focus:border-transparent transition"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+        </div>
       </div>
 
-      {/* Dropdown Level Classification */}
-      <div className="w-full md:w-2/5 md:pl-2">
-        <label htmlFor="level" className="sr-only">
+      {/* Level */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
           Classification Level
         </label>
-        <select
-          id="level"
-          className="w-full px-4 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring focus:ring-stsHighlight cursor-pointer"
-          value={level}
-          onChange={handleLevelChange}
-        >
-          <option value="All">All Levels</option>
-          <option value="Classification - A">Classification - A</option>
-          <option value="Classification - B">Classification - B</option>
-          <option value="Classification - C">Classification - C</option>
-          <option value="Classification - D">Classification - D</option>
-          <option value="Classification - E">Classification - E</option>
-          <option value="Classification - F">Classification - F</option>
-          <option value="Classification - G">Classification - G</option>
-          <option value="Classification - H">Classification - H</option>
-          <option value="Classification - I">Classification - I</option>
-        </select>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => handleLevelChange("All")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+              level === "All"
+                ? "bg-sts text-white shadow-sm"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            All
+          </button>
+          {LEVELS.map((lvl) => {
+            const short = lvl.split("-").pop().trim();
+            const active = level === lvl;
+            return (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => handleLevelChange(lvl)}
+                title={lvl}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                  active
+                    ? "bg-sts text-white shadow-sm"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {short}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Tombol Search */}
-      <button
-        type="submit"
-        className="
-    md:ml-4 mt-4 md:mt-0 w-full md:w-auto
-    px-6 py-2 rounded-xl
-    bg-white text-black
-    hover:bg-stsDarkHiglight hover:text-white
-    focus:outline-none focus:ring-2 focus:ring-stsDark
-    transition-all duration-300 ease-out
-    shadow-sm hover:shadow-[0_4px_12px_rgba(24,116,165,0.25)]
-    cursor-pointer
-  "
-      >
-        Search
-      </button>
+      {/* Actions */}
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          type="submit"
+          className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sts to-stsDark text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200"
+        >
+          Apply Filter
+        </button>
+        {hasActiveFilter && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-500 text-sm font-medium hover:bg-gray-50 transition"
+          >
+            Reset
+          </button>
+        )}
+      </div>
     </form>
   );
 };

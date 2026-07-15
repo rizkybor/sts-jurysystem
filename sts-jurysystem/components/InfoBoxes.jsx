@@ -27,13 +27,21 @@ const InfoBoxes = () => {
   };
 
   return (
-    <section>
-      <div className="container-xl lg:container m-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg">
+    <section className="bg-gradient-to-b from-white to-gray-50 py-14 sm:py-16">
+      <div className="container-xl lg:container m-auto px-4">
+        <div className="text-center mb-8 sm:mb-10">
+          <span className="text-xs font-semibold uppercase tracking-wider text-sts">
+            Get Started
+          </span>
+          <h2 className="mt-1 text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            Everything you need in one place
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* All Events */}
           <InfoBox
             heading="All Events by Sustainable"
-            backgroundColor="bg-gray-50"
+            backgroundColor="bg-white"
             buttonInfo={{
               text: "All Events",
               link: "/matches",
@@ -46,7 +54,7 @@ const InfoBoxes = () => {
           {/* Judges Profile / Jury Register */}
           <InfoBox
             heading={session ? "Judges Profile" : "Judges Register"}
-            backgroundColor="bg-gray-50"
+            backgroundColor="bg-white"
             buttonInfo={
               session
                 ? [

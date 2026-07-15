@@ -12,6 +12,17 @@ const AttachmentSchema = new mongoose.Schema(
   { _id: false }
 )
 
+const ReplyToSchema = new mongoose.Schema(
+  {
+    _id: { type: String, required: true },
+    senderEmail: { type: String, required: true },
+    senderName: { type: String, required: true },
+    text: { type: String, default: '' },
+    attachmentType: { type: String, enum: ['image', 'audio', null], default: null },
+  },
+  { _id: false }
+)
+
 const ChatMessageSchema = new mongoose.Schema(
   {
     eventId: { type: String, required: true },
@@ -24,6 +35,7 @@ const ChatMessageSchema = new mongoose.Schema(
     senderName: { type: String, required: true },
     text: { type: String, required: false, default: '' },
     attachment: { type: AttachmentSchema, default: null },
+    replyTo: { type: ReplyToSchema, default: null },
     deleted: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
   },
@@ -40,6 +52,8 @@ ChatMessageSchema.pre('validate', function (next) {
 })
 
 ChatMessageSchema.index({ eventId: 1, category: 1, createdAt: 1 })
+// Dipakai buat cursor pagination live chat (load pesan lama saat scroll ke atas)
+ChatMessageSchema.index({ eventId: 1, category: 1, _id: -1 })
 
 export default mongoose.models.ChatMessage ||
   mongoose.model('ChatMessage', ChatMessageSchema)
