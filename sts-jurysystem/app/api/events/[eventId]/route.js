@@ -27,6 +27,12 @@ export async function GET(req, { params }) {
           levelName: event.levelName,
           riverName: event.riverName,
 
+          // gambar — poster_url (banner) & eventFiles[0] (logo), sama
+          // konvensi field yang dipakai sts-timingsystem & /api/matches/[id]
+          poster_url: event.poster_url,
+          eventFiles: event.eventFiles,
+          sponsorFiles: event.sponsorFiles,
+
           // alamat
           addressDistrict: event.addressDistrict,
           addressSubDistrict: event.addressSubDistrict,

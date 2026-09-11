@@ -9,6 +9,19 @@ const DEFAULT_IMG = "/images/logo-dummy.png";
 
 // Format waktu timingsystem "HH:MM:SS.mmm" -> ms, dipakai buat cari run
 // tercepat (best time) per tim di tabel Slalom.
+// Logo event = elemen pertama `eventFiles[]` (string url ATAU {url}) —
+// field yang sama dipakai eventLogoUrl() di sts-timingsystem, BUKAN
+// poster_url (itu banner besar, bukan logo persegi).
+function firstEventFileUrl(eventFiles) {
+  if (!Array.isArray(eventFiles) || !eventFiles.length) return "";
+  const first = eventFiles[0];
+  if (typeof first === "string") return first;
+  if (first && typeof first === "object" && typeof first.url === "string") {
+    return first.url;
+  }
+  return "";
+}
+
 function timeToMs(str) {
   if (!str || typeof str !== "string") return Infinity;
   const [h = "0", m = "0", rest = "0.000"] = str.split(":");
@@ -150,6 +163,7 @@ export default function LiveEventDetail() {
           province: data.addressProvince ?? "",
           image: DEFAULT_IMG,
           posterUrl: data.poster_url || "",
+          logoUrl: firstEventFileUrl(data.eventFiles),
           sponsorLogos: Array.isArray(data.sponsorFiles) ? data.sponsorFiles : [],
           categoriesEvent: data.categoriesEvent || [],
           categoriesInitial: data.categoriesInitial || [],
@@ -529,11 +543,18 @@ export default function LiveEventDetail() {
         {/* Event Info */}
         {!loading && !errMsg && event && (
           <div className="mb-8 flex items-center gap-4 sm:gap-5">
-            {event.posterUrl ? (
+            {event.logoUrl ? (
               <img
-                src={event.posterUrl}
-                alt={event.name}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-white/15 shadow-lg flex-shrink-0 bg-white/5"
+                src={event.logoUrl}
+                alt={`${event.name} logo`}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain border border-white/15 shadow-lg flex-shrink-0 bg-white p-1.5"
+                onError={(e) => {
+                  if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) {
+                    e.currentTarget.src = DEFAULT_IMG;
+                    e.currentTarget.className =
+                      "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-white/15 shadow-lg flex-shrink-0 bg-white/5";
+                  }
+                }}
               />
             ) : (
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border border-white/15 bg-gradient-to-br from-sts/40 to-blue-900/40 shadow-lg flex-shrink-0 flex items-center justify-center text-2xl sm:text-3xl font-extrabold text-white/80">
@@ -772,7 +793,7 @@ export default function LiveEventDetail() {
                             <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
                               {r.finishTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-4 py-3 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
                               {r.penaltyTime || "-"}
                             </td>
                             <td className="px-4 py-3 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap">
@@ -834,7 +855,7 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-4 py-3 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
                               {r.penaltyTime || "-"}
                             </td>
                             <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
@@ -957,7 +978,7 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-4 py-3 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
                               {run.penaltyTime || "-"}
                             </td>
                             <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
@@ -981,16 +1002,30 @@ export default function LiveEventDetail() {
                   </table>
                 </div>
               ) : isH2HDetailed ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
-                        <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
-                      </tr>
-                    </thead>
+                <Fragment>
+                  <div className="flex items-start gap-2.5 px-4 py-3 border-b border-white/10 bg-sts/10 text-white/70 text-xs sm:text-sm">
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mt-0.5 text-sts shrink-0">
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0ZM9 9a1 1 0 0 1 2 0v4a1 1 0 1 1-2 0V9Zm1-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>
+                      Informasi Overall — hasil akhir Head to Head dari seluruh babak
+                      ({results.teams.length} tim tercatat), bukan hasil per-babak.
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                          <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
+                          <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
+                          <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
+                          <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
+                        </tr>
+                      </thead>
                     <tbody>
                       {results.teams.map((r, idx) => {
                         const isTop3 = r.rank >= 1 && r.rank <= 3;
@@ -1030,8 +1065,9 @@ export default function LiveEventDetail() {
                         );
                       })}
                     </tbody>
-                  </table>
-                </div>
+                    </table>
+                  </div>
+                </Fragment>
               ) : isOverallDetailed ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse">
