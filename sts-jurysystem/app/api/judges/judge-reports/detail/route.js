@@ -464,8 +464,12 @@ export const POST = async (req) => {
       message = `Sprint ${position} penalty recorded - ${penalty}s`;
     }
 
-    if (normalizedType === "HEADTOHEAD") {
-      // no specific update here (kept intentionally empty)
+    if (normalizedType === "H2H") {
+      // no specific update here (kept intentionally empty) — H2H's live
+      // data lives in bracket/round documents, not flat TeamsRegistered
+      // fields. The generic findOneAndUpdate below still needs to find a
+      // matching team doc (see TEAMS_EVENTNAME_BY_TYPE) so the request
+      // doesn't 404, but it applies a no-op $set.
     }
 
     if (normalizedType === "SLALOM") {
@@ -610,7 +614,14 @@ export const POST = async (req) => {
       }
 
       const targetTeam = teamDoc.teams?.[0];
-      const currentSectionPenalty = targetTeam?.result?.[0]?.sectionPenalty;
+      // BUG FIX: field yang BENAR-BENAR dibaca timing system (DownRiverRace.vue
+      // hydratePenaltiesFromRegistered()) untuk penalty per-section adalah
+      // `sectionPenaltyTime` — array STRING waktu "HH:MM:SS.mmm" (satu elemen
+      // = satu section), BUKAN `sectionPenalty` (array angka). Timing system
+      // SEPENUHNYA MENGABAIKAN `sectionPenalty` saat memuat data tim dari
+      // TeamsRegistered — jadi penalty Section yang disimpan lewat field lama
+      // itu tidak akan pernah muncul di timing system sama sekali.
+      const currentSectionTimes = targetTeam?.result?.[0]?.sectionPenaltyTime;
 
       const { createdAt, createdAtLocal } = buildCreatedAtMeta(tz);
       updateQuery.$set["teams.$.result.0.judgesBy"] = username;
@@ -676,21 +687,33 @@ export const POST = async (req) => {
 
         const sectionIndex = parsedSection - 1;
 
-        // init / resize / update logic
-        if (!Array.isArray(currentSectionPenalty)) {
-          const newSectionArray = Array(totalSections).fill(null);
-          newSectionArray[sectionIndex] = Number(penalty);
-          updateQuery.$set["teams.$.result.0.sectionPenalty"] = newSectionArray;
-        } else {
-          const resized = Array.from(currentSectionPenalty || []);
-          if (resized.length < totalSections) {
-            const tmp = Array(totalSections).fill(null);
-            for (let i = 0; i < resized.length; i++) tmp[i] = resized[i];
-            for (let i = 0; i < totalSections; i++) resized[i] = tmp[i];
+        // "detik" (boleh minus, bonus) -> string "±HH:MM:SS.000", sama
+        // konvensi dgn secondsToTimeString() di timing system.
+        const secondsToTimeStr = (totalSec) => {
+          const raw = Number(totalSec) || 0;
+          const neg = raw < 0;
+          const t = Math.abs(raw);
+          const sec = Math.floor(t % 60);
+          const min = Math.floor((t / 60) % 60);
+          const hr = Math.floor(t / 3600);
+          const pad = (n, w = 2) => String(n).padStart(w, "0");
+          return `${neg ? "-" : ""}${pad(hr)}:${pad(min)}:${pad(sec)}.000`;
+        };
+
+        // init / resize / update logic — ARRAY STRING WAKTU, bukan angka
+        let sectionTimesArr;
+        if (!Array.isArray(currentSectionTimes) || currentSectionTimes.length === 0) {
+          sectionTimesArr = Array(totalSections).fill("");
+        } else if (currentSectionTimes.length < totalSections) {
+          sectionTimesArr = Array(totalSections).fill("");
+          for (let i = 0; i < currentSectionTimes.length; i++) {
+            sectionTimesArr[i] = currentSectionTimes[i] || "";
           }
-          resized[sectionIndex] = Number(penalty);
-          updateQuery.$set["teams.$.result.0.sectionPenalty"] = resized;
+        } else {
+          sectionTimesArr = currentSectionTimes.slice();
         }
+        sectionTimesArr[sectionIndex] = secondsToTimeStr(Number(penalty));
+        updateQuery.$set["teams.$.result.0.sectionPenaltyTime"] = sectionTimesArr;
 
         // keep parsedSection local for JudgeReportDetail creation below
         body._parsedSection = parsedSection;
@@ -774,9 +797,16 @@ export const POST = async (req) => {
       message = `RX ${opTypeRx.toUpperCase()} penalty recorded: ${penalty}s`;
     }
 
-    // Persist update to TeamsRegistered
+    // Persist update to TeamsRegistered — most categories store their teams
+    // under an eventName equal to normalizedType, but H2H's teams are
+    // registered under the long form "HEADTOHEAD" (see judge-tasks route
+    // and app/judges/headtohead/page.jsx), so it needs its own mapping or
+    // this lookup 404s on every H2H submission.
+    const TEAMS_EVENTNAME_BY_TYPE = { H2H: "HEADTOHEAD" };
+    const teamsEventName = TEAMS_EVENTNAME_BY_TYPE[normalizedType] || normalizedType;
+
     const updatedTeam = await TeamsRegistered.findOneAndUpdate(
-      { eventId, eventName: normalizedType, "teams.teamId": team },
+      { eventId, eventName: teamsEventName, "teams.teamId": team },
       updateQuery,
       { new: true }
     );

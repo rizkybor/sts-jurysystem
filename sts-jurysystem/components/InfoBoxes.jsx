@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { signIn, useSession, getProviders } from "next-auth/react";
+import Image from "next/image";
 import InfoBox from "./InfoBox";
 
 const InfoBoxes = () => {
@@ -85,11 +86,14 @@ const InfoBoxes = () => {
               <div className="flex items-start gap-3">
                 {/* Avatar */}
                 {session.user?.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={session.user.image}
                     alt={session.user.name || "User"}
+                    width={40}
+                    height={40}
                     className="h-10 w-10 rounded-full ring-1 ring-gray-200 object-cover"
+                    unoptimized
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="h-10 w-10 rounded-full bg-gray-200 ring-1 ring-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
