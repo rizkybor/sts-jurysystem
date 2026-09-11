@@ -120,9 +120,10 @@ export default function LiveEventsBrowser() {
           province: it.addressProvince ?? null,
           startDate: it.startDateEvent ?? null,
           endDate: it.endDateEvent ?? null,
-          participantCount: Array.isArray(it.participant)
-            ? it.participant.length
-            : undefined,
+          participantCount:
+            typeof it.participantCount === "number"
+              ? it.participantCount
+              : undefined,
         }));
 
         if (!aborted) {

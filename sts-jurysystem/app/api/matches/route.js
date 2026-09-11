@@ -1,10 +1,42 @@
 import connectDB from "@/config/database";
 import Event from "@/models/Event";
+import TeamsRegistered from "@/models/TeamsRegistered";
 import { getSessionUser } from "@/utils/getSessionUser";
 import cloudinary from "@/config/cloudinary";
 import mongoose from "mongoose";
 
 export const dynamic = "force-dynamic";
+
+// `Event.participant` selalu kosong ("peserta fleksibel (sekarang
+// kosong)" — lihat models/Event.js) karena data tim sebenarnya disimpan
+// di TeamsRegistered, bukan di dokumen Event. Satu tim (Nama Tim + BIB
+// yang sama) bisa muncul di beberapa dokumen TeamsRegistered sekaligus
+// kalau terdaftar di beberapa kategori/kelas — dihitung 1 kali per event,
+// sama seperti uniqueTeamCount di MatchDetail.jsx.
+async function getParticipantCountsByEventId(eventIds) {
+  const counts = new Map();
+  if (!eventIds.length) return counts;
+
+  const docs = await TeamsRegistered.find(
+    { eventId: { $in: eventIds } },
+    { eventId: 1, teams: 1 }
+  ).lean();
+
+  const keysByEvent = new Map();
+  for (const doc of docs) {
+    const evId = String(doc.eventId);
+    if (!keysByEvent.has(evId)) keysByEvent.set(evId, new Set());
+    const set = keysByEvent.get(evId);
+    for (const t of doc.teams || []) {
+      const key = `${String(t?.nameTeam || "").trim().toUpperCase()}|${String(
+        t?.bibTeam || ""
+      ).trim()}`;
+      set.add(key);
+    }
+  }
+  for (const [evId, set] of keysByEvent) counts.set(evId, set.size);
+  return counts;
+}
 
 export const GET = async (request) => {
   try {
@@ -93,6 +125,14 @@ export const GET = async (request) => {
           .lean(),
       ]);
     }
+
+    const participantCounts = await getParticipantCountsByEventId(
+      events.map((e) => String(e._id))
+    );
+    events = events.map((e) => ({
+      ...e,
+      participantCount: participantCounts.get(String(e._id)) || 0,
+    }));
 
     return new Response(
       JSON.stringify({
