@@ -4,24 +4,12 @@ import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import getSocket from "@/utils/socket";
+import { firstEventFileUrl } from "@/utils/eventMedia";
 
 const DEFAULT_IMG = "/images/logo-dummy.png";
 
 // Format waktu timingsystem "HH:MM:SS.mmm" -> ms, dipakai buat cari run
 // tercepat (best time) per tim di tabel Slalom.
-// Logo event = elemen pertama `eventFiles[]` (string url ATAU {url}) —
-// field yang sama dipakai eventLogoUrl() di sts-timingsystem, BUKAN
-// poster_url (itu banner besar, bukan logo persegi).
-function firstEventFileUrl(eventFiles) {
-  if (!Array.isArray(eventFiles) || !eventFiles.length) return "";
-  const first = eventFiles[0];
-  if (typeof first === "string") return first;
-  if (first && typeof first === "object" && typeof first.url === "string") {
-    return first.url;
-  }
-  return "";
-}
-
 function timeToMs(str) {
   if (!str || typeof str !== "string") return Infinity;
   const [h = "0", m = "0", rest = "0.000"] = str.split(":");
@@ -358,7 +346,15 @@ export default function LiveEventDetail() {
       const data = await res.json();
       if (res.ok && data.success) {
         setResults((prev) => {
-          const changed = JSON.stringify(prev.teams) !== JSON.stringify(data.teams || []);
+          // Kategori yang doc-nya konsisten menyimpan updatedAt (Sprint/
+          // DRR/Slalom) bisa dibandingkan murah tanpa serialize seluruh
+          // array tim; kalau salah satu sisi tidak punya updatedAt (mis.
+          // h2h_overall/rx_overall), fallback ke deep-compare biar animasi
+          // "baru diperbarui" tetap akurat.
+          const changed =
+            data.updatedAt && prev.updatedAt
+              ? data.updatedAt !== prev.updatedAt
+              : JSON.stringify(prev.teams) !== JSON.stringify(data.teams || []);
           if (changed && prev.teams.length) {
             setJustUpdated(true);
             setTimeout(() => setJustUpdated(false), 1200);
