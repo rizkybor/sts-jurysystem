@@ -10,7 +10,15 @@ const JudgeRoleSchema = new Schema(
     },
     h2h: {
       start: { type: Boolean, default: false },
+      // Cut Line (CL) & Others (PO) — dulu tidak ada field sama sekali di
+      // sini, padahal timing system (applyPenaltyFromSocketH2H) sudah
+      // mendukung keduanya sbg kategori penalty independen (CL malah baru
+      // saja dibuatkan validasi ALLOWED-list-nya sendiri di timing system).
+      // Tanpa field ini, admin tidak pernah bisa meng-assign juri ke tugas
+      // CL/Others sama sekali.
+      cl: { type: Boolean, default: false },
       finish: { type: Boolean, default: false },
+      other: { type: Boolean, default: false },
       R1: { type: Boolean, default: false },
       R2: { type: Boolean, default: false },
       L1: { type: Boolean, default: false },

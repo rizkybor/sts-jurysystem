@@ -376,8 +376,15 @@ const JudgesPage = () => {
                   <div className="w-20 h-20 mx-auto rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center">
                     <img
                       src={logo}
-                      alt="logo"
+                      alt={`${event.eventName || "Event"} logo`}
                       className="w-16 h-16 object-contain"
+                      onError={(e) => {
+                        if (
+                          !e.currentTarget.src.endsWith("/images/logo-dummy.png")
+                        ) {
+                          e.currentTarget.src = "/images/logo-dummy.png";
+                        }
+                      }}
                     />
                   </div>
 
