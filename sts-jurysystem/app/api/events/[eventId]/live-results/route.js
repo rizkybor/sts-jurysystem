@@ -17,6 +17,12 @@ function timeToMs(str) {
   return Number.isFinite(n) ? n : Infinity;
 }
 
+// Urutkan lalu pastikan SETIAP tim punya nomor rank yang bisa ditampilkan —
+// pakai `rank` resmi dari timingsystem kalau operator sudah menetapkannya
+// (mis. lewat tombol "Sort Ranked"/simpan hasil), tapi kalau belum (masih
+// berjalan live), fallback ke posisi hasil sorting saat ini supaya
+// penonton tetap tahu peringkat tim per kelas, bukan cuma tampil "-".
+// `rankIsFinal` menandai mana yang resmi vs live-provisional.
 function sortAndNumber(teams, { by = "rank" } = {}) {
   const sorted = [...teams].sort((a, b) => {
     if (by === "time") {
@@ -30,35 +36,112 @@ function sortAndNumber(teams, { by = "rank" } = {}) {
     if (ra !== rb) return ra - rb;
     return timeToMs(a.totalTime) - timeToMs(b.totalTime);
   });
-  return sorted.map((t, idx) => ({ ...t, no: idx + 1 }));
+  return sorted.map((t, idx) => {
+    const hasOfficialRank = Number.isFinite(t.rank) && t.rank > 0;
+    return {
+      ...t,
+      rank: hasOfficialRank ? t.rank : idx + 1,
+      rankIsFinal: hasOfficialRank,
+    };
+  });
 }
 
 // --- mapper per kategori: dokumen timingsystem -> bentuk seragam frontend ---
 
-function mapSprintOrDrr(doc) {
+// Sprint dapat mapper detail sendiri supaya semua field mentah dari
+// insertResultEventByCategories.js normalizeResultObj()
+// (startTime/finishTime/startPenalty/finishPenalty/raceTime/penaltyTime/
+// totalTime/ranked/score) bisa ditampilkan apa adanya di Live Result,
+// bukan cuma ringkasan totalTime/penaltyTime/score/rank generik.
+function mapSprint(doc) {
   const rows = Array.isArray(doc?.result) ? doc.result : [];
-  const teams = rows.map((t) => ({
-    name: t?.nameTeam || "-",
-    bib: t?.bibTeam || "-",
-    totalTime: t?.result?.totalTime || null,
-    penaltyTime: t?.result?.totalPenaltyTime || t?.result?.penaltyTime || null,
-    score: Number.isFinite(t?.result?.score) ? t.result.score : null,
-    rank: Number.isFinite(t?.result?.ranked) ? t.result.ranked : null,
-  }));
+  const teams = rows.map((t) => {
+    const r = t?.result || {};
+    return {
+      name: t?.nameTeam || "-",
+      bib: t?.bibTeam || "-",
+      startTime: r.startTime || null,
+      finishTime: r.finishTime || null,
+      raceTime: r.raceTime || null,
+      startPenalty: Number.isFinite(r.startPenalty) ? r.startPenalty : null,
+      finishPenalty: Number.isFinite(r.finishPenalty) ? r.finishPenalty : null,
+      penaltyTime: r.totalPenaltyTime || r.penaltyTime || null,
+      totalTime: r.totalTime || null, // "Result" (race time + penalty time)
+      score: Number.isFinite(r.score) ? r.score : null,
+      rank: Number.isFinite(r.ranked) ? r.ranked : null,
+    };
+  });
   const hasRank = teams.some((t) => t.rank > 0);
   return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
 }
 
-function mapSlalom(doc) {
+// DRR versi detail — field mentah dari normalizeResult() di
+// insertResultEventByCategories.js (startPenalty/sectionPenalty/
+// finishPenalty/totalPenalty/totalPenaltyTime/startTime/finishTime/
+// raceTime/totalTime/ranked/score), bukan cuma ringkasan totalTime/score.
+function mapDrrDetailed(doc) {
+  const rows = Array.isArray(doc?.result) ? doc.result : [];
+  const teams = rows.map((t) => {
+    const r = t?.result || {};
+    return {
+      name: t?.nameTeam || "-",
+      bib: t?.bibTeam || "-",
+      startPenalty: Number.isFinite(r.startPenalty) ? r.startPenalty : null,
+      sectionPenalty: Number.isFinite(r.sectionPenalty) ? r.sectionPenalty : null,
+      finishPenalty: Number.isFinite(r.finishPenalty) ? r.finishPenalty : null,
+      totalPenalty: Number.isFinite(r.totalPenalty) ? r.totalPenalty : null,
+      penaltyTime: r.totalPenaltyTime || r.penaltyTime || null,
+      startTime: r.startTime || null,
+      finishTime: r.finishTime || null,
+      raceTime: r.raceTime || null,
+      totalTime: r.totalTime || null, // "Result"
+      score: Number.isFinite(r.score) ? r.score : null,
+      rank: Number.isFinite(r.ranked) ? r.ranked : null,
+    };
+  });
+  const hasRank = teams.some((t) => t.rank > 0);
+  return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
+}
+
+// Slalom versi detail ("result: All") — satu tim bisa punya beberapa Run
+// (result[] di insertResultEventByCategories.js normRun()), jadi tiap tim
+// bawa sub-array `runs` lengkap dengan rincian penalty per run; ranked/
+// score tetap level tim (dipakai buat urutan lewat sortAndNumber).
+function mapSlalomDetailed(doc) {
   const rows = Array.isArray(doc?.teams) ? doc.teams : [];
-  const teams = rows.map((t) => ({
-    name: t?.nameTeam || "-",
-    bib: t?.bibTeam || "-",
-    totalTime: t?.bestTime || null,
-    penaltyTime: null,
-    score: Number.isFinite(t?.score) ? t.score : null,
-    rank: Number.isFinite(t?.ranked) ? t.ranked : null,
-  }));
+  const teams = rows.map((t) => {
+    const runsRaw = Array.isArray(t?.result) ? t.result : [];
+    const runs = runsRaw.map((r, idx) => {
+      const pt = r?.penaltyTotal || {};
+      const gatePenalty = Array.isArray(pt.gates)
+        ? pt.gates.reduce((sum, g) => sum + (Number(g) || 0), 0)
+        : 0;
+      const startPenalty = Number.isFinite(pt.start) ? pt.start : 0;
+      const finishPenalty = Number.isFinite(pt.finish) ? pt.finish : 0;
+      return {
+        runNo: idx + 1,
+        startPenalty,
+        finishPenalty,
+        gatePenalty,
+        totalPenalty: Number.isFinite(r?.penalty)
+          ? r.penalty
+          : startPenalty + finishPenalty + gatePenalty,
+        penaltyTime: r?.penaltyTime || null,
+        startTime: r?.startTime || null,
+        finishTime: r?.finishTime || null,
+        raceTime: r?.raceTime || null,
+        totalTime: r?.totalTime || null, // "Result" per run
+      };
+    });
+    return {
+      name: t?.nameTeam || "-",
+      bib: t?.bibTeam || "-",
+      totalTime: t?.bestTime || null, // dipakai sortAndNumber fallback-by-time
+      score: Number.isFinite(t?.score) ? t.score : null,
+      rank: Number.isFinite(t?.ranked) ? t.ranked : null,
+      runs,
+    };
+  });
   const hasRank = teams.some((t) => t.rank > 0);
   return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
 }
@@ -78,17 +161,90 @@ function mapOverallRows(doc) {
   return sortAndNumber(teams, { by: hasRank ? "rank" : "score" });
 }
 
-function mapOverall(doc) {
+// Overall versi detail — reproduksi persis buildBucketRows() di
+// sts-timingsystem (views/Result/EventOverallResult.vue), yang jadi
+// sumber tabel "Print Result Overall": tiap tim punya `categories[]`
+// mentah ({name, scored, rankedByCats}), dipecah jadi kolom Score/Rank
+// per kategori, Total Score dihitung ulang dari situ (bukan percaya
+// t.totalScore mentah), tim yang semua kategorinya nol (rank<=0 di semua)
+// dibuang, lalu di-rank ulang: total desc -> best individual rank asc ->
+// nama. Sengaja TIDAK mereplikasi cross-check "masih terdaftar di
+// TeamsRegistered" milik timingsystem (perlu 5 query registrasi tambahan
+// per bucket) — hasilnya identik selama data overall belum basi karena
+// tim baru saja dihapus dari suatu kategori.
+function pickCategory(byName, keys) {
+  for (const k of keys) {
+    if (byName[k]) return byName[k];
+  }
+  return { score: 0, rank: 0 };
+}
+
+function mapOverallDetailed(doc) {
   const rows = Array.isArray(doc?.eventResult) ? doc.eventResult : [];
-  const teams = rows.map((r) => ({
-    name: r?.teamName || "-",
-    bib: r?.bib || "-",
-    totalTime: null,
-    penaltyTime: null,
-    score: Number.isFinite(r?.totalScore) ? r.totalScore : null,
-    rank: null,
+
+  const built = rows.map((t) => {
+    const cats = Array.isArray(t?.categories) ? t.categories : [];
+    const byName = {};
+    cats.forEach((c) => {
+      const nm = String(c?.name || "").toUpperCase();
+      byName[nm] = {
+        score: Number(c?.scored) || 0,
+        rank: Number(c?.rankedByCats) || 0,
+      };
+    });
+
+    const sprint = pickCategory(byName, ["SPRINT"]);
+    const h2h = pickCategory(byName, ["HEADTOHEAD", "HEAD TO HEAD", "H2H"]);
+    const slalom = pickCategory(byName, ["SLALOM"]);
+    const drr = pickCategory(byName, ["DRR", "DOWN RIVER RACE"]);
+    const rx = pickCategory(byName, ["RX", "RAFTING CROSS"]);
+
+    const totalScore =
+      sprint.score + h2h.score + slalom.score + drr.score + rx.score;
+    const hasAnyValidDiscipline =
+      sprint.rank > 0 || h2h.rank > 0 || slalom.rank > 0 || drr.rank > 0 || rx.rank > 0;
+
+    return {
+      name: t?.teamName || "-",
+      bib: t?.bib || "-",
+      sprintScore: sprint.score,
+      sprintRank: sprint.rank,
+      h2hScore: h2h.score,
+      h2hRank: h2h.rank,
+      slalomScore: slalom.score,
+      slalomRank: slalom.rank,
+      drrScore: drr.score,
+      drrRank: drr.rank,
+      rxScore: rx.score,
+      rxRank: rx.rank,
+      totalScore,
+      hasAnyValidDiscipline,
+    };
+  });
+
+  const visible = built.filter((r) => r.hasAnyValidDiscipline);
+
+  visible.sort((a, b) => {
+    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+    const bestOf = (r) =>
+      Math.min(
+        r.sprintRank || Infinity,
+        r.h2hRank || Infinity,
+        r.slalomRank || Infinity,
+        r.drrRank || Infinity,
+        r.rxRank || Infinity
+      );
+    const aBest = bestOf(a);
+    const bBest = bestOf(b);
+    if (aBest !== bBest) return aBest - bBest;
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+
+  return visible.map((r, idx) => ({
+    ...r,
+    rank: idx + 1,
+    rankIsFinal: true,
   }));
-  return sortAndNumber(teams, { by: "score" });
 }
 
 export const GET = async (req, { params }) => {
@@ -130,17 +286,17 @@ export const GET = async (req, { params }) => {
       doc = await db
         .collection("temporarySprintResult")
         .findOne({ eventId, initialId, divisionId, raceId });
-      teams = mapSprintOrDrr(doc);
+      teams = mapSprint(doc);
     } else if (category === "DRR") {
       doc = await db
         .collection("temporaryDrrResult")
         .findOne({ eventId, initialId, divisionId, raceId });
-      teams = mapSprintOrDrr(doc);
+      teams = mapDrrDetailed(doc);
     } else if (category === "SLALOM") {
       doc = await db
         .collection("temporarySlalomResult")
         .findOne({ eventId, initialId, divisionId, raceId });
-      teams = mapSlalom(doc);
+      teams = mapSlalomDetailed(doc);
     } else if (category === "H2H") {
       const key = [eventId, initialId, raceId, divisionId].join("|");
       doc = await db.collection("h2h_overall").findOne({ key });
@@ -157,7 +313,7 @@ export const GET = async (req, { params }) => {
       doc = await db
         .collection("temporaryOverallEventResults")
         .findOne(filter, { sort: { updatedAt: -1 } });
-      teams = mapOverall(doc);
+      teams = mapOverallDetailed(doc);
     }
 
     return new Response(
