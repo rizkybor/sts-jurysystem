@@ -3,22 +3,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import Spinner from "@/components/Spinner";
+import { firstEventFileUrl } from "@/utils/eventMedia";
 
 const DEFAULT_IMG = "/images/logo-dummy.png";
-
-// Logo event = elemen pertama `eventFiles[]` (string url ATAU {url}) —
-// field yang sama dipakai eventLogoUrl() di sts-timingsystem
-// (views/DetailEvent/Details/index.vue). Bukan field "eventLogo" yang
-// sebenarnya tidak pernah ditulis oleh timingsystem.
-function firstEventFileUrl(eventFiles) {
-  if (!Array.isArray(eventFiles) || !eventFiles.length) return "";
-  const first = eventFiles[0];
-  if (typeof first === "string") return first;
-  if (first && typeof first === "object" && typeof first.url === "string") {
-    return first.url;
-  }
-  return "";
-}
 
 // Sama dengan palet di components/MatchCard.jsx, biar konsisten satu app
 const LEVEL_COLORS = {
