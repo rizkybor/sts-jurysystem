@@ -6,6 +6,20 @@ import Spinner from "@/components/Spinner";
 
 const DEFAULT_IMG = "/images/logo-dummy.png";
 
+// Logo event = elemen pertama `eventFiles[]` (string url ATAU {url}) —
+// field yang sama dipakai eventLogoUrl() di sts-timingsystem
+// (views/DetailEvent/Details/index.vue). Bukan field "eventLogo" yang
+// sebenarnya tidak pernah ditulis oleh timingsystem.
+function firstEventFileUrl(eventFiles) {
+  if (!Array.isArray(eventFiles) || !eventFiles.length) return "";
+  const first = eventFiles[0];
+  if (typeof first === "string") return first;
+  if (first && typeof first === "object" && typeof first.url === "string") {
+    return first.url;
+  }
+  return "";
+}
+
 // Sama dengan palet di components/MatchCard.jsx, biar konsisten satu app
 const LEVEL_COLORS = {
   A: "bg-gradient-to-r from-green-500 to-green-600 text-white",
@@ -99,7 +113,8 @@ export default function MatchDetail() {
             : "-",
           city: eventData.addressCity ?? "",
           province: eventData.addressProvince ?? "",
-          image: eventData.eventBanner || DEFAULT_IMG,
+          poster: eventData.poster_url || DEFAULT_IMG,
+          logo: firstEventFileUrl(eventData.eventFiles) || DEFAULT_IMG,
           chiefJudge: eventData.chiefJudge ?? "-",
           raceDirector: eventData.raceDirector ?? "-",
           safetyDirector: eventData.safetyDirector ?? "-",
@@ -185,6 +200,22 @@ export default function MatchDetail() {
     return Array.from(new Set(names));
   }, [eventCategories]);
 
+  // Satu tim (Nama Tim + BIB yang sama) bisa muncul berkali-kali di
+  // `participants` karena terdaftar di beberapa kategori/kelas sekaligus —
+  // dihitung sebagai 1 tim, bukan 1 per baris pendaftaran. Cuma dianggap
+  // tim berbeda kalau BIB-nya juga beda walau nama tim sama.
+  const uniqueTeamCount = useMemo(() => {
+    const keys = new Set(
+      (participants || []).map(
+        (t) =>
+          `${String(t.nameTeam || "").trim().toUpperCase()}|${String(
+            t.bibTeam || ""
+          ).trim()}`
+      )
+    );
+    return keys.size;
+  }, [participants]);
+
   const filteredTeams = useMemo(() => {
     return participants.filter((team) => {
       let ok = true;
@@ -267,9 +298,14 @@ export default function MatchDetail() {
           <div className="relative overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-gray-200/70">
             <div className="relative h-52 sm:h-64 w-full bg-gray-100">
               <img
-                src={event.image}
+                src={event.poster}
                 alt={event.name}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) {
+                    e.currentTarget.src = DEFAULT_IMG;
+                  }
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
@@ -279,9 +315,21 @@ export default function MatchDetail() {
                 {event.levelName}
               </span>
 
-              <h1 className="absolute bottom-4 left-4 right-4 text-xl sm:text-3xl font-bold text-white drop-shadow-sm">
-                {event.name}
-              </h1>
+              <div className="absolute bottom-4 left-4 right-4 flex items-end gap-3">
+                <img
+                  src={event.logo}
+                  alt={`${event.name} logo`}
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white object-contain shadow-md ring-2 ring-white/80 flex-shrink-0"
+                  onError={(e) => {
+                    if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) {
+                      e.currentTarget.src = DEFAULT_IMG;
+                    }
+                  }}
+                />
+                <h1 className="text-xl sm:text-3xl font-bold text-white drop-shadow-sm">
+                  {event.name}
+                </h1>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-x-8 gap-y-3 px-5 sm:px-6 py-5">
@@ -305,7 +353,9 @@ export default function MatchDetail() {
                 <svg width="18" height="18" viewBox="0 0 24 24" className="text-sts flex-shrink-0">
                   <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" />
                 </svg>
-                <span>{filteredTeams.length} dari {participants.length} peserta terdaftar</span>
+                <span>
+                  {uniqueTeamCount} tim terdaftar untuk {eventCatNameOptions.length} kategori yang dipertandingkan
+                </span>
               </div>
             </div>
           </div>
