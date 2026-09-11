@@ -1,11 +1,22 @@
 "use client";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import getSocket from "@/utils/socket";
 
 const DEFAULT_IMG = "/images/logo-dummy.png";
+
+// Format waktu timingsystem "HH:MM:SS.mmm" -> ms, dipakai buat cari run
+// tercepat (best time) per tim di tabel Slalom.
+function timeToMs(str) {
+  if (!str || typeof str !== "string") return Infinity;
+  const [h = "0", m = "0", rest = "0.000"] = str.split(":");
+  const [s = "0", ms = "0"] = String(rest).split(".");
+  const n =
+    Number(h) * 3600000 + Number(m) * 60000 + Number(s) * 1000 + Number(ms);
+  return Number.isFinite(n) ? n : Infinity;
+}
 
 const CATEGORY_TABS = [
   { label: "Sprint", code: "SPRINT" },
@@ -25,13 +36,23 @@ const EVENT_CATEGORY_NAME_TO_CODE = {
   RX: "RX",
 };
 
+// Kolom breakdown per kategori di tab Overall — persis field yang
+// dibangun mapOverallDetailed() di API, sama dengan tabel "Print Result
+// Overall" (event-overall-pdfResult.vue) di sts-timingsystem.
+const OVERALL_CATEGORY_META = [
+  { code: "SPRINT", label: "Sprint", scoreKey: "sprintScore", rankKey: "sprintRank" },
+  { code: "H2H", label: "H2H", scoreKey: "h2hScore", rankKey: "h2hRank" },
+  { code: "SLALOM", label: "Slalom", scoreKey: "slalomScore", rankKey: "slalomRank" },
+  { code: "DRR", label: "DRR", scoreKey: "drrScore", rankKey: "drrRank" },
+  { code: "RX", label: "Rafting Cross", scoreKey: "rxScore", rankKey: "rxRank" },
+];
+
+// Sprint, DRR, Slalom, H2H, dan Overall punya tabel detail sendiri (lihat
+// isSprintDetailed/isDrrDetailed/isSlalomDetailed/isH2HDetailed/
+// isOverallDetailed) — ini cuma dipakai RX yang masih pakai tampilan kartu
+// ringkas.
 const CATEGORY_COLUMNS = {
-  SPRINT: ["time", "penalty", "rank"],
-  DRR: ["time", "penalty", "rank"],
-  SLALOM: ["time", "rank"],
-  H2H: ["score", "rank"],
   RX: ["score", "rank"],
-  OVERALL: ["score", "rank"],
 };
 
 const POLL_INTERVAL_MS = 20000;
@@ -381,6 +402,14 @@ export default function LiveEventDetail() {
 
   const columns = CATEGORY_COLUMNS[activeCategory] || ["rank"];
   const activeTabLabel = availableTabs.find((t) => t.code === activeCategory)?.label || "";
+  const isSprintDetailed = activeCategory === "SPRINT";
+  const isDrrDetailed = activeCategory === "DRR";
+  const isSlalomDetailed = activeCategory === "SLALOM";
+  const isH2HDetailed = activeCategory === "H2H";
+  const isOverallDetailed = activeCategory === "OVERALL";
+  const overallCategories = OVERALL_CATEGORY_META.filter((c) =>
+    availableTabs.some((t) => t.code === c.code)
+  );
 
   return (
     <section className="min-h-screen bg-[#050b16] text-white relative overflow-hidden">
@@ -687,6 +716,402 @@ export default function LiveEventDetail() {
                 <div className="p-12 text-center">
                   <p className="text-white/50">Belum ada hasil untuk kategori/kelas ini.</p>
                 </div>
+              ) : isSprintDetailed ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.teams.map((r, idx) => {
+                        const isTop3 = r.rank >= 1 && r.rank <= 3;
+                        const isProvisional = r.rank != null && !r.rankIsFinal;
+                        return (
+                          <tr
+                            key={`${r.bib}-${r.name}`}
+                            className={`border-b border-white/5 last:border-b-0 ${
+                              isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
+                            } transition-colors`}
+                          >
+                            <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
+                              {idx + 1}
+                            </td>
+                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                              {r.name}
+                            </td>
+                            <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center gap-1 font-bold tabular-nums ${
+                                  isTop3 ? "text-yellow-300" : "text-white"
+                                }`}
+                              >
+                                {r.rank ?? "-"}
+                                {isProvisional && (
+                                  <span
+                                    className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10"
+                                    title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
+                                  >
+                                    Live
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {r.startTime || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {r.finishTime || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {r.penaltyTime || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap">
+                              {r.totalTime || "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : isDrrDetailed ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.teams.map((r, idx) => {
+                        const isTop3 = r.rank >= 1 && r.rank <= 3;
+                        const isProvisional = r.rank != null && !r.rankIsFinal;
+                        return (
+                          <tr
+                            key={`${r.bib}-${r.name}`}
+                            className={`border-b border-white/5 last:border-b-0 ${
+                              isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
+                            } transition-colors`}
+                          >
+                            <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
+                              {idx + 1}
+                            </td>
+                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                              {r.name}
+                            </td>
+                            <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center gap-1 font-bold tabular-nums ${
+                                  isTop3 ? "text-yellow-300" : "text-white"
+                                }`}
+                              >
+                                {r.rank ?? "-"}
+                                {isProvisional && (
+                                  <span
+                                    className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10"
+                                    title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
+                                  >
+                                    Live
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {r.penaltyTime || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {r.startTime || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {r.finishTime || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap">
+                              {r.totalTime || "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : isSlalomDetailed ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">Run</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.teams.map((r, idx) => {
+                        const isTop3 = r.rank >= 1 && r.rank <= 3;
+                        const isProvisional = r.rank != null && !r.rankIsFinal;
+                        const runs = r.runs && r.runs.length ? r.runs : [{}];
+                        // Run tercepat (waktu terkecil di antara run yang
+                        // sudah selesai) — dipakai buat highlight best time.
+                        const bestRunIdx = runs.reduce((best, run, i) => {
+                          const ms = timeToMs(run.totalTime);
+                          if (ms === Infinity) return best;
+                          if (best === -1) return i;
+                          return ms < timeToMs(runs[best].totalTime) ? i : best;
+                        }, -1);
+                        return runs.map((run, runIdx) => {
+                          const isBestRun = runIdx === bestRunIdx;
+                          return (
+                          <tr
+                            key={`${r.bib}-${r.name}-run${runIdx}`}
+                            className={`border-b border-white/5 last:border-b-0 ${
+                              isBestRun
+                                ? "bg-emerald-500/10"
+                                : isTop3
+                                ? "bg-white/[0.04]"
+                                : "hover:bg-white/[0.02]"
+                            } transition-colors`}
+                          >
+                            {runIdx === 0 && (
+                              <td
+                                rowSpan={runs.length}
+                                className="px-4 py-3 text-white/50 font-medium whitespace-nowrap align-top"
+                              >
+                                {idx + 1}
+                              </td>
+                            )}
+                            {runIdx === 0 && (
+                              <td
+                                rowSpan={runs.length}
+                                className="px-4 py-3 font-bold text-white whitespace-nowrap align-top"
+                              >
+                                {r.name}
+                              </td>
+                            )}
+                            {runIdx === 0 && (
+                              <td
+                                rowSpan={runs.length}
+                                className="px-4 py-3 text-white/60 whitespace-nowrap align-top"
+                              >
+                                {r.bib}
+                              </td>
+                            )}
+                            {runIdx === 0 && (
+                              <td
+                                rowSpan={runs.length}
+                                className="px-4 py-3 text-right whitespace-nowrap align-top"
+                              >
+                                <span
+                                  className={`inline-flex items-center gap-1 font-bold tabular-nums ${
+                                    isTop3 ? "text-yellow-300" : "text-white"
+                                  }`}
+                                >
+                                  {r.rank ?? "-"}
+                                  {isProvisional && (
+                                    <span
+                                      className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10"
+                                      title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
+                                    >
+                                      Live
+                                    </span>
+                                  )}
+                                </span>
+                              </td>
+                            )}
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center gap-1.5 ${
+                                  isBestRun ? "text-emerald-400 font-semibold" : "text-white/70"
+                                }`}
+                              >
+                                {run.runNo ? `Run ${run.runNo}` : "-"}
+                                {isBestRun && (
+                                  <span
+                                    className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
+                                    title="Waktu terbaik tim ini"
+                                  >
+                                    Best
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {run.penaltyTime || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {run.startTime || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                              {run.finishTime || "-"}
+                            </td>
+                            <td
+                              className={`px-4 py-3 text-right font-mono font-bold tabular-nums whitespace-nowrap ${
+                                isBestRun ? "text-emerald-400" : "text-white"
+                              }`}
+                            >
+                              {run.totalTime || "-"}
+                            </td>
+                          </tr>
+                          );
+                        });
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : isH2HDetailed ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
+                        <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.teams.map((r, idx) => {
+                        const isTop3 = r.rank >= 1 && r.rank <= 3;
+                        const isProvisional = r.rank != null && !r.rankIsFinal;
+                        return (
+                          <tr
+                            key={`${r.bib}-${r.name}`}
+                            className={`border-b border-white/5 last:border-b-0 ${
+                              isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
+                            } transition-colors`}
+                          >
+                            <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
+                              {idx + 1}
+                            </td>
+                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                              {r.name}
+                            </td>
+                            <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center gap-1 font-bold tabular-nums ${
+                                  isTop3 ? "text-yellow-300" : "text-white"
+                                }`}
+                              >
+                                {r.rank ?? "-"}
+                                {isProvisional && (
+                                  <span
+                                    className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10"
+                                    title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
+                                  >
+                                    Live
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : isOverallDetailed ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th rowSpan={2} className="text-left px-4 py-3 align-bottom whitespace-nowrap">No</th>
+                        <th rowSpan={2} className="text-left px-4 py-3 align-bottom whitespace-nowrap">Team Name</th>
+                        <th rowSpan={2} className="text-left px-4 py-3 align-bottom whitespace-nowrap">BIB</th>
+                        {overallCategories.map((cat) => (
+                          <th
+                            key={cat.code}
+                            colSpan={2}
+                            className="text-center px-4 py-2 whitespace-nowrap border-l border-white/10"
+                          >
+                            {cat.label}
+                          </th>
+                        ))}
+                        <th rowSpan={2} className="text-right px-4 py-3 align-bottom whitespace-nowrap border-l border-white/10">
+                          Total Score
+                        </th>
+                        <th rowSpan={2} className="text-right px-4 py-3 align-bottom whitespace-nowrap">Rank</th>
+                      </tr>
+                      <tr className="text-[10px] uppercase tracking-wider text-white/30 font-semibold border-b border-white/10">
+                        {overallCategories.map((cat) => (
+                          <Fragment key={cat.code}>
+                            <th className="text-right px-3 py-2 whitespace-nowrap border-l border-white/10">
+                              Score
+                            </th>
+                            <th className="text-right px-3 py-2 whitespace-nowrap">
+                              Rank
+                            </th>
+                          </Fragment>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.teams.map((r, idx) => {
+                        const isTop3 = r.rank >= 1 && r.rank <= 3;
+                        return (
+                          <tr
+                            key={`${r.bib}-${r.name}`}
+                            className={`border-b border-white/5 last:border-b-0 ${
+                              isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
+                            } transition-colors`}
+                          >
+                            <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
+                              {idx + 1}
+                            </td>
+                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                              {r.name}
+                            </td>
+                            <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
+                            {overallCategories.map((cat) => (
+                              <Fragment key={cat.code}>
+                                <td className="px-3 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap border-l border-white/5">
+                                  {r[cat.scoreKey] || 0}
+                                </td>
+                                <td className="px-3 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                                  {r[cat.rankKey] || "-"}
+                                </td>
+                              </Fragment>
+                            ))}
+                            <td className="px-4 py-3 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap border-l border-white/10">
+                              {r.totalScore ?? 0}
+                            </td>
+                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                              <span
+                                className={`font-bold tabular-nums ${
+                                  isTop3 ? "text-yellow-300" : "text-white"
+                                }`}
+                              >
+                                {r.rank ?? "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <>
                   {/* Header row (desktop) */}
@@ -703,6 +1128,7 @@ export default function LiveEventDetail() {
                     {results.teams.map((r) => {
                       const rank = r.rank;
                       const isTop3 = rank >= 1 && rank <= 3;
+                      const isProvisional = rank != null && !r.rankIsFinal;
                       return (
                         <motion.div
                           key={`${r.bib}-${r.name}`}
@@ -729,7 +1155,17 @@ export default function LiveEventDetail() {
                           </div>
 
                           <div className="min-w-0">
-                            <p className="font-bold text-base sm:text-xl text-white truncate">{r.name}</p>
+                            <p className="font-bold text-base sm:text-xl text-white truncate flex items-center gap-2">
+                              <span className="truncate">{r.name}</span>
+                              {isProvisional && (
+                                <span
+                                  className="shrink-0 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10"
+                                  title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
+                                >
+                                  Live
+                                </span>
+                              )}
+                            </p>
                             <p className="sm:hidden text-[11px] text-white/40">BIB {r.bib}</p>
                           </div>
 
