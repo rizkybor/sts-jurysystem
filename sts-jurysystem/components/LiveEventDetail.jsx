@@ -157,6 +157,11 @@ export default function LiveEventDetail() {
           categoriesInitial: data.categoriesInitial || [],
           categoriesDivision: data.categoriesDivision || [],
           categoriesRace: data.categoriesRace || [],
+          // Status Official/Unofficial diset operator di sts-timingsystem
+          // (event:set-official -> eventsCollection.resultsOfficial) —
+          // sama field & makna dengan stempel OFFICIAL/UNOFFICIAL di PDF
+          // Print Result timing system.
+          isOfficial: !!data.resultsOfficial,
         };
 
         setEvent(normalized);
@@ -711,7 +716,21 @@ export default function LiveEventDetail() {
 
             {/* Updated-at info */}
             <div className="flex items-center justify-between mb-3 px-1">
-              <h2 className="text-lg sm:text-xl font-bold text-white/90">{activeTabLabel}</h2>
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-lg sm:text-xl font-bold text-white/90">{activeTabLabel}</h2>
+                {activeCategory !== "OVERALL" && (
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
+                      event.isOfficial
+                        ? "border-emerald-400/60 text-emerald-300 bg-emerald-500/10"
+                        : "border-red-400/60 text-red-300 bg-red-500/10"
+                    }`}
+                    title="Status hasil ditetapkan operator di timing system"
+                  >
+                    {event.isOfficial ? "Official" : "Unofficial"}
+                  </span>
+                )}
+              </div>
               {results.updatedAt && (
                 <p className="text-[11px] sm:text-xs text-white/40">
                   Diperbarui {new Date(results.updatedAt).toLocaleTimeString("id-ID")}
