@@ -9,6 +9,7 @@ import useJudgeAssignments from "@/hooks/judges/useJudgeAssignments";
 import useEventDetail from "@/hooks/judges/useEventDetail";
 import useJudgeTeams from "@/hooks/judges/useJudgeTeams";
 import useJudgeHistory from "@/hooks/judges/useJudgeHistory";
+import useRaceSettings from "@/hooks/judges/useRaceSettings";
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
@@ -50,9 +51,20 @@ const getH2HAssignedTypes = (list, evId) => {
   return types;
 };
 
-// Sama dgn DEFAULT_H2H_PENALTIES di timing system (RaceSettings.vue).
-const PENALTY_CHOICES = [0, 5, 10, 50];
+// Fallback kalau event belum pernah dikustomisasi lewat Race Settings —
+// sama dgn DEFAULT_H2H_PENALTIES di timing system (RaceSettings.vue).
+const DEFAULT_PENALTY_CHOICES = [0, 5, 10, 50];
 const CORNER_KEYS = ["r1", "r2", "l1", "l2"];
+
+// {label, value}[] (lihat editRaceSettings.js cleanPenaltyList()) -> angka
+// murni buat JudgePenaltyGrid.
+function extractPenaltyValues(list) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const values = list
+    .map((p) => Number(p?.value))
+    .filter((v) => Number.isFinite(v));
+  return values.length ? values : null;
+}
 
 const JudgesHeadToHeadPage = () => {
   const searchParams = useSearchParams();
@@ -64,6 +76,7 @@ const JudgesHeadToHeadPage = () => {
   const { assignments } = useJudgeAssignments();
   const { eventDetail, loadingEvent, combinedCategories } =
     useEventDetail(eventId);
+  const { settings: raceSettings } = useRaceSettings(eventId);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
@@ -78,6 +91,24 @@ const JudgesHeadToHeadPage = () => {
     [assignments, eventId]
   );
   const isCornerType = CORNER_KEYS.includes(selectedType);
+
+  // Pilihan nilai penalty Start/Cut Line/Finish ikut kustomisasi Race
+  // Settings event ini (kalau ada) — bukan daftar hardcode, supaya tidak
+  // ada nilai yang diam-diam ditolak timing system karena tidak termasuk
+  // daftar yang benar-benar dikonfigurasi untuk event tsb.
+  const penaltyChoicesByType = useMemo(() => {
+    const h2h = raceSettings?.h2h || {};
+    return {
+      start:
+        extractPenaltyValues(h2h.startPenalties) || DEFAULT_PENALTY_CHOICES,
+      cl:
+        extractPenaltyValues(h2h.cutLinePenalties) || DEFAULT_PENALTY_CHOICES,
+      finish:
+        extractPenaltyValues(h2h.finishPenalties) || DEFAULT_PENALTY_CHOICES,
+    };
+  }, [raceSettings]);
+  const activePenaltyChoices =
+    penaltyChoicesByType[selectedType] || DEFAULT_PENALTY_CHOICES;
 
   const { teams, loadingTeams, resetTeams } = useJudgeTeams({
     eventId,
@@ -426,7 +457,7 @@ const JudgesHeadToHeadPage = () => {
 
               {selectedType && !isCornerType && selectedType !== "other" && (
                 <JudgePenaltyGrid
-                  values={PENALTY_CHOICES}
+                  values={activePenaltyChoices}
                   selected={selectedPenalty}
                   onChange={setSelectedPenalty}
                 />
@@ -484,9 +515,7 @@ const JudgesHeadToHeadPage = () => {
                 })
               : "-";
             const typeLabel =
-              getH2HAssignedTypes(assignments, eventId).find(
-                (t) => t.key === item.position
-              )?.label ||
+              assignedTypes.find((t) => t.key === item.position)?.label ||
               item.position?.toUpperCase() ||
               "H2H";
             const valueLabel = item.remarks

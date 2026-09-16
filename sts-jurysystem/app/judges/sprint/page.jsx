@@ -9,6 +9,7 @@ import useJudgeAssignments from "@/hooks/judges/useJudgeAssignments";
 import useEventDetail from "@/hooks/judges/useEventDetail";
 import useJudgeTeams from "@/hooks/judges/useJudgeTeams";
 import useJudgeHistory from "@/hooks/judges/useJudgeHistory";
+import useRaceSettings from "@/hooks/judges/useRaceSettings";
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
@@ -24,7 +25,28 @@ import JudgeHistoryModal, {
   penaltyBadgeColor,
 } from "@/components/judges/JudgeHistoryModal";
 
-const PENALTIES = [0, 10, 50];
+// Fallback kalau event belum pernah dikustomisasi lewat Race Settings —
+// sesuai Peraturan Kompetisi Arung Jeram FAJI Pasal 37 & 43 (lihat
+// DEFAULT_START_PENALTIES/DEFAULT_FINISH_PENALTIES di
+// editRaceSettings.js): Pen. Start & Pen. Finish itu DUA daftar
+// independen, bukan satu daftar gabungan — PS cuma 0/50 (kesalahan
+// start), PF cuma 0/10 (pelanggaran elektronik finish). Halaman ini dulu
+// pakai satu PENALTIES=[0,10,50] gabungan utk keduanya, jadi juri yang
+// ditugaskan Start bisa pilih nilai "10" yang sebenarnya cuma valid utk
+// Finish (dan sebaliknya "50" utk Finish) — nilai itu lolos di sini tapi
+// diam-diam ditolak validasi timing system.
+const DEFAULT_START_PENALTIES = [0, 50];
+const DEFAULT_FINISH_PENALTIES = [0, 10];
+
+// {label, value}[] (lihat editRaceSettings.js cleanPenaltyList()) -> angka
+// murni buat JudgePenaltyGrid.
+function extractPenaltyValues(list) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const values = list
+    .map((p) => Number(p?.value))
+    .filter((v) => Number.isFinite(v));
+  return values.length ? values : null;
+}
 
 function getSprintPositionFromAssignments(list, evId) {
   if (!Array.isArray(list) || !evId) return "";
@@ -47,6 +69,7 @@ const JudgesSprintPage = () => {
   const { assignments } = useJudgeAssignments();
   const { eventDetail, loadingEvent, combinedCategories } =
     useEventDetail(eventId);
+  const { settings: raceSettings } = useRaceSettings(eventId);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
@@ -57,6 +80,21 @@ const JudgesSprintPage = () => {
     () => getSprintPositionFromAssignments(assignments, eventId),
     [assignments, eventId]
   );
+
+  // Pilihan nilai penalty Start vs Finish ikut kustomisasi Race Settings
+  // event ini (kalau ada) dan TIDAK digabung — supaya juri Start tidak
+  // pernah bisa memilih nilai yang cuma valid utk Finish (atau sebaliknya)
+  // dan diam-diam ditolak timing system.
+  const penalties = useMemo(() => {
+    const sprint = raceSettings?.sprint || {};
+    if (assignedPosition === "Finish") {
+      return (
+        extractPenaltyValues(sprint.finishPenalties) ||
+        DEFAULT_FINISH_PENALTIES
+      );
+    }
+    return extractPenaltyValues(sprint.startPenalties) || DEFAULT_START_PENALTIES;
+  }, [assignedPosition, raceSettings]);
 
   const { teams, loadingTeams, refreshTeams, resetTeams } = useJudgeTeams({
     eventId,
@@ -231,7 +269,7 @@ const JudgesSprintPage = () => {
 
             <JudgeSectionCard step={2} title="Nilai Penalty">
               <JudgePenaltyGrid
-                values={PENALTIES}
+                values={penalties}
                 selected={selectedPenalty}
                 onChange={setSelectedPenalty}
                 columns={3}

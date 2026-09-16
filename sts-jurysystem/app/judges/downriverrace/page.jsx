@@ -9,6 +9,7 @@ import useJudgeAssignments from "@/hooks/judges/useJudgeAssignments";
 import useEventDetail from "@/hooks/judges/useEventDetail";
 import useJudgeTeams from "@/hooks/judges/useJudgeTeams";
 import useJudgeHistory from "@/hooks/judges/useJudgeHistory";
+import useRaceSettings from "@/hooks/judges/useRaceSettings";
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
@@ -24,8 +25,21 @@ import JudgeHistoryModal, {
   penaltyBadgeColor,
 } from "@/components/judges/JudgeHistoryModal";
 
-const ALL_PENALTIES = [0, 5, 10, -10, 50];
-const START_FINISH_PENALTIES = [0, 10, 50];
+// Fallback kalau event belum pernah dikustomisasi lewat Race Settings —
+// sama dgn DEFAULT_DRR_SECTION_PENALTIES / DEFAULT_DRR_START_PENALTIES /
+// DEFAULT_DRR_FINISH_PENALTIES di timing system (editRaceSettings.js).
+const DEFAULT_SECTION_PENALTIES = [0, 5, 10, 50];
+const DEFAULT_START_FINISH_PENALTIES = [0, 10, 50];
+
+// {label, value}[] (lihat editRaceSettings.js cleanPenaltyList()) -> angka
+// murni buat JudgePenaltyGrid.
+function extractPenaltyValues(list) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const values = list
+    .map((p) => Number(p?.value))
+    .filter((v) => Number.isFinite(v));
+  return values.length ? values : null;
+}
 
 function getDRRPositionsFromAssignments(list, evId) {
   if (!Array.isArray(list) || !evId) return [];
@@ -53,6 +67,7 @@ const JudgesDRRPage = () => {
   const { assignments } = useJudgeAssignments();
   const { eventDetail, loadingEvent, combinedCategories } =
     useEventDetail(eventId);
+  const { settings: raceSettings } = useRaceSettings(eventId);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
@@ -65,12 +80,30 @@ const JudgesDRRPage = () => {
     [assignments, eventId]
   );
 
+  // Pilihan nilai penalty Start/Finish/Section ikut kustomisasi Race
+  // Settings event ini (kalau ada) — bukan daftar hardcode, supaya tidak
+  // ada nilai yang diam-diam ditolak timing system karena tidak termasuk
+  // daftar yang benar-benar dikonfigurasi untuk event tsb.
   const displayedPenalties = useMemo(() => {
     if (!selectedSection) return [];
+    const drr = raceSettings?.drr || {};
     const s = selectedSection.trim().toLowerCase();
-    if (s === "start" || s === "finish") return START_FINISH_PENALTIES;
-    return ALL_PENALTIES;
-  }, [selectedSection]);
+    if (s === "start") {
+      return (
+        extractPenaltyValues(drr.startPenalties) ||
+        DEFAULT_START_FINISH_PENALTIES
+      );
+    }
+    if (s === "finish") {
+      return (
+        extractPenaltyValues(drr.finishPenalties) ||
+        DEFAULT_START_FINISH_PENALTIES
+      );
+    }
+    return (
+      extractPenaltyValues(drr.sectionPenalties) || DEFAULT_SECTION_PENALTIES
+    );
+  }, [selectedSection, raceSettings]);
 
   const { teams, loadingTeams, refreshTeams, resetTeams } = useJudgeTeams({
     eventId,
@@ -95,7 +128,7 @@ const JudgesDRRPage = () => {
 
   const selectedTeamData = getSelectedTeamData(teams, selectedTeam);
 
-  const sendRealtimeMessage = (operationType, sectionNumber) => {
+  const sendRealtimeMessage = (operationType) => {
     const socket = socketRef.current;
     if (!socket) return;
     const teamName = selectedTeamData?.nameTeam || "Unknown Team";
@@ -207,7 +240,7 @@ const JudgesDRRPage = () => {
           text: `${selectedSection}: Penalty ${selectedPenalty} berhasil disimpan!`,
           type: "success",
         });
-        sendRealtimeMessage(operationType, sectionNumber);
+        sendRealtimeMessage(operationType);
         await refreshTeams();
         setSelectedPenalty(null);
       } else {
