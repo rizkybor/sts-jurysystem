@@ -9,6 +9,7 @@ import useJudgeAssignments from "@/hooks/judges/useJudgeAssignments";
 import useEventDetail from "@/hooks/judges/useEventDetail";
 import useJudgeTeams from "@/hooks/judges/useJudgeTeams";
 import useJudgeHistory from "@/hooks/judges/useJudgeHistory";
+import useRaceSettings from "@/hooks/judges/useRaceSettings";
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
@@ -24,12 +25,25 @@ import JudgeHistoryModal, {
   penaltyBadgeColor,
 } from "@/components/judges/JudgeHistoryModal";
 
-const START_FINISH_PENALTIES = [0, 10, 50];
-const GATE_PENALTIES = [0, 5, 50];
+// Fallback kalau event belum pernah dikustomisasi lewat Race Settings —
+// sama dgn DEFAULT_SLALOM_START_PENALTIES / DEFAULT_SLALOM_FINISH_PENALTIES
+// / DEFAULT_SLALOM_GATE_PENALTIES di timing system (editRaceSettings.js).
+const DEFAULT_START_FINISH_PENALTIES = [0, 10, 50];
+const DEFAULT_GATE_PENALTIES = [0, 5, 50];
 const RUNS = [
   { label: "Run 1", value: 1 },
   { label: "Run 2", value: 2 },
 ];
+
+// {label, value}[] (lihat editRaceSettings.js cleanPenaltyList()) -> angka
+// murni buat JudgePenaltyGrid.
+function extractPenaltyValues(list) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const values = list
+    .map((p) => Number(p?.value))
+    .filter((v) => Number.isFinite(v));
+  return values.length ? values : null;
+}
 
 const getSlalomPositionsFromAssignments = (list, evId) => {
   if (!Array.isArray(list) || !evId) return [];
@@ -57,6 +71,7 @@ const JudgesSlalomPage = () => {
   const { assignments } = useJudgeAssignments();
   const { eventDetail, loadingEvent, combinedCategories } =
     useEventDetail(eventId);
+  const { settings: raceSettings } = useRaceSettings(eventId);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
@@ -70,12 +85,29 @@ const JudgesSlalomPage = () => {
     [assignments, eventId]
   );
 
+  // Pilihan nilai penalty Start/Finish/Gate ikut kustomisasi Race Settings
+  // event ini (kalau ada) — bukan daftar hardcode, supaya tidak ada nilai
+  // yang diam-diam ditolak timing system karena tidak termasuk daftar yang
+  // benar-benar dikonfigurasi untuk event tsb.
   const penalties = useMemo(() => {
-    if (selectedGate === "Start" || selectedGate === "Finish")
-      return START_FINISH_PENALTIES;
-    if (selectedGate.startsWith("Gate")) return GATE_PENALTIES;
+    const slalom = raceSettings?.slalom || {};
+    if (selectedGate === "Start") {
+      return (
+        extractPenaltyValues(slalom.startPenalties) ||
+        DEFAULT_START_FINISH_PENALTIES
+      );
+    }
+    if (selectedGate === "Finish") {
+      return (
+        extractPenaltyValues(slalom.finishPenalties) ||
+        DEFAULT_START_FINISH_PENALTIES
+      );
+    }
+    if (selectedGate.startsWith("Gate")) {
+      return extractPenaltyValues(slalom.gatePenalties) || DEFAULT_GATE_PENALTIES;
+    }
     return [];
-  }, [selectedGate]);
+  }, [selectedGate, raceSettings]);
 
   const { teams, loadingTeams, refreshTeams, resetTeams } = useJudgeTeams({
     eventId,
@@ -109,11 +141,12 @@ const JudgesSlalomPage = () => {
     const socket = socketRef.current;
     if (!socket) return;
     const teamName = selectedTeamData?.nameTeam || "Unknown Team";
+    const actualTeamId = selectedTeamData?.teamId || selectedTeam;
 
     let messageData = {
       senderId: socket.id,
       from: "Judges Dashboard - SLALOM",
-      teamId: selectedTeam,
+      teamId: actualTeamId,
       teamName,
       runNumber,
       penalty: Number(selectedPenalty),
