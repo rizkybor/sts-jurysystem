@@ -799,14 +799,20 @@ export const POST = async (req) => {
 
     // Persist update to TeamsRegistered — most categories store their teams
     // under an eventName equal to normalizedType, but H2H's teams are
-    // registered under the long form "HEADTOHEAD" (see judge-tasks route
-    // and app/judges/headtohead/page.jsx), so it needs its own mapping or
-    // this lookup 404s on every H2H submission.
-    const TEAMS_EVENTNAME_BY_TYPE = { H2H: "HEADTOHEAD" };
-    const teamsEventName = TEAMS_EVENTNAME_BY_TYPE[normalizedType] || normalizedType;
+    // registered under "HEAD2HEAD" in sts-timingsystem's
+    // teamsRegisteredCollection (registration writes "HEAD2HEAD", while
+    // race results/judge pages use "HEADTOHEAD" — see the identical
+    // inconsistency documented at views/TeamDetail/index.vue:
+    // CATEGORY_KEY_ALIASES in sts-timingsystem). Query both spellings so
+    // this lookup doesn't 404 on every H2H submission regardless of which
+    // one the registration actually used.
+    const TEAMS_EVENTNAME_BY_TYPE = { H2H: ["HEADTOHEAD", "HEAD2HEAD"] };
+    const teamsEventNameFilter = TEAMS_EVENTNAME_BY_TYPE[normalizedType]
+      ? { $in: TEAMS_EVENTNAME_BY_TYPE[normalizedType] }
+      : normalizedType;
 
     const updatedTeam = await TeamsRegistered.findOneAndUpdate(
-      { eventId, eventName: teamsEventName, "teams.teamId": team },
+      { eventId, eventName: teamsEventNameFilter, "teams.teamId": team },
       updateQuery,
       { new: true }
     );

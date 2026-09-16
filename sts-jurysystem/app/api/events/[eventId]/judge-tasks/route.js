@@ -24,12 +24,29 @@ export async function GET(req, context) {
       )
     }
 
+    // teamsRegisteredCollection kadang memakai ejaan berbeda untuk
+    // kategori yang sama — Head to Head disimpan sebagai "HEAD2HEAD" saat
+    // registrasi tim di sts-timingsystem, walau halaman judge di sini
+    // (dan hasil race) memakai "HEADTOHEAD" (lihat
+    // views/TeamDetail/index.vue:CATEGORY_KEY_ALIASES di sts-timingsystem
+    // — komentarnya menjelaskan inkonsistensi yang sama). Tanpa alias ini,
+    // query exact-match selalu 404 dan dropdown Team di halaman H2H selalu
+    // kosong.
+    const EVENT_NAME_ALIASES = {
+      HEADTOHEAD: ['HEADTOHEAD', 'HEAD2HEAD'],
+      HEAD2HEAD: ['HEADTOHEAD', 'HEAD2HEAD'],
+    }
+    const eventNameUpper = String(eventName).toUpperCase()
+    const eventNameQuery = EVENT_NAME_ALIASES[eventNameUpper]
+      ? { $in: EVENT_NAME_ALIASES[eventNameUpper] }
+      : eventName
+
     const docs = await TeamsRegistered.find({
       eventId,
       initialId,
       divisionId,
       raceId,
-      eventName,
+      eventName: eventNameQuery,
     }).lean()
 
     if (!docs || docs.length === 0) {
