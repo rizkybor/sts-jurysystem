@@ -1,23 +1,35 @@
-export const dynamic = 'force-dynamic';
+import Link from 'next/link'
+import MatchCard from '@/components/MatchCard'
+import connectDB from '@/config/database'
+import Event from '@/models/Event'
 
-import Link from 'next/link';
-import MatchCard from '@/components/MatchCard';
-import { fetchMatches } from '@/utils/requestMatches';
-
+// Query DB langsung (server component) — sebelumnya lewat fetchMatches(),
+// yang self-fetch ke `${NEXT_PUBLIC_API_DOMAIN}/matches` (hardcode
+// "http://localhost:3000/api" di .env). Itu penyebab error build yang
+// selalu muncul di tiap `next build` ("Route / couldn't be rendered
+// statically ... fetch http://localhost:3000/api/matches") — dan di
+// production, kalau NEXT_PUBLIC_API_DOMAIN tidak di-override ke domain
+// asli, homepage akan gagal total karena serverless function tidak bisa
+// memanggil "localhost:3000" dirinya sendiri. Query langsung ke Mongo
+// (pola sama dgn app/api/matches/route.js) menghilangkan ketergantungan
+// itu sepenuhnya.
 const HomeMatches = async () => {
-  const datas = await fetchMatches();
-
-  // Jika events tersedia, urutkan dari terbaru berdasarkan tanggal mulai (startDateEvent)
-  const recentMatches = datas?.events
-    ? [...datas.events]
-        .filter((ev) => ev.startDateEvent) // hanya yang punya tanggal
-        .sort(
-          (a, b) =>
-            new Date(b.startDateEvent).getTime() -
-            new Date(a.startDateEvent).getTime()
-        )
-        .slice(0, 3)
-    : [];
+  let recentMatches = []
+  try {
+    await connectDB()
+    // "New Events" / "Fresh Off The Roster" = event yang baru DITAMBAHKAN,
+    // jadi diurutkan dari createdAt terbaru — bukan startDateEvent
+    // terjauh di masa depan (sort lama: descending by startDateEvent
+    // malah menampilkan event yang jadwalnya paling jauh, bukan yang
+    // paling baru dibuat).
+    recentMatches = await Event.find({})
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .lean()
+  } catch (err) {
+    console.error('❌ [HomeMatches] Failed to load recent events:', err)
+    recentMatches = []
+  }
 
   return (
     <>
@@ -39,7 +51,7 @@ const HomeMatches = async () => {
               </p>
             ) : (
               recentMatches.map((match) => (
-                <MatchCard key={match._id} match={match} />
+                <MatchCard key={String(match._id)} match={match} />
               ))
             )}
           </div>
@@ -58,7 +70,7 @@ const HomeMatches = async () => {
         </Link>
       </section>
     </>
-  );
-};
+  )
+}
 
-export default HomeMatches;
+export default HomeMatches
