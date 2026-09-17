@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import useJudgeToasts from "@/hooks/judges/useJudgeToasts";
 import useJudgeSocket from "@/hooks/judges/useJudgeSocket";
@@ -95,6 +95,40 @@ const JudgesSprintPage = () => {
     }
     return extractPenaltyValues(sprint.startPenalties) || DEFAULT_START_PENALTIES;
   }, [assignedPosition, raceSettings]);
+
+  // Relay broadcast "sprint:team-started" dari sts-timingsystem (dikirim
+  // saat operator mengisi Start Time per baris, lihat updateTime() di
+  // SprintRace.vue) ke /api/judges/sprint/team-started supaya tersimpan
+  // dan bisa dibaca validasi submit penalty di backend. Hanya browser
+  // juri yang sedang online saat event ini terkirim yang bisa
+  // meneruskannya — keterbatasan yang disadari & diterima.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "sprint:team-started") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+      fetch("/api/judges/sprint/team-started", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: msg.eventId,
+          initialId: msg.initialId,
+          divisionId: msg.divisionId,
+          raceId: msg.raceId,
+          teamId: msg.teamId,
+          bibTeam: msg.bibTeam,
+          startTime: msg.startTime,
+        }),
+      }).catch((err) => {
+        console.error("❌ Gagal relay sprint:team-started:", err);
+      });
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, [eventId, socketRef]);
 
   const { teams, loadingTeams, refreshTeams, resetTeams } = useJudgeTeams({
     eventId,
