@@ -54,9 +54,14 @@ export const GET = async (request) => {
     // 🧱 bangun filter pencarian
     const filter = {};
 
-    // cari berdasarkan nama event atau lokasi
+    // cari berdasarkan nama event atau lokasi — escape dulu karakter
+    // spesial regex di `q` (input user mentah). Tanpa ini, `q=(` bikin
+    // RegExp() throw (jadi 500), dan pattern seperti `q=(a+)+$` bisa
+    // memicu catastrophic backtracking (ReDoS) yang membebani setiap
+    // dokumen yang dicek.
     if (q) {
-      const rx = new RegExp(q, "i");
+      const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(escapedQ, "i");
       filter.$or = [
         { eventName: rx },
         { riverName: rx },

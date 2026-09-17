@@ -151,7 +151,14 @@ export default function LiveEventsBrowser() {
       ? events.length < total
       : lastBatchCountRef.current === PAGE_SIZE;
 
-  const liveCount = events.filter(isLiveEvent).length;
+  // Memoized — events.filter() + isLiveEvent()'s Intl.DateTimeFormat/Date
+  // work re-scanned the whole (ever-growing, via "Load More") events list
+  // on every render otherwise, including renders unrelated to `events`
+  // (e.g. toggling the filter sidebar, typing in search).
+  const liveCount = useMemo(
+    () => events.filter(isLiveEvent).length,
+    [events]
+  );
 
   const filteredEvents = useMemo(() => {
     const q = search.trim().toLowerCase();

@@ -56,9 +56,9 @@ export const metadata = {
     siteName: 'STiming Scoring',
     images: [
       {
-        url: '/assets/icon/android-chrome-512x512.png',
-        width: 1200,
-        height: 630,
+        url: '/assets/images/sts-logo-primary.png',
+        width: 259,
+        height: 259,
         alt: 'STiming Scoring',
       },
     ],
@@ -72,7 +72,7 @@ export const metadata = {
     title: 'STiming Scoring | Professional Event Timing System',
     description:
       'Akurat, real-time, dan ramah lingkungan — solusi terbaik untuk sistem pencatatan waktu event Anda.',
-    images: ['/assets/icon/android-chrome-512x512.png'],
+    images: ['/assets/images/sts-logo-primary.png'],
     creator: '@sustainabletiming',
   },
 
