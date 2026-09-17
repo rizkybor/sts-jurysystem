@@ -421,10 +421,20 @@ export const POST = async (req) => {
         );
       }
 
+      // BUG FIX: filter ini sebelumnya cuma eventId+eventType+team, tanpa
+      // raceId/divisionId — padahal satu team bisa tampil di lebih dari
+      // satu race/heat Sprint (mis. kualifikasi lalu final) dengan team
+      // _id yang sama. Akibatnya begitu team itu selesai Start+Finish di
+      // race pertama, submit Start untuk race BERIKUTNYA langsung ditolak
+      // "Team [id] sudah memiliki Start dan Finish" walau race-nya beda.
+      // JudgeReportDetail sudah menyimpan raceId/divisionId tiap record
+      // (lihat detailPayload di bawah) — cukup ikutkan di filter di sini.
       const existing = await JudgeReportDetail.find({
         eventId,
         eventType: "SPRINT",
         team,
+        raceId,
+        divisionId,
       }).lean();
 
       const hasStart = existing.some((r) => r.position === "Start");
