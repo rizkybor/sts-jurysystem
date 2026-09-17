@@ -11,6 +11,14 @@ export const metadata = {
       'Temukan event Whitewater Rafting Championship, jelajahi hasil pertandingan, dan pantau skor live secara real-time.',
     url: '/',
     type: 'website',
+    images: [
+      {
+        url: '/assets/images/sts-logo-primary.png',
+        width: 259,
+        height: 259,
+        alt: 'STiming Scoring',
+      },
+    ],
   },
   alternates: {
     canonical: '/',
