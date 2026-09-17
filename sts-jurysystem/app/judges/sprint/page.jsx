@@ -66,7 +66,7 @@ const JudgesSprintPage = () => {
 
   const { toasts, pushToast, removeToast } = useJudgeToasts();
   const socketRef = useJudgeSocket(pushToast);
-  const { assignments } = useJudgeAssignments();
+  const { user, assignments } = useJudgeAssignments();
   const { eventDetail, loadingEvent, combinedCategories } =
     useEventDetail(eventId);
   const { settings: raceSettings } = useRaceSettings(eventId);
@@ -95,6 +95,27 @@ const JudgesSprintPage = () => {
     }
     return extractPenaltyValues(sprint.startPenalties) || DEFAULT_START_PENALTIES;
   }, [assignedPosition, raceSettings]);
+
+  // Lookup label kategori ("Initial - Division - Race") dari kombinasi
+  // initialId|divisionId|raceId, dipakai utk menampilkan kategori per-entry
+  // riwayat penalty (JudgeReportDetail cuma simpan ID, bukan nama).
+  const categoryLabelByKey = useMemo(() => {
+    const map = {};
+    combinedCategories.forEach((c) => {
+      map[c.value] = c.label;
+    });
+    return map;
+  }, [combinedCategories]);
+
+  const categoryLabelForHistoryItem = useCallback(
+    (item) => {
+      const key = `${item?.initialId || ""}|${item?.divisionId || ""}|${
+        item?.raceId || ""
+      }`;
+      return categoryLabelByKey[key] || null;
+    },
+    [categoryLabelByKey]
+  );
 
   // Relay broadcast "sprint:team-started" dari sts-timingsystem (dikirim
   // saat operator mengisi Start Time per baris, lihat updateTime() di
@@ -175,6 +196,7 @@ const JudgesSprintPage = () => {
         teamId: selectedTeam,
         type: assignedPosition,
         value: selectedPenalty,
+        judge: user?.username || user?.name || "",
         eventId,
         ts: new Date().toISOString(),
       },
@@ -396,6 +418,11 @@ const JudgesSprintPage = () => {
                     <div className="text-gray-600 text-sm">
                       {item?.teamInfo?.nameTeam || "Team"} BIB{" "}
                       {item?.teamInfo?.bibTeam || "-"} • Penalty: {p} points
+                    </div>
+                  )}
+                  {categoryLabelForHistoryItem(item) && (
+                    <div className="text-xs text-gray-500">
+                      Kategori: {categoryLabelForHistoryItem(item)}
                     </div>
                   )}
                   <small className="text-gray-500">

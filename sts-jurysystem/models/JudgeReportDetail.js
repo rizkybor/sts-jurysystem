@@ -28,6 +28,7 @@ const JudgeReportDetailSchema = new mongoose.Schema(
     penalty: { type: Number, default: 0 },
     judge: { type: String },
     remarks: { type: String },
+    initialId: { type: String },
     divisionId: { type: String },
     raceId: { type: String },
 
