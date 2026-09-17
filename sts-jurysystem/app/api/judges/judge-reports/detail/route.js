@@ -407,6 +407,61 @@ export const POST = async (req) => {
     let message = "";
     let updateQuery = { $set: {} };
 
+    // Catat percobaan submit yang DITOLAK validasi ke JudgeReportDetail
+    // (status: "failed") supaya tetap muncul di Riwayat lengkap dengan
+    // info juri yang mencoba — bukan cuma toast error yang lalu hilang.
+    // Best-effort: kegagalan mencatat log tidak boleh mengganggu response
+    // error yang sudah mau dikirim ke client.
+    const pushMapForLog = {
+      SPRINT: "reportSprint",
+      SLALOM: "reportSlalom",
+      H2H: "reportHeadToHead",
+      DRR: "reportDrr",
+      RX: "reportRaftingCross",
+    };
+    async function recordFailedAttempt(reason) {
+      try {
+        let jr = await JudgeReport.findOne({
+          eventId,
+          juryId: sessionUser.userId,
+        });
+        if (!jr) {
+          jr = await JudgeReport.create({
+            eventId,
+            juryId: sessionUser.userId,
+            createdBy: username,
+            reportSprint: [],
+            reportHeadToHead: [],
+            reportSlalom: [],
+            reportDrr: [],
+            reportRaftingCross: [],
+          });
+        }
+        const stamp = buildCreatedAtMeta(tz);
+        const failDetail = await JudgeReportDetail.create({
+          eventId,
+          eventType: normalizedType,
+          team,
+          position,
+          penalty: Number.isFinite(Number(penalty)) ? Number(penalty) : 0,
+          judge: username,
+          divisionId,
+          raceId,
+          status: "failed",
+          failReason: reason,
+          createdAt: stamp.createdAt,
+          createdAtLocal: stamp.createdAtLocal,
+          createdAtTz: stamp.createdAtTz,
+        });
+        const arrayField = pushMapForLog[normalizedType] || "reportSprint";
+        if (!jr[arrayField]) jr[arrayField] = [];
+        jr[arrayField].push(failDetail._id);
+        await jr.save();
+      } catch (logErr) {
+        console.error("⚠️ Gagal mencatat percobaan submit gagal:", logErr);
+      }
+    }
+
     /* =========================
        STEP 0: VALIDASI KHUSUS
     ==========================*/
@@ -421,6 +476,31 @@ export const POST = async (req) => {
         );
       }
 
+      // VALIDASI BARU: team harus sudah benar-benar Start (dicatat operator
+      // timing di TeamsRegistered.teams[].result[0].startTime) sebelum juri
+      // boleh menyimpan penalty Start ATAUPUN Finish untuk team tsb — cegah
+      // salah pilih team dari dropdown (mis. team yang belum dipanggil/
+      // belum jalan) kena penalty. `startTime` diisi kosong ("") sejak
+      // registrasi (lihat normalizeTeamForSprint() di SprintRace.vue) dan
+      // baru terisi begitu operator mencatat waktu start sungguhan.
+      const teamDoc = await TeamsRegistered.findOne(
+        { eventId, eventName: "SPRINT", raceId, divisionId, "teams.teamId": team },
+        { "teams.$": 1 }
+      ).lean();
+      const teamResult = teamDoc?.teams?.[0]?.result?.[0];
+      const hasStarted = !!(
+        teamResult?.startTime && String(teamResult.startTime).trim()
+      );
+
+      if (!hasStarted) {
+        const reason = `Team ${team} belum melakukan Start — penalty ${position} tidak dapat disimpan.`;
+        await recordFailedAttempt(reason);
+        return new Response(
+          JSON.stringify({ success: false, message: reason }),
+          { status: 400 }
+        );
+      }
+
       // BUG FIX: filter ini sebelumnya cuma eventId+eventType+team, tanpa
       // raceId/divisionId — padahal satu team bisa tampil di lebih dari
       // satu race/heat Sprint (mis. kualifikasi lalu final) dengan team
@@ -429,23 +509,26 @@ export const POST = async (req) => {
       // "Team [id] sudah memiliki Start dan Finish" walau race-nya beda.
       // JudgeReportDetail sudah menyimpan raceId/divisionId tiap record
       // (lihat detailPayload di bawah) — cukup ikutkan di filter di sini.
+      // status: != "failed" — percobaan yang sudah DITOLAK sebelumnya
+      // (dicatat via recordFailedAttempt) tidak boleh ikut dihitung
+      // sebagai "sudah punya Start/Finish".
       const existing = await JudgeReportDetail.find({
         eventId,
         eventType: "SPRINT",
         team,
         raceId,
         divisionId,
+        status: { $ne: "failed" },
       }).lean();
 
       const hasStart = existing.some((r) => r.position === "Start");
       const hasFinish = existing.some((r) => r.position === "Finish");
 
       if (hasStart && hasFinish) {
+        const reason = `Team ${team} sudah memiliki Start dan Finish.`;
+        await recordFailedAttempt(reason);
         return new Response(
-          JSON.stringify({
-            success: false,
-            message: `Team ${team} sudah memiliki Start dan Finish.`,
-          }),
+          JSON.stringify({ success: false, message: reason }),
           { status: 400 }
         );
       }
@@ -453,11 +536,10 @@ export const POST = async (req) => {
         (position === "Start" && hasStart) ||
         (position === "Finish" && hasFinish)
       ) {
+        const reason = `Team ${team} sudah memiliki posisi ${position}.`;
+        await recordFailedAttempt(reason);
         return new Response(
-          JSON.stringify({
-            success: false,
-            message: `Team ${team} sudah memiliki posisi ${position}.`,
-          }),
+          JSON.stringify({ success: false, message: reason }),
           { status: 400 }
         );
       }

@@ -31,6 +31,13 @@ const JudgeReportDetailSchema = new mongoose.Schema(
     divisionId: { type: String },
     raceId: { type: String },
 
+    // Status submit — "failed" dipakai utk mencatat percobaan submit yang
+    // DITOLAK validasi (mis. team belum Start, atau sudah punya Start+Finish)
+    // supaya tetap terlihat di Riwayat lengkap dgn info juri yang mencoba,
+    // bukan cuma hilang sbg toast error sesaat.
+    status: { type: String, enum: ["success", "failed"], default: "success" },
+    failReason: { type: String },
+
     // timestamp metadata
     createdAt: { type: Date, default: Date.now },
     createdAtLocal: { type: String },
