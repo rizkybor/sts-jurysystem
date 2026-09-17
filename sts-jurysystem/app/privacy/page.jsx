@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPageLayout title="Kebijakan Privasi" updatedAt="15 Juli 2026">
+    <LegalPageLayout title="Kebijakan Privasi" updatedAt="17 September 2026">
       <LegalSection>
         <p>
           Kebijakan Privasi ini menjelaskan bagaimana STiming Scoring
