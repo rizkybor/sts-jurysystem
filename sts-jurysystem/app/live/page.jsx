@@ -10,6 +10,14 @@ export const metadata = {
       "Pantau hasil pertandingan Whitewater Rafting Championship secara real-time — skor dan peringkat terkini.",
     url: "/live",
     type: "website",
+    images: [
+      {
+        url: "/assets/images/sts-logo-primary.png",
+        width: 259,
+        height: 259,
+        alt: "STiming Scoring",
+      },
+    ],
   },
   alternates: {
     canonical: "/live",

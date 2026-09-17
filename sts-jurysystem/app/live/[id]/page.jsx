@@ -34,13 +34,13 @@ export async function generateMetadata({ params }) {
         type: "website",
         images: posterUrl
           ? [{ url: posterUrl, width: 1200, height: 630, alt: event.eventName }]
-          : undefined,
+          : [{ url: "/assets/images/sts-logo-primary.png", width: 259, height: 259, alt: "STiming Scoring" }],
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: posterUrl ? [posterUrl] : undefined,
+        images: [posterUrl || "/assets/images/sts-logo-primary.png"],
       },
       alternates: {
         canonical: `/live/${id}`,

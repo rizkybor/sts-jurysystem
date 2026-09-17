@@ -10,6 +10,14 @@ export const metadata = {
       'Cari dan jelajahi event Whitewater Rafting Championship berdasarkan nama atau level klasifikasi.',
     url: '/matches',
     type: 'website',
+    images: [
+      {
+        url: '/assets/images/sts-logo-primary.png',
+        width: 259,
+        height: 259,
+        alt: 'STiming Scoring',
+      },
+    ],
   },
   alternates: {
     canonical: '/matches',
