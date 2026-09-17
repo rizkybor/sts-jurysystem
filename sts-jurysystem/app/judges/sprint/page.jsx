@@ -141,6 +141,7 @@ const JudgesSprintPage = () => {
         teamId: selectedTeam,
         type: assignedPosition,
         value: selectedPenalty,
+        eventId,
         ts: new Date().toISOString(),
       },
       (ok) => {
