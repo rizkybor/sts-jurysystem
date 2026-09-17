@@ -2,6 +2,7 @@ import connectDB from "@/config/database";
 import JudgeReport from "@/models/JudgeReport";
 import JudgeReportDetail from "@/models/JudgeReportDetail";
 import TeamsRegistered from "@/models/TeamsRegistered";
+import SprintTeamStatus from "@/models/SprintTeamStatus";
 import User from "@/models/User";
 import RaceSetting from "@/models/RaceSetting";
 import { getSessionUser } from "@/utils/getSessionUser";
@@ -476,23 +477,29 @@ export const POST = async (req) => {
         );
       }
 
-      // VALIDASI BARU: team harus sudah benar-benar Start (dicatat operator
-      // timing di TeamsRegistered.teams[].result[0].startTime) sebelum juri
-      // boleh menyimpan penalty Start ATAUPUN Finish untuk team tsb — cegah
-      // salah pilih team dari dropdown (mis. team yang belum dipanggil/
-      // belum jalan) kena penalty. `startTime` diisi kosong ("") sejak
-      // registrasi (lihat normalizeTeamForSprint() di SprintRace.vue) dan
-      // baru terisi begitu operator mencatat waktu start sungguhan.
-      const teamDoc = await TeamsRegistered.findOne(
-        { eventId, eventName: "SPRINT", raceId, divisionId, "teams.teamId": team },
-        { "teams.$": 1 }
-      ).lean();
-      const teamResult = teamDoc?.teams?.[0]?.result?.[0];
-      const hasStarted = !!(
-        teamResult?.startTime && String(teamResult.startTime).trim()
-      );
+      // VALIDASI BARU: team harus sudah benar-benar Start (di timing
+      // system) sebelum juri boleh submit penalty Start ATAUPUN Finish.
+      //
+      // Sumbernya BUKAN TeamsRegistered/temporarySprintResult langsung —
+      // field startTime di sana cuma terisi SETELAH operator klik "Save
+      // Result" (bulk, di akhir race), padahal juri menilai justru saat
+      // race masih LIVE. Sinyal live yang dipakai di sini datang dari
+      // broadcast socket `sprint:team-started` yang dikirim timing system
+      // begitu operator mengisi Start Time per baris (lihat updateTime()
+      // di SprintRace.vue) — diteruskan browser juri yang sedang online
+      // ke SprintTeamStatus lewat /api/judges/sprint/team-started.
+      //
+      // Keterbatasan yang disadari & diterima: kalau tidak ada juri yang
+      // online tepat saat event itu terkirim, flag ini tidak akan terisi
+      // walau tim sungguhan sudah start.
+      const startStatus = await SprintTeamStatus.findOne({
+        eventId: String(eventId),
+        raceId: String(raceId),
+        divisionId: String(divisionId),
+        teamId: String(team),
+      }).lean();
 
-      if (!hasStarted) {
+      if (!startStatus) {
         const reason = `Team ${team} belum melakukan Start — penalty ${position} tidak dapat disimpan.`;
         await recordFailedAttempt(reason);
         return new Response(
