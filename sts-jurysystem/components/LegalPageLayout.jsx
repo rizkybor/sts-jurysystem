@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function LegalPageLayout({ title, updatedAt, children }) {
   return (
     <section className="min-h-screen bg-gray-50">
@@ -6,11 +8,17 @@ export default function LegalPageLayout({ title, updatedAt, children }) {
         <div className="pointer-events-none absolute -top-24 -left-16 w-72 h-72 rounded-full bg-stsHighlight/25 blur-[100px]" />
         <div className="pointer-events-none absolute bottom-0 right-0 w-72 h-72 rounded-full bg-cyan-400/15 blur-[100px]" />
         <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-xs font-medium text-white/70 hover:text-white transition mb-3"
+          >
+            ← Kembali ke Beranda
+          </Link>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
             {title}
           </h1>
           {updatedAt && (
-            <p className="mt-1.5 text-xs text-white/70">
+            <p className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-white/80 bg-white/10 ring-1 ring-white/20 rounded-full px-3 py-1">
               Terakhir diperbarui: {updatedAt}
             </p>
           )}

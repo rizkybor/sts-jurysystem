@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPageLayout title="Syarat & Ketentuan" updatedAt="15 Juli 2026">
+    <LegalPageLayout title="Syarat & Ketentuan" updatedAt="17 September 2026">
       <LegalSection>
         <p>
           Dengan mengakses dan menggunakan STiming Scoring

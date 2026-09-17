@@ -2,6 +2,7 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AuthProvider from '@/components/AuthProvider';
+import CookieConsent from '@/components/CookieConsent';
 import { ToastContainer } from 'react-toastify';
 import { GlobalProvider } from '@/context/GlobalContext';
 import '@/assets/styles/global.css';
@@ -127,6 +128,7 @@ export default function RootLayout({ children }) {
 
             <Footer />
             <ToastContainer />
+            <CookieConsent />
           </AuthProvider>
         </GlobalProvider>
       </body>
