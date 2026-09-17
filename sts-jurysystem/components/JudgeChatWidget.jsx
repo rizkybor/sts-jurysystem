@@ -212,6 +212,14 @@ const JudgeChatWidget = ({ eventId, category }) => {
   const recordedChunksRef = useRef([]);
   const recordTimerRef = useRef(null);
   const mediaStreamRef = useRef(null);
+  // Sumber kebenaran durasi rekaman yang selalu fresh — `recordSeconds`
+  // (state) tidak cukup karena interval auto-stop di startRecording()
+  // meng-capture closure `stopRecording` dari render saat rekaman DIMULAI;
+  // closure itu membaca `recordSeconds` basi (selalu 0, nilai saat
+  // interval dibuat), bukan nilai terkini saat batas MAX_RECORD_SECONDS
+  // tercapai — akibatnya rekaman yang kena auto-stop tersimpan dgn durasi
+  // 0 walau file audionya beneran ~120 detik.
+  const recordSecondsRef = useRef(0);
   const messageRefs = useRef({});
   const isPrependingRef = useRef(false);
   const pendingScrollAdjustRef = useRef(null);
@@ -686,10 +694,12 @@ const JudgeChatWidget = ({ eventId, category }) => {
       recorder.start();
       setRecording(true);
       setRecordSeconds(0);
+      recordSecondsRef.current = 0;
 
       recordTimerRef.current = setInterval(() => {
         setRecordSeconds((s) => {
           const next = s + 1;
+          recordSecondsRef.current = next;
           if (next >= MAX_RECORD_SECONDS) stopRecording();
           return next;
         });
@@ -714,7 +724,7 @@ const JudgeChatWidget = ({ eventId, category }) => {
     if (!recorder || recorder.state === "inactive") return;
 
     clearInterval(recordTimerRef.current);
-    const durationSec = recordSeconds;
+    const durationSec = recordSecondsRef.current;
 
     recorder.addEventListener(
       "stop",
