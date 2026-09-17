@@ -7,12 +7,15 @@ export const metadata = {
 
 export default function CookiesPage() {
   return (
-    <LegalPageLayout title="Kebijakan Cookie" updatedAt="15 Juli 2026">
+    <LegalPageLayout title="Kebijakan Cookie" updatedAt="17 September 2026">
       <LegalSection>
         <p>
           Halaman ini menjelaskan bagaimana STiming Scoring
           (&quot;STS&quot;) menggunakan cookie dan teknologi penyimpanan
-          serupa saat Anda mengakses Layanan kami.
+          serupa saat Anda mengakses Layanan kami. Saat pertama kali
+          mengunjungi situs ini, Anda akan melihat pemberitahuan singkat
+          mengenai penggunaan cookie — pemberitahuan ini bersifat informatif,
+          karena seluruh cookie yang kami gunakan bersifat esensial.
         </p>
       </LegalSection>
 
@@ -26,6 +29,10 @@ export default function CookiesPage() {
       </LegalSection>
 
       <LegalSection heading="2. Cookie yang Kami Gunakan">
+        <p>
+          Kami hanya menggunakan dua kategori cookie/penyimpanan berikut,
+          keduanya esensial untuk fungsi dasar Layanan:
+        </p>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
             <strong>Cookie sesi (esensial)</strong> — digunakan oleh sistem
@@ -35,31 +42,37 @@ export default function CookiesPage() {
           </li>
           <li>
             <strong>Preferensi lokal</strong> — beberapa pengaturan tampilan
-            (misalnya status perbesar/perkecil panel chat) disimpan di
+            (misalnya status perbesar/perkecil panel chat, dan status
+            pemberitahuan cookie yang sudah Anda baca) disimpan di
             penyimpanan lokal browser Anda agar preferensi tetap tersimpan
             di perangkat yang sama.
           </li>
         </ul>
         <p>
-          Kami tidak menggunakan cookie pihak ketiga untuk keperluan iklan
-          atau pelacakan lintas situs.
+          Kami <strong>tidak</strong> menggunakan cookie iklan, cookie
+          analitik pihak ketiga, atau cookie pelacakan lintas situs apa pun.
         </p>
       </LegalSection>
 
       <LegalSection heading="3. Mengelola Cookie">
         <p>
-          Sebagian besar cookie yang kami gunakan bersifat esensial agar
-          fitur login dan halaman terproteksi (juri, profil, riwayat) dapat
-          berfungsi dengan baik. Menonaktifkan cookie melalui pengaturan
-          browser Anda dapat menyebabkan Anda tidak dapat login atau
-          mengakses halaman-halaman tersebut.
+          Karena seluruh cookie yang kami gunakan bersifat esensial,
+          pemberitahuan cookie pada situs ini hanya memerlukan konfirmasi
+          &quot;Mengerti&quot; dan tidak menyediakan opsi
+          nonaktifkan/aktifkan kategori, sebab tidak ada cookie non-esensial
+          yang berjalan di Layanan ini. Menonaktifkan cookie melalui
+          pengaturan browser Anda dapat menyebabkan Anda tidak dapat login
+          atau mengakses halaman-halaman terproteksi (juri, profil,
+          riwayat).
         </p>
       </LegalSection>
 
       <LegalSection heading="4. Perubahan Kebijakan">
         <p>
           Kebijakan Cookie ini dapat diperbarui dari waktu ke waktu mengikuti
-          perkembangan Layanan kami.
+          perkembangan Layanan kami. Jika di masa depan kami menambahkan
+          cookie non-esensial (mis. analitik), pemberitahuan cookie akan
+          diperbarui untuk menyediakan pilihan terima/tolak yang sesuai.
         </p>
       </LegalSection>
 
