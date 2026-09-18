@@ -15,8 +15,16 @@ export default function useJudgeSocket(pushToast) {
     const socket = getSocket();
     socketRef.current = socket;
 
+    // Tipe event internal yang punya toast/handler khusus di halaman
+    // masing-masing (mis. "sprint:team-started" di app/judges/sprint/
+    // page.jsx, "h2h:round-active" di app/judges/headtohead/page.jsx) —
+    // jangan ikut ditampilkan sebagai toast generik di sini, supaya tidak
+    // dobel.
+    const INTERNAL_EVENT_TYPES = ["sprint:team-started", "h2h:round-active"];
+
     const handler = (msg) => {
       if (msg?.senderId && msg.senderId === socketRef.current?.id) return;
+      if (msg?.type && INTERNAL_EVENT_TYPES.includes(msg.type)) return;
       pushToast?.({
         title: msg?.from ? `Pesan dari ${msg.from}` : "Notifikasi",
         text: msg?.text || "Pesan baru diterima",
