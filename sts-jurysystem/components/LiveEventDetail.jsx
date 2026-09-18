@@ -118,6 +118,13 @@ export default function LiveEventDetail() {
   const [copied, setCopied] = useState(false);
   const shareMenuRef = useRef(null);
 
+  // Fullscreen pakai Fullscreen API BAWAAN BROWSER pada root <section> di
+  // bawah — Navbar/Footer global (app/layout.jsx) otomatis ikut tersembunyi
+  // begitu masuk fullscreen karena keduanya BUKAN bagian dari elemen yang
+  // di-fullscreen-kan (bukan lewat state React/hide manual).
+  const sectionRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const [autoPlay, setAutoPlay] = useState(false);
   const [rotateSeconds, setRotateSeconds] = useState(10);
   const [slideKey, setSlideKey] = useState(0);
@@ -259,6 +266,44 @@ export default function LiveEventDetail() {
       setShareOpen(false);
     } else {
       setShareOpen((v) => !v);
+    }
+  };
+
+  // Sinkron state tombol dgn status fullscreen sesungguhnya — perlu,
+  // karena user bisa keluar fullscreen lewat Esc/tombol browser, bukan
+  // cuma lewat tombol kita.
+  useEffect(() => {
+    const onFsChange = () => {
+      const fsEl =
+        document.fullscreenElement || document.webkitFullscreenElement;
+      setIsFullscreen(!!fsEl && fsEl === sectionRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      const el = sectionRef.current;
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!fsEl) {
+        if (el?.requestFullscreen) await el.requestFullscreen();
+        else if (el?.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }
+    } catch (err) {
+      console.error("❌ Fullscreen error:", err);
+      pushToast({
+        title: "Fullscreen Gagal",
+        text: "Browser ini tidak mendukung mode fullscreen.",
+        type: "error",
+      });
     }
   };
 
@@ -490,7 +535,14 @@ export default function LiveEventDetail() {
   );
 
   return (
-    <section className="min-h-screen bg-[#050b16] text-white relative overflow-hidden">
+    <section
+      ref={sectionRef}
+      // overflow-x-hidden (bukan overflow-hidden) supaya SAAT fullscreen
+      // browser masih bisa scroll vertikal — Fullscreen API bawaan browser
+      // memaksa elemen ini persis setinggi viewport, jadi overflow-y perlu
+      // tetap "auto" kalau hasil race lebih panjang dari layar.
+      className="min-h-screen bg-[#050b16] text-white relative overflow-x-hidden overflow-y-auto"
+    >
       {/* Ambient glow background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[32rem] h-[32rem] rounded-full bg-sts/25 blur-[120px]" />
@@ -582,6 +634,29 @@ export default function LiveEventDetail() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Fullscreen — sembunyikan Navbar/Footer global (bukan
+                bagian elemen ini) supaya cocok dipakai di layar TV/proyektor
+                venue lomba. */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Keluar Fullscreen" : "Fullscreen"}
+              className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+            >
+              {isFullscreen ? (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3v2h3a4 4 0 0 0 4-4V3H8Zm8 0h-2v3a4 4 0 0 0 4 4h3V8h-3a2 2 0 0 1-2-2V3ZM8 21v-3a2 2 0 0 0-2-2H3v-2h3a4 4 0 0 1 4 4v3H8Zm8 0h-2v-3a4 4 0 0 1 4-4h3v2h-3a2 2 0 0 0-2 2v3Z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                  <path d="M3 9V3h6v2H5v4H3Zm12-6h6v6h-2V5h-4V3ZM3 15h2v4h4v2H3v-6Zm16 4v-4h2v6h-6v-2h4Z" />
+                </svg>
+              )}
+              <span className="hidden xs:inline">
+                {isFullscreen ? "Keluar" : "Fullscreen"}
+              </span>
+            </button>
 
             <Link
               href="/live"
