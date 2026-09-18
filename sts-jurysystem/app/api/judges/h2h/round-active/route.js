@@ -28,6 +28,7 @@ export async function POST(req) {
       roundId,
       roundName,
       teams,
+      matches,
     } = body || {};
 
     if (!eventId || !divisionId || !raceId) {
@@ -53,6 +54,20 @@ export async function POST(req) {
                 teamId: t?.teamId ? String(t.teamId) : "",
                 bibTeam: t?.bibTeam ? String(t.bibTeam) : "",
                 nameTeam: t?.nameTeam ? String(t.nameTeam) : "",
+              }))
+            : [],
+          matches: Array.isArray(matches)
+            ? matches.map((m) => ({
+                team1: {
+                  teamId: m?.team1?.teamId ? String(m.team1.teamId) : "",
+                  bibTeam: m?.team1?.bibTeam ? String(m.team1.bibTeam) : "",
+                  nameTeam: m?.team1?.nameTeam ? String(m.team1.nameTeam) : "",
+                },
+                team2: {
+                  teamId: m?.team2?.teamId ? String(m.team2.teamId) : "",
+                  bibTeam: m?.team2?.bibTeam ? String(m.team2.bibTeam) : "",
+                  nameTeam: m?.team2?.nameTeam ? String(m.team2.nameTeam) : "",
+                },
               }))
             : [],
         },
@@ -98,6 +113,7 @@ export async function GET(req) {
       roundId: doc?.roundId || null,
       roundName: doc?.roundName || null,
       teams: doc?.teams || [],
+      matches: doc?.matches || [],
     });
   } catch (err) {
     console.error("❌ [h2h/round-active] GET error:", err);

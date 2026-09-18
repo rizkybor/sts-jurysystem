@@ -24,6 +24,7 @@ import JudgeStickyActions from "@/components/judges/JudgeStickyActions";
 import JudgeHistoryModal, {
   penaltyBadgeColor,
 } from "@/components/judges/JudgeHistoryModal";
+import FoulsReportModal from "@/components/judges/FoulsReportModal";
 
 /**
  * Tipe penalty yang boleh dikirim juri ini, berdasarkan assignment
@@ -85,6 +86,8 @@ const JudgesHeadToHeadPage = () => {
   const [otherValue, setOtherValue] = useState("");
   const [cornerTouched, setCornerTouched] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [foulsModalOpen, setFoulsModalOpen] = useState(false);
+  const [foulsSubmitting, setFoulsSubmitting] = useState(false);
 
   // Babak (round) H2H yang sedang aktif di timing system utk kategori
   // terpilih — H2H tidak punya "Start Time" per tim spt Sprint, jadi ini
@@ -158,7 +161,12 @@ const JudgesHeadToHeadPage = () => {
         if (cancelled || !data?.success) return;
         setActiveRound(
           data.roundName
-            ? { roundName: data.roundName, teams: data.teams || [] }
+            ? {
+                roundId: data.roundId,
+                roundName: data.roundName,
+                teams: data.teams || [],
+                matches: data.matches || [],
+              }
             : null
         );
       })
@@ -209,6 +217,7 @@ const JudgesHeadToHeadPage = () => {
           roundId: msg.roundId,
           roundName: msg.roundName,
           teams: msg.teams,
+          matches: msg.matches,
         }),
       }).catch((err) => {
         console.error("❌ Gagal relay h2h:round-active:", err);
@@ -221,7 +230,12 @@ const JudgesHeadToHeadPage = () => {
         String(msg.divisionId) === String(curDivisionId) &&
         String(msg.raceId) === String(curRaceId)
       ) {
-        setActiveRound({ roundName: msg.roundName, teams: msg.teams || [] });
+        setActiveRound({
+          roundId: msg.roundId,
+          roundName: msg.roundName,
+          teams: msg.teams || [],
+          matches: msg.matches || [],
+        });
       }
     };
 
@@ -248,6 +262,103 @@ const JudgesHeadToHeadPage = () => {
   };
 
   const selectedTeamData = getSelectedTeamData(teams, selectedTeam);
+
+  // "Unfouls Team" utk modal Fouls Report — otomatis diambil dari lawan
+  // team terpilih di match aktif (activeRound.matches), TIDAK dipilih
+  // manual oleh juri. null kalau team terpilih belum ada di match manapun
+  // (mis. masih di pool, belum dipasangkan).
+  const unfoulTeamData = useMemo(() => {
+    if (!selectedTeamData?.teamId || !activeRound?.matches?.length) {
+      return null;
+    }
+    const tid = String(selectedTeamData.teamId);
+    for (const m of activeRound.matches) {
+      if (String(m?.team1?.teamId || "") === tid) return m.team2 || null;
+      if (String(m?.team2?.teamId || "") === tid) return m.team1 || null;
+    }
+    return null;
+  }, [selectedTeamData, activeRound]);
+
+  // Kirim Fouls Report — MURNI socket, TIDAK lewat
+  // /api/judges/judge-reports/detail sama sekali, supaya tidak pernah
+  // menyentuh alur penalty resmi (STEP 0 validasi, JudgeReportDetail,
+  // dsb). Timing system yang menyimpannya (lihat
+  // HeadToHead.vue::receiveFoulsReport()).
+  const handleFoulsSubmit = (payload) =>
+    new Promise((resolve) => {
+      const socket = socketRef.current;
+      if (!socket || !selectedTeamData?.hasValidTeamId) {
+        pushToast({
+          title: "Gagal Mengirim",
+          text: "Koneksi realtime belum siap atau team tidak valid.",
+          type: "error",
+        });
+        resolve(false);
+        return;
+      }
+
+      setFoulsSubmitting(true);
+      const [initialId, divisionId, raceId] = selectedCategory.split("|");
+      const message = {
+        senderId: socket.id,
+        type: "FoulsReport",
+        from: "Judges Dashboard - H2H",
+        eventId,
+        initialId,
+        divisionId,
+        raceId,
+        roundId: activeRound?.roundId || "",
+        roundName: activeRound?.roundName || "",
+        foulTeam: {
+          teamId: selectedTeamData.teamId,
+          bibTeam: selectedTeamData.bibTeam || "",
+          nameTeam: selectedTeamData.nameTeam || "",
+        },
+        unfoulTeam: unfoulTeamData
+          ? {
+              teamId: unfoulTeamData.teamId,
+              bibTeam: unfoulTeamData.bibTeam || "",
+              nameTeam: unfoulTeamData.nameTeam || "",
+            }
+          : null,
+        judge: user?.username || user?.name || "",
+        ts: new Date().toISOString(),
+        ...payload, // position, positionLabel, detail, detailLabel, penaltySecondsLabel, remarks
+      };
+
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        setFoulsSubmitting(false);
+        resolve(false);
+      }, 5000);
+
+      socket.emit("custom:event", message, (ok) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        setFoulsSubmitting(false);
+        if (ok) {
+          pushToast({
+            title: "Fouls Report Terkirim",
+            text: `${payload.detailLabel || "Fouls"} — ${
+              selectedTeamData.nameTeam
+            } berhasil dilaporkan ke operator.`,
+            type: "success",
+          });
+          setFoulsModalOpen(false);
+        } else {
+          pushToast({
+            title: "Belum Terkirim",
+            text: "Pesan realtime belum sampai ke operator. Silakan coba lagi.",
+            type: "warning",
+            ttlMs: 6000,
+          });
+        }
+        resolve(!!ok);
+      });
+    });
 
   // Promisify the socket ack so isSubmitting genuinely reflects whether
   // the operator received the message (fixes the double-submit race and
@@ -623,6 +734,43 @@ const JudgesHeadToHeadPage = () => {
             submitLabel="Kirim ke Operator →"
           />
         </form>
+
+        {/* Fouls Report — fitur terpisah dari alur penalty resmi di atas,
+            murni informasi ke operator (lihat MEMORY-H2H.md). Sengaja
+            di luar <form> supaya tidak ikut ter-disable oleh
+            fieldset[disabled] saat submit penalty biasa berjalan. */}
+        <div className="max-w-2xl mx-auto px-4 pb-6">
+          <button
+            type="button"
+            disabled={!selectedCategory || !selectedTeam}
+            onClick={() => setFoulsModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 text-amber-700 font-semibold text-sm hover:bg-amber-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path
+                fillRule="evenodd"
+                d="M8.485 2.495c.673-1.165 2.357-1.165 3.03 0l6.28 10.875c.673 1.167-.17 2.63-1.516 2.63H3.72c-1.346 0-2.189-1.463-1.515-2.63L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Laporkan Fouls (Pelanggaran)
+          </button>
+          {(!selectedCategory || !selectedTeam) && (
+            <p className="mt-1.5 text-xs text-gray-500 text-center">
+              Pilih kategori & team terlebih dahulu utk melaporkan fouls.
+            </p>
+          )}
+        </div>
+
+        <FoulsReportModal
+          open={foulsModalOpen}
+          onClose={() => setFoulsModalOpen(false)}
+          roundName={activeRound?.roundName}
+          foulTeam={selectedTeamData}
+          unfoulTeam={unfoulTeamData}
+          submitting={foulsSubmitting}
+          onSubmit={handleFoulsSubmit}
+        />
 
         <JudgeHistoryModal
           open={history.isOpen}
