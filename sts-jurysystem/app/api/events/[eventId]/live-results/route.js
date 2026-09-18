@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import connectDB from "@/config/database";
+import SprintLivePreview from "@/models/SprintLivePreview";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,16 @@ function sortAndNumber(teams, { by = "rank" } = {}) {
 // (startTime/finishTime/startPenalty/finishPenalty/raceTime/penaltyTime/
 // totalTime/ranked/score) bisa ditampilkan apa adanya di Live Result,
 // bukan cuma ringkasan totalTime/penaltyTime/score/rank generik.
-function mapSprint(doc) {
+// `previewDocs` = SprintLivePreview (lihat models/SprintLivePreview.js) —
+// tim yang GENUINELY sudah selesai (Start+Finish terisi) di timing
+// system tapi BELUM ter-"Save Result" ke `temporarySprintResult`. Baris
+// hasil resmi (dari `doc`) SELALU diprioritaskan; preview cuma dipakai
+// utk tim yang belum punya baris resmi sama sekali, supaya Live Result
+// benar-benar reaktif per-tim, tidak menunggu Save Result operator.
+function mapSprint(doc, previewDocs) {
   const rows = Array.isArray(doc?.result) ? doc.result : [];
+  const officialBibs = new Set(rows.map((t) => String(t?.bibTeam || "")));
+
   const teams = rows.map((t) => {
     const r = t?.result || {};
     return {
@@ -71,6 +80,26 @@ function mapSprint(doc) {
       rank: Number.isFinite(r.ranked) ? r.ranked : null,
     };
   });
+
+  (previewDocs || []).forEach((p) => {
+    const bib = String(p?.bibTeam || "");
+    if (bib && officialBibs.has(bib)) return; // hasil resmi menang
+    teams.push({
+      name: p?.nameTeam || "-",
+      bib: p?.bibTeam || "-",
+      startTime: p?.startTime || null,
+      finishTime: p?.finishTime || null,
+      raceTime: p?.raceTime || null,
+      startPenalty: Number.isFinite(p?.startPenalty) ? p.startPenalty : null,
+      finishPenalty: Number.isFinite(p?.finishPenalty) ? p.finishPenalty : null,
+      penaltyTime: p?.penaltyTime || null,
+      totalTime: p?.totalTime || null,
+      score: null,
+      rank: null, // belum resmi -> selalu fallback ke urutan waktu
+      isLivePreview: true,
+    });
+  });
+
   const hasRank = teams.some((t) => t.rank > 0);
   return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
 }
@@ -281,12 +310,27 @@ export const GET = async (req, { params }) => {
     const db = mongoose.connection.db;
     let doc = null;
     let teams = [];
+    let latestPreviewAt = null;
 
     if (category === "SPRINT") {
       doc = await db
         .collection("temporarySprintResult")
         .findOne({ eventId, initialId, divisionId, raceId });
-      teams = mapSprint(doc);
+      // Gabungkan dgn pratinjau tim yang genuinely selesai tapi belum
+      // ter-Save Result (lihat models/SprintLivePreview.js) — Live Result
+      // jadi reaktif per-tim, bukan cuma saat bulk Save Result.
+      const previewDocs = await SprintLivePreview.find({
+        eventId,
+        raceId,
+        divisionId,
+      }).lean();
+      teams = mapSprint(doc, previewDocs);
+      if (previewDocs.length) {
+        latestPreviewAt = previewDocs.reduce((max, p) => {
+          const t = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+          return t > max ? t : max;
+        }, 0);
+      }
     } else if (category === "DRR") {
       doc = await db
         .collection("temporaryDrrResult")
@@ -316,11 +360,23 @@ export const GET = async (req, { params }) => {
       teams = mapOverallDetailed(doc);
     }
 
+    // BUG FIX: `updatedAt` dipakai client (LiveEventDetail.jsx) buat
+    // deteksi "ada perubahan -> animasikan" — kalau cuma preview yang
+    // berubah (tim baru finish, belum di-Save), timestamp official doc
+    // tidak berubah sama sekali. Bandingkan keduanya, pakai yang
+    // terbaru.
+    const officialAt = doc?.updatedAt || doc?.savedAt || null;
+    const officialMs = officialAt ? new Date(officialAt).getTime() : 0;
+    const combinedUpdatedAt =
+      latestPreviewAt && latestPreviewAt > officialMs
+        ? new Date(latestPreviewAt).toISOString()
+        : officialAt;
+
     return new Response(
       JSON.stringify({
         success: true,
         category,
-        updatedAt: doc?.updatedAt || doc?.savedAt || null,
+        updatedAt: combinedUpdatedAt,
         teams,
       }),
       { status: 200 }

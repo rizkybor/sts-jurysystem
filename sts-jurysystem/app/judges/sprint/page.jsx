@@ -170,6 +170,49 @@ const JudgesSprintPage = () => {
     return () => socket.off("custom:event", handler);
   }, [eventId, socketRef, pushToast, categoryLabelByKey]);
 
+  // Relay broadcast "sprint:team-finished" dari sts-timingsystem (dikirim
+  // saat satu tim genuinely selesai — Start & Finish Time terisi, lihat
+  // updateTime() di SprintRace.vue) ke /api/judges/sprint/live-preview
+  // supaya Live Result publik bisa menampilkan hasil tim ini SEBELUM
+  // operator klik "Save Result". Tanpa toast (beda dgn team-started) —
+  // ini murni data utk halaman Live Result, bukan info yg relevan buat
+  // juri yang sedang bertugas.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "sprint:team-finished") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+
+      fetch("/api/judges/sprint/live-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: msg.eventId,
+          initialId: msg.initialId,
+          divisionId: msg.divisionId,
+          raceId: msg.raceId,
+          teamId: msg.teamId,
+          bibTeam: msg.bibTeam,
+          nameTeam: msg.nameTeam,
+          startTime: msg.startTime,
+          finishTime: msg.finishTime,
+          raceTime: msg.raceTime,
+          startPenalty: msg.startPenalty,
+          finishPenalty: msg.finishPenalty,
+          penaltyTime: msg.penaltyTime,
+          totalTime: msg.totalTime,
+        }),
+      }).catch((err) => {
+        console.error("❌ Gagal relay sprint:team-finished:", err);
+      });
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, [eventId, socketRef]);
+
   const { teams, loadingTeams, refreshTeams, resetTeams } = useJudgeTeams({
     eventId,
     eventName: "SPRINT",
