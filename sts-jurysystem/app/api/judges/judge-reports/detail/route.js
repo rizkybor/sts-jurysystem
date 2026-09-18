@@ -649,6 +649,64 @@ export const POST = async (req) => {
     if (normalizedType === "SLALOM") {
       const runIdx = (runNumber || 1) - 1;
 
+      // BUG FIX (data lama): sebagian team Slalom yang didaftarkan SEBELUM
+      // sts-timingsystem punya cabang khusus kategori Slalom di
+      // `_buildTeamRecord()` (Details/index.vue) tersimpan dgn `result`
+      // berupa OBJEK DATAR (bentuk lama, sama dgn default Sprint) alih-alih
+      // ARRAY 2 elemen (Run 1 & Run 2). Mongoose DIAM-DIAM membungkus objek
+      // itu jadi array 1-elemen saat di-hydrate (bukan error) — akibatnya
+      // Run 2 (runIdx 1) tidak akan pernah tersimpan/terbaca dgn benar
+      // walau $set "berhasil" (MongoDB cuma menambah key "1" ke objek asli,
+      // bukan elemen array baru). Perbaiki bentuknya SEKALI di sini kalau
+      // terdeteksi rusak, pakai native driver supaya bisa lihat bentuk
+      // ASLI di DB (Mongoose query di bawah sudah kadung membungkusnya).
+      const rawTeamDoc = await TeamsRegistered.collection.findOne(
+        { eventId, eventName: "SLALOM", "teams.teamId": team },
+        { projection: { "teams.$": 1 } }
+      );
+      const rawResult = rawTeamDoc?.teams?.[0]?.result;
+      if (rawResult && !Array.isArray(rawResult)) {
+        const repairedRun = {
+          session: String(rawResult.session || ""),
+          startTime: String(rawResult.startTime || ""),
+          finishTime: String(rawResult.finishTime || ""),
+          raceTime: String(rawResult.raceTime || ""),
+          penaltyTime: String(rawResult.penaltyTime || ""),
+          penaltyTotal:
+            rawResult.penaltyTotal && typeof rawResult.penaltyTotal === "object"
+              ? {
+                  start: rawResult.penaltyTotal.start ?? null,
+                  finish: rawResult.penaltyTotal.finish ?? null,
+                  gates: Array.isArray(rawResult.penaltyTotal.gates)
+                    ? rawResult.penaltyTotal.gates
+                    : [],
+                }
+              : { start: null, finish: null, gates: [] },
+          totalTime: String(rawResult.totalTime || ""),
+          ranked: rawResult.ranked ?? null,
+          score: rawResult.score ?? null,
+          judgesBy: String(rawResult.judgesBy || ""),
+          judgesTime: String(rawResult.judgesTime || ""),
+        };
+        const emptyRun = {
+          session: "",
+          startTime: "",
+          finishTime: "",
+          raceTime: "",
+          penaltyTime: "",
+          penaltyTotal: { start: null, finish: null, gates: [] },
+          totalTime: "",
+          ranked: null,
+          score: null,
+          judgesBy: "",
+          judgesTime: "",
+        };
+        await TeamsRegistered.collection.updateOne(
+          { eventId, eventName: "SLALOM", "teams.teamId": team },
+          { $set: { "teams.$.result": [repairedRun, { ...emptyRun }] } }
+        );
+      }
+
       const teamDoc = await TeamsRegistered.findOne(
         { eventId, eventName: "SLALOM", "teams.teamId": team },
         { "teams.$": 1 }
