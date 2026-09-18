@@ -27,6 +27,8 @@ export default function useJudgeSocket(pushToast) {
       "h2h:round-active",
       "FoulsReport",
       "slalom:team-started",
+      "sprint:team-finished",
+      "official:changed",
     ];
 
     const handler = (msg) => {

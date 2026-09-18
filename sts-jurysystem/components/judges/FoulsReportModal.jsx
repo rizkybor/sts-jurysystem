@@ -6,6 +6,7 @@ import iconHandPush from "@/assets/images/icon-fouls-hand.png";
 import iconFootKick from "@/assets/images/icon-fouls-kick.png";
 import iconPunch from "@/assets/images/icon-fouls-punch.png";
 import iconTouchGate from "@/assets/images/icon-fouls-touch-gate.png";
+import iconOutside from "@/assets/images/icon-fouls-outside.png";
 
 // 4 posisi di perahu (dilihat dari atas, haluan/depan di atas) — sesuai
 // mockup Modal-Fouls.pdf: 4 area melingkar yang bisa dipilih juri.
@@ -16,14 +17,16 @@ export const FOUL_POSITIONS = [
   { key: "back-right", label: "Belakang Kanan" },
 ];
 
-// 4 jenis pelanggaran + estimasi durasi penalty (INFORMASI SAJA — angka
+// 5 jenis pelanggaran + estimasi durasi penalty (INFORMASI SAJA — angka
 // ini TIDAK pernah dikirim/diterapkan sbg penalty resmi ke timing system,
 // murni label supaya operator tahu tingkat keseriusan pelanggarannya).
+// "Outside" pakai "DQ" (Diskualifikasi) sbg label, bukan durasi detik.
 export const FOUL_DETAILS = [
   { key: "hand_push", label: "Hand Push", seconds: 5 },
   { key: "foot_kick", label: "Foot Kick", seconds: 5 },
   { key: "punch", label: "Punch", seconds: 10 },
   { key: "touch_gate", label: "Touch Gate", seconds: 50 },
+  { key: "outside", label: "Outside", seconds: "DQ" },
 ];
 
 const DETAIL_ICON_SRC = {
@@ -31,11 +34,31 @@ const DETAIL_ICON_SRC = {
   foot_kick: iconFootKick,
   punch: iconPunch,
   touch_gate: iconTouchGate,
+  outside: iconOutside,
 };
 
+// Fallback utk key yang tidak punya PNG tetap (mis. Pen Detail baru yang
+// ditambahkan operator lewat Race Settings, lihat MEMORY-H2H.md) — supaya
+// tetap ada indikator visual, bukan kotak kosong.
 function DetailIcon({ iconKey, selected }) {
   const src = DETAIL_ICON_SRC[iconKey];
-  if (!src) return null;
+  if (!src) {
+    return (
+      <svg
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        className={`w-6 h-6 sm:w-7 sm:h-7 transition ${
+          selected ? "text-sts" : "text-gray-400"
+        }`}
+      >
+        <path
+          fillRule="evenodd"
+          d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 0-2 0v4a1 1 0 0 0 2 0V6Zm-1 7a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"
+          clipRule="evenodd"
+        />
+      </svg>
+    );
+  }
   return (
     <Image
       src={src}
@@ -64,10 +87,18 @@ export default function FoulsReportModal({
   unfoulTeam,
   submitting,
   onSubmit,
+  // Opsional — override daftar Pen Detail dari Race Settings H2H
+  // (sts-timingsystem), lihat MEMORY-H2H.md. Fallback ke FOUL_DETAILS
+  // bawaan kalau event belum pernah dikustomisasi.
+  foulDetails,
 }) {
   const [position, setPosition] = useState(null);
   const [detail, setDetail] = useState(null);
   const [remarks, setRemarks] = useState("");
+  const details =
+    Array.isArray(foulDetails) && foulDetails.length
+      ? foulDetails
+      : FOUL_DETAILS;
 
   // Reset pilihan tiap kali modal dibuka — cegah pilihan lama (posisi/
   // detail/catatan) nyangkut kalau juri sebelumnya batal submit lalu
@@ -83,7 +114,7 @@ export default function FoulsReportModal({
   if (!open) return null;
 
   const canSubmit = !!position && !!detail && !submitting;
-  const detailInfo = FOUL_DETAILS.find((d) => d.key === detail);
+  const detailInfo = details.find((d) => d.key === detail);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -195,7 +226,7 @@ export default function FoulsReportModal({
                 Pen Detail
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                {FOUL_DETAILS.map((d) => {
+                {details.map((d) => {
                   const selected = detail === d.key;
                   return (
                     <button
@@ -203,7 +234,11 @@ export default function FoulsReportModal({
                       type="button"
                       onClick={() => setDetail(d.key)}
                       aria-pressed={selected}
-                      title={`${d.label} (Penalti ${d.seconds} Detik)`}
+                      title={
+                        d.seconds === "DQ"
+                          ? `${d.label} (Diskualifikasi)`
+                          : `${d.label} (Penalti ${d.seconds} Detik)`
+                      }
                       className={`relative flex flex-col items-center gap-1.5 py-2`}
                     >
                       <span
@@ -242,7 +277,7 @@ export default function FoulsReportModal({
                         <span
                           className={selected ? "text-sts/80" : "text-gray-400"}
                         >
-                          ({d.seconds}s)
+                          {d.seconds === "DQ" ? "(DQ)" : `(${d.seconds}s)`}
                         </span>
                       </span>
                     </button>
