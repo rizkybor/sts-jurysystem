@@ -39,6 +39,13 @@ export default function JudgeCategoryTeamFields({
   // field Kategori & Team, supaya urutannya Kategori > Heat > Team tanpa
   // memecah komponen ini jadi 2 (yang dipakai bersama semua halaman judge).
   betweenCategoryAndTeam,
+  // Opsional — kalau di-set, GANTIKAN seluruh blok "Team" (label + select
+  // + warning) dgn konten ini. Dipakai H2H: begitu Heat dipilih, cuma ada
+  // 2 Team yang mungkin (sudah ditentukan operator timing system) jadi
+  // dropdown diganti 2 tombol Team 1 vs Team 2 — lebih cepat dipilih juri
+  // drpd buka dropdown utk 2 opsi. undefined/null = pakai dropdown default
+  // (perilaku lama, dipakai Sprint/Slalom/DRR/RX & H2H saat Heat blm dipilih).
+  teamFieldOverride,
 }) {
   const selectedTeamData = teams.find((t) => t._id === selectedTeam);
   const showInvalidTeamWarning =
@@ -85,77 +92,79 @@ export default function JudgeCategoryTeamFields({
 
       {betweenCategoryAndTeam}
 
-      <div>
-        <label className="block text-gray-700 mb-2 font-medium">Team</label>
-        <select
-          value={selectedTeam}
-          onChange={(e) => onTeamChange(e.target.value)}
-          className={selectClass}
-          required
-          disabled={!selectedCategory || loadingTeams}
-        >
-          <option value="" disabled>
-            {loadingTeams
-              ? "Loading teams..."
-              : teams.length
-              ? "Pilih Team"
-              : "Tidak ada tim"}
-          </option>
-          {teams.map((t) => (
-            <option
-              key={t._id}
-              value={t._id}
-              disabled={isTeamInactive(t)}
-              className={
-                !t.hasValidTeamId || isTeamInactive(t)
-                  ? "text-orange-500 bg-orange-50"
-                  : ""
-              }
-            >
-              {t.nameTeam} {t.bibTeam ? `(BIB ${t.bibTeam})` : ""}
-              {!t.hasValidTeamId
-                ? " — Tidak bisa submit"
-                : isTeamInactive(t)
-                ? " — Belum di babak aktif"
-                : ""}
+      {teamFieldOverride || (
+        <div>
+          <label className="block text-gray-700 mb-2 font-medium">Team</label>
+          <select
+            value={selectedTeam}
+            onChange={(e) => onTeamChange(e.target.value)}
+            className={selectClass}
+            required
+            disabled={!selectedCategory || loadingTeams}
+          >
+            <option value="" disabled>
+              {loadingTeams
+                ? "Loading teams..."
+                : teams.length
+                ? "Pilih Team"
+                : "Tidak ada tim"}
             </option>
-          ))}
-        </select>
-        {!selectedCategory && (
-          <p className="mt-1.5 text-xs text-gray-500">
-            Pilih kategori terlebih dahulu.
-          </p>
-        )}
-        {showInvalidTeamWarning && (
-          <div className="mt-2 flex items-start gap-2.5 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-            <WarningIcon className="w-4 h-4 mt-0.5 text-orange-500 shrink-0" />
-            <div>
-              <p className="text-orange-800 text-sm font-medium">
-                Team ini tidak memiliki ID yang valid dan tidak bisa menerima
-                penalty.
-              </p>
-              <p className="text-orange-700 text-xs mt-1">
-                Silakan hubungi administrator untuk memperbaiki data team.
-              </p>
+            {teams.map((t) => (
+              <option
+                key={t._id}
+                value={t._id}
+                disabled={isTeamInactive(t)}
+                className={
+                  !t.hasValidTeamId || isTeamInactive(t)
+                    ? "text-orange-500 bg-orange-50"
+                    : ""
+                }
+              >
+                {t.nameTeam} {t.bibTeam ? `(BIB ${t.bibTeam})` : ""}
+                {!t.hasValidTeamId
+                  ? " — Tidak bisa submit"
+                  : isTeamInactive(t)
+                  ? " — Belum di babak aktif"
+                  : ""}
+              </option>
+            ))}
+          </select>
+          {!selectedCategory && (
+            <p className="mt-1.5 text-xs text-gray-500">
+              Pilih kategori terlebih dahulu.
+            </p>
+          )}
+          {showInvalidTeamWarning && (
+            <div className="mt-2 flex items-start gap-2.5 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+              <WarningIcon className="w-4 h-4 mt-0.5 text-orange-500 shrink-0" />
+              <div>
+                <p className="text-orange-800 text-sm font-medium">
+                  Team ini tidak memiliki ID yang valid dan tidak bisa
+                  menerima penalty.
+                </p>
+                <p className="text-orange-700 text-xs mt-1">
+                  Silakan hubungi administrator untuk memperbaiki data team.
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-        {showInactiveTeamWarning && (
-          <div className="mt-2 flex items-start gap-2.5 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-            <WarningIcon className="w-4 h-4 mt-0.5 text-orange-500 shrink-0" />
-            <div>
-              <p className="text-orange-800 text-sm font-medium">
-                Team ini belum ada di babak yang sedang aktif di timing
-                system.
-              </p>
-              <p className="text-orange-700 text-xs mt-1">
-                Pilih team lain, atau tunggu operator membuka babak yang
-                sesuai.
-              </p>
+          )}
+          {showInactiveTeamWarning && (
+            <div className="mt-2 flex items-start gap-2.5 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+              <WarningIcon className="w-4 h-4 mt-0.5 text-orange-500 shrink-0" />
+              <div>
+                <p className="text-orange-800 text-sm font-medium">
+                  Team ini belum ada di babak yang sedang aktif di timing
+                  system.
+                </p>
+                <p className="text-orange-700 text-xs mt-1">
+                  Pilih team lain, atau tunggu operator membuka babak yang
+                  sesuai.
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </>
   );
 }
