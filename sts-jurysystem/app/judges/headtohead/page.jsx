@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import useJudgeToasts from "@/hooks/judges/useJudgeToasts";
@@ -73,7 +73,7 @@ const JudgesHeadToHeadPage = () => {
 
   const { toasts, pushToast, removeToast } = useJudgeToasts();
   const socketRef = useJudgeSocket(pushToast);
-  const { assignments } = useJudgeAssignments();
+  const { user, assignments } = useJudgeAssignments();
   const { eventDetail, loadingEvent, combinedCategories } =
     useEventDetail(eventId);
   const { settings: raceSettings } = useRaceSettings(eventId);
@@ -85,6 +85,11 @@ const JudgesHeadToHeadPage = () => {
   const [otherValue, setOtherValue] = useState("");
   const [cornerTouched, setCornerTouched] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Babak (round) H2H yang sedang aktif di timing system utk kategori
+  // terpilih — H2H tidak punya "Start Time" per tim spt Sprint, jadi ini
+  // pengganti sinyal "tim mana yang sekarang boleh dinilai juri".
+  const [activeRound, setActiveRound] = useState(null); // {roundName, teams: [{teamId,...}]}
 
   const assignedTypes = useMemo(
     () => getH2HAssignedTypes(assignments, eventId),
@@ -130,8 +135,110 @@ const JudgesHeadToHeadPage = () => {
     setSelectedPenalty(null);
     setOtherValue("");
     setCornerTouched(null);
+    setActiveRound(null);
     resetTeams();
   };
+
+  // Muat babak aktif tersimpan (kalau ada) begitu kategori dipilih — supaya
+  // status tidak kosong hanya karena juri baru membuka halaman SETELAH
+  // broadcast round-active terakhir terkirim (lihat keterbatasan relay di
+  // MEMORY-H2H.md).
+  useEffect(() => {
+    if (!eventId || !selectedCategory) return;
+    const [, divisionId, raceId] = selectedCategory.split("|");
+    if (!divisionId || !raceId) return;
+
+    let cancelled = false;
+    fetch(
+      `/api/judges/h2h/round-active?eventId=${eventId}&divisionId=${divisionId}&raceId=${raceId}`,
+      { cache: "no-store" }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled || !data?.success) return;
+        setActiveRound(
+          data.roundName
+            ? { roundName: data.roundName, teams: data.teams || [] }
+            : null
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, selectedCategory]);
+
+  // Relay broadcast "h2h:round-active" dari sts-timingsystem (dikirim
+  // saat operator pindah/buka babak lain, lihat broadcastActiveRound() di
+  // HeadToHead.vue) — tampilkan toast per tim di babak itu, simpan ke
+  // database (utk filter dropdown Team + label babak aktif), dan update
+  // state lokal kalau kategorinya sama dgn yang sedang dipilih juri.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "h2h:round-active") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+
+      const categoryLabel =
+        [msg.initialName, msg.divisionName, msg.raceName]
+          .filter(Boolean)
+          .join(" - ") || "-";
+
+      (msg.teams || []).forEach((t) => {
+        pushToast({
+          title: "Babak Aktif",
+          text: `BIB ${t.bibTeam || "-"} - ${
+            t.nameTeam || "Team"
+          } - Kategori ${categoryLabel} - Babak ${
+            msg.roundName || "-"
+          } AKTIF`,
+          type: "info",
+        });
+      });
+
+      fetch("/api/judges/h2h/round-active", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: msg.eventId,
+          initialId: msg.initialId,
+          divisionId: msg.divisionId,
+          raceId: msg.raceId,
+          roundId: msg.roundId,
+          roundName: msg.roundName,
+          teams: msg.teams,
+        }),
+      }).catch((err) => {
+        console.error("❌ Gagal relay h2h:round-active:", err);
+      });
+
+      const [, curDivisionId, curRaceId] = (selectedCategory || "").split(
+        "|"
+      );
+      if (
+        String(msg.divisionId) === String(curDivisionId) &&
+        String(msg.raceId) === String(curRaceId)
+      ) {
+        setActiveRound({ roundName: msg.roundName, teams: msg.teams || [] });
+      }
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, [eventId, socketRef, pushToast, selectedCategory]);
+
+  // Set teamId dari activeRound (kalau ada babak aktif tersimpan) — dipakai
+  // JudgeCategoryTeamFields utk disable tim yang tidak ada di babak itu.
+  // undefined (bukan Set kosong) kalau belum ada info sama sekali, supaya
+  // tidak salah menganggap "semua tim tidak aktif" sebelum data termuat.
+  const activeTeamIds = useMemo(() => {
+    if (!activeRound?.teams?.length) return undefined;
+    return new Set(
+      activeRound.teams.map((t) => String(t.teamId || "")).filter(Boolean)
+    );
+  }, [activeRound]);
 
   const handleTypeChange = (key) => {
     setSelectedType(key);
@@ -162,6 +269,7 @@ const JudgesHeadToHeadPage = () => {
         teamId: actualTeamId,
         teamName,
         bibTeam: selectedTeamData?.bibTeam || "",
+        judge: user?.username || user?.name || "",
         eventId,
         ts: new Date().toISOString(),
       };
@@ -364,6 +472,20 @@ const JudgesHeadToHeadPage = () => {
         >
           <fieldset disabled={submitting} className="space-y-4">
             <JudgeSectionCard step={1} title="Kategori & Team">
+              {selectedCategory && (
+                <div
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium ${
+                    activeRound?.roundName
+                      ? "bg-sts/10 text-sts"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                  {activeRound?.roundName
+                    ? `Babak Aktif: ${activeRound.roundName}`
+                    : "Babak aktif belum diketahui — menunggu update dari timing system."}
+                </div>
+              )}
               <JudgeCategoryTeamFields
                 loadingEvent={loadingEvent}
                 combinedCategories={combinedCategories}
@@ -373,6 +495,7 @@ const JudgesHeadToHeadPage = () => {
                 teams={teams}
                 selectedTeam={selectedTeam}
                 onTeamChange={setSelectedTeam}
+                activeTeamIds={activeTeamIds}
               />
             </JudgeSectionCard>
 
