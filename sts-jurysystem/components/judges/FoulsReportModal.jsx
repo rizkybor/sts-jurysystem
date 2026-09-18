@@ -63,8 +63,8 @@ function DetailIcon({ iconKey, selected }) {
     <Image
       src={src}
       alt=""
-      width={32}
-      height={32}
+      width={48}
+      height={48}
       className={`w-6 h-6 sm:w-7 sm:h-7 object-contain transition ${
         selected ? "" : "opacity-70"
       }`}
