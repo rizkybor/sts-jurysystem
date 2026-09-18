@@ -130,6 +130,25 @@ const JudgesSprintPage = () => {
     const handler = (msg) => {
       if (msg?.type !== "sprint:team-started") return;
       if (String(msg?.eventId) !== String(eventId)) return;
+
+      // Beri tahu juri yang bertugas: tim mana yang baru saja lepas
+      // Start, lengkap dengan BIB, nama tim, dan kategorinya — supaya
+      // juri tahu persis tim mana yang sedang berjalan tanpa harus buka
+      // dropdown Team satu-satu.
+      const categoryLabel =
+        [msg.initialName, msg.divisionName, msg.raceName]
+          .filter(Boolean)
+          .join(" - ") ||
+        categoryLabelByKey[`${msg.initialId || ""}|${msg.divisionId || ""}|${msg.raceId || ""}`] ||
+        "-";
+      pushToast({
+        title: "Team Lepas Start",
+        text: `BIB ${msg.bibTeam || "-"} - ${
+          msg.teamName || "Team"
+        } - Kategori ${categoryLabel} - Lepas START`,
+        type: "info",
+      });
+
       fetch("/api/judges/sprint/team-started", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,7 +168,7 @@ const JudgesSprintPage = () => {
 
     socket.on("custom:event", handler);
     return () => socket.off("custom:event", handler);
-  }, [eventId, socketRef]);
+  }, [eventId, socketRef, pushToast, categoryLabelByKey]);
 
   const { teams, loadingTeams, refreshTeams, resetTeams } = useJudgeTeams({
     eventId,

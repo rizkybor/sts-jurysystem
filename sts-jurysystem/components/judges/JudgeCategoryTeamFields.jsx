@@ -30,10 +30,22 @@ export default function JudgeCategoryTeamFields({
   teams,
   selectedTeam,
   onTeamChange,
+  // Opsional — kalau di-set (mis. dari filter "babak aktif" H2H), tim yang
+  // _id-nya TIDAK ada di set ini akan disabled di dropdown. undefined/null
+  // = tidak ada filter sama sekali (perilaku lama, dipakai Sprint/Slalom/
+  // DRR/RX yang tidak punya konsep ini).
+  activeTeamIds,
 }) {
   const selectedTeamData = teams.find((t) => t._id === selectedTeam);
   const showInvalidTeamWarning =
     selectedTeam && selectedTeamData && !selectedTeamData.hasValidTeamId;
+  const hasActiveFilter = activeTeamIds instanceof Set;
+  const isTeamInactive = (t) =>
+    hasActiveFilter && t.hasValidTeamId && !activeTeamIds.has(t._id);
+  const showInactiveTeamWarning =
+    selectedTeam &&
+    selectedTeamData?.hasValidTeamId &&
+    isTeamInactive(selectedTeamData);
 
   return (
     <>
@@ -87,10 +99,19 @@ export default function JudgeCategoryTeamFields({
             <option
               key={t._id}
               value={t._id}
-              className={!t.hasValidTeamId ? "text-orange-500 bg-orange-50" : ""}
+              disabled={isTeamInactive(t)}
+              className={
+                !t.hasValidTeamId || isTeamInactive(t)
+                  ? "text-orange-500 bg-orange-50"
+                  : ""
+              }
             >
               {t.nameTeam} {t.bibTeam ? `(BIB ${t.bibTeam})` : ""}
-              {!t.hasValidTeamId && " — Tidak bisa submit"}
+              {!t.hasValidTeamId
+                ? " — Tidak bisa submit"
+                : isTeamInactive(t)
+                ? " — Belum di babak aktif"
+                : ""}
             </option>
           ))}
         </select>
@@ -109,6 +130,21 @@ export default function JudgeCategoryTeamFields({
               </p>
               <p className="text-orange-700 text-xs mt-1">
                 Silakan hubungi administrator untuk memperbaiki data team.
+              </p>
+            </div>
+          </div>
+        )}
+        {showInactiveTeamWarning && (
+          <div className="mt-2 flex items-start gap-2.5 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+            <WarningIcon className="w-4 h-4 mt-0.5 text-orange-500 shrink-0" />
+            <div>
+              <p className="text-orange-800 text-sm font-medium">
+                Team ini belum ada di babak yang sedang aktif di timing
+                system.
+              </p>
+              <p className="text-orange-700 text-xs mt-1">
+                Pilih team lain, atau tunggu operator membuka babak yang
+                sesuai.
               </p>
             </div>
           </div>
