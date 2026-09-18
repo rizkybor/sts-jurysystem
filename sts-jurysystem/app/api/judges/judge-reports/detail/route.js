@@ -660,8 +660,15 @@ export const POST = async (req) => {
       // bukan elemen array baru). Perbaiki bentuknya SEKALI di sini kalau
       // terdeteksi rusak, pakai native driver supaya bisa lihat bentuk
       // ASLI di DB (Mongoose query di bawah sudah kadung membungkusnya).
+      // BUG FIX: query ini sebelumnya cuma eventId+eventName+teamId, TANPA
+      // raceId/divisionId — padahal satu team bisa terdaftar di lebih dari
+      // satu bucket race Slalom dalam event yang sama (pola bug yang sama
+      // persis dgn Sprint, lihat MEMORY-SPRINT.md bug #1). Tanpa filter
+      // ini, `findOne` bisa match bucket race yang SALAH kalau teamId yang
+      // sama muncul di >1 dokumen — penalty/perbaikan data bisa kena
+      // race/division yang tidak dimaksud juri.
       const rawTeamDoc = await TeamsRegistered.collection.findOne(
-        { eventId, eventName: "SLALOM", "teams.teamId": team },
+        { eventId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
         { projection: { "teams.$": 1 } }
       );
       const rawResult = rawTeamDoc?.teams?.[0]?.result;
@@ -702,13 +709,13 @@ export const POST = async (req) => {
           judgesTime: "",
         };
         await TeamsRegistered.collection.updateOne(
-          { eventId, eventName: "SLALOM", "teams.teamId": team },
+          { eventId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
           { $set: { "teams.$.result": [repairedRun, { ...emptyRun }] } }
         );
       }
 
       const teamDoc = await TeamsRegistered.findOne(
-        { eventId, eventName: "SLALOM", "teams.teamId": team },
+        { eventId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
         { "teams.$": 1 }
       );
 
@@ -1043,8 +1050,23 @@ export const POST = async (req) => {
       ? { $in: TEAMS_EVENTNAME_BY_TYPE[normalizedType] }
       : normalizedType;
 
+    // BUG FIX: query ini sebelumnya cuma eventId+eventName+teamId, TANPA
+    // raceId/divisionId — padahal satu team bisa terdaftar di lebih dari
+    // satu bucket race/division dalam event yang sama (kasus nyata:
+    // Slalom, team yang sama muncul di raceId "1" DAN "2"). Tanpa filter
+    // ini, `findOneAndUpdate` bisa match & menyimpan penalty ke bucket
+    // race/division yang SALAH — pola bug sama persis dgn yang sudah
+    // diperbaiki utk validasi duplikat Sprint (lihat MEMORY-SPRINT.md
+    // bug #1), cuma sekarang diterapkan ke titik PENYIMPANAN-nya
+    // langsung, dipakai bersama semua kategori (Sprint/H2H/Slalom/DRR/RX).
     const updatedTeam = await TeamsRegistered.findOneAndUpdate(
-      { eventId, eventName: teamsEventNameFilter, "teams.teamId": team },
+      {
+        eventId,
+        raceId,
+        divisionId,
+        eventName: teamsEventNameFilter,
+        "teams.teamId": team,
+      },
       updateQuery,
       { new: true }
     );
