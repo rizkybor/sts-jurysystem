@@ -88,7 +88,6 @@ const JudgesHeadToHeadPage = () => {
   const [cornerTouched, setCornerTouched] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [foulsModalOpen, setFoulsModalOpen] = useState(false);
-  const [foulsSubmitting, setFoulsSubmitting] = useState(false);
 
   // Babak (round) H2H yang sedang aktif di timing system utk kategori
   // terpilih — H2H tidak punya "Start Time" per tim spt Sprint, jadi ini
@@ -382,7 +381,6 @@ const JudgesHeadToHeadPage = () => {
         return;
       }
 
-      setFoulsSubmitting(true);
       const [initialId, divisionId, raceId] = selectedCategory.split("|");
       const message = {
         senderId: socket.id,
@@ -411,38 +409,44 @@ const JudgesHeadToHeadPage = () => {
         ...payload, // position, positionLabel, detail, detailLabel, penaltySecondsLabel, remarks
       };
 
+      // Alert "berhasil submit" di sini menandakan JURI sudah selesai
+      // mengisi & mengirim laporannya — bukan konfirmasi operator timing
+      // system sudah menerimanya (itu urusan terpisah, di sisi
+      // sts-timingsystem sendiri lewat toast "Fouls Report Diterima").
+      // Makanya alert & tutup modal ini TIDAK menunggu ack socket — kalau
+      // ditunggu, dan kebetulan tidak ada operator/juri lain yang online
+      // utk me-relay tepat saat itu (keterbatasan yang sudah didokumentasi
+      // di MEMORY-H2H.md), juri pengirim akan melihat modal "menggantung"
+      // padahal aksinya sendiri sudah tuntas.
+      submittedFoulsKeysRef.current.add(foulsKey);
+      pushToast({
+        title: "Fouls Report Terkirim",
+        text: `${payload.detailLabel || "Fouls"} — ${
+          selectedTeamData.nameTeam
+        } berhasil disubmit.`,
+        type: "success",
+      });
+      setFoulsModalOpen(false);
+      resolve(true);
+
       let settled = false;
       const timeout = setTimeout(() => {
         if (settled) return;
         settled = true;
-        setFoulsSubmitting(false);
-        resolve(false);
+        console.warn(
+          "⚠️ FoulsReport: tidak ada balasan ack socket dalam 5 detik (kemungkinan tidak ada juri/operator online utk me-relay)."
+        );
       }, 5000);
 
       socket.emit("custom:event", message, (ok) => {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
-        setFoulsSubmitting(false);
-        if (ok) {
-          submittedFoulsKeysRef.current.add(foulsKey);
-          pushToast({
-            title: "Fouls Report Terkirim",
-            text: `${payload.detailLabel || "Fouls"} — ${
-              selectedTeamData.nameTeam
-            } berhasil dilaporkan ke operator.`,
-            type: "success",
-          });
-          setFoulsModalOpen(false);
-        } else {
-          pushToast({
-            title: "Belum Terkirim",
-            text: "Pesan realtime belum sampai ke operator. Silakan coba lagi.",
-            type: "warning",
-            ttlMs: 6000,
-          });
+        if (!ok) {
+          console.warn(
+            "⚠️ FoulsReport: ack socket mengembalikan gagal — laporan mungkin belum sampai ke operator."
+          );
         }
-        resolve(!!ok);
       });
     });
 
@@ -880,7 +884,6 @@ const JudgesHeadToHeadPage = () => {
           roundName={activeRound?.roundName}
           foulTeam={selectedTeamData}
           unfoulTeam={unfoulTeamData}
-          submitting={foulsSubmitting}
           foulDetails={foulDetails}
           onSubmit={handleFoulsSubmit}
         />
