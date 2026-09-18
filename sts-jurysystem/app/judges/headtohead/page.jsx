@@ -201,17 +201,26 @@ const JudgesHeadToHeadPage = () => {
           .filter(Boolean)
           .join(" - ") || "-";
 
-      (msg.teams || []).forEach((t) => {
-        pushToast({
-          title: "Babak Aktif",
-          text: `BIB ${t.bibTeam || "-"} - ${
-            t.nameTeam || "Team"
-          } - Kategori ${categoryLabel} - Babak ${
-            msg.roundName || "-"
-          } AKTIF`,
-          type: "info",
+      // BUG FIX: broadcastActiveRound() sekarang juga terpanggil dari edit
+      // bracket (assign/lepas tim, ubah Heat) — bukan cuma pindah babak.
+      // `msg.silent` (dikirim dari HeadToHead.vue) menandai broadcast itu
+      // sbg "cuma update data", supaya toast per-tim di bawah TIDAK ikut
+      // fire ulang utk semua tim di babak tiap kali operator mengedit
+      // bracket satu per satu — data (filter Team/label babak) tetap
+      // diperbarui via fetch di bawah, cuma toast-nya yang dilewati.
+      if (!msg.silent) {
+        (msg.teams || []).forEach((t) => {
+          pushToast({
+            title: "Babak Aktif",
+            text: `BIB ${t.bibTeam || "-"} - ${
+              t.nameTeam || "Team"
+            } - Kategori ${categoryLabel} - Babak ${
+              msg.roundName || "-"
+            } AKTIF`,
+            type: "info",
+          });
         });
-      });
+      }
 
       fetch("/api/judges/h2h/round-active", {
         method: "POST",
@@ -665,30 +674,6 @@ const JudgesHeadToHeadPage = () => {
                 </div>
               )}
 
-              {selectedCategory && availableHeats.length > 0 && (
-                <div>
-                  <label className="block text-gray-700 mb-2 font-medium">
-                    Heat
-                  </label>
-                  <select
-                    value={selectedHeat}
-                    onChange={(e) => handleHeatChange(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base bg-white focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
-                  >
-                    <option value="">Semua Team di Babak Ini</option>
-                    {availableHeats.map((h) => (
-                      <option key={h} value={h}>
-                        Heat {h}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1.5 text-xs text-gray-500">
-                    Pilih Heat utk mempersempit pilihan Team ke 2 tim yang
-                    ditugaskan admin timing di heat tsb.
-                  </p>
-                </div>
-              )}
-
               <JudgeCategoryTeamFields
                 loadingEvent={loadingEvent}
                 combinedCategories={combinedCategories}
@@ -699,6 +684,31 @@ const JudgesHeadToHeadPage = () => {
                 selectedTeam={selectedTeam}
                 onTeamChange={setSelectedTeam}
                 activeTeamIds={activeTeamIds}
+                betweenCategoryAndTeam={
+                  selectedCategory && availableHeats.length > 0 ? (
+                    <div>
+                      <label className="block text-gray-700 mb-2 font-medium">
+                        Heat
+                      </label>
+                      <select
+                        value={selectedHeat}
+                        onChange={(e) => handleHeatChange(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base bg-white focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
+                      >
+                        <option value="">Semua Team di Babak Ini</option>
+                        {availableHeats.map((h) => (
+                          <option key={h} value={h}>
+                            Heat {h}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        Pilih Heat utk mempersempit pilihan Team ke 2 tim
+                        yang ditugaskan admin timing di heat tsb.
+                      </p>
+                    </div>
+                  ) : null
+                }
               />
             </JudgeSectionCard>
 
