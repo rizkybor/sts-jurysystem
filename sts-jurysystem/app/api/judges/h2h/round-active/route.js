@@ -58,6 +58,7 @@ export async function POST(req) {
             : [],
           matches: Array.isArray(matches)
             ? matches.map((m) => ({
+                heat: Number.isFinite(Number(m?.heat)) ? Number(m.heat) : null,
                 team1: {
                   teamId: m?.team1?.teamId ? String(m.team1.teamId) : "",
                   bibTeam: m?.team1?.bibTeam ? String(m.team1.bibTeam) : "",

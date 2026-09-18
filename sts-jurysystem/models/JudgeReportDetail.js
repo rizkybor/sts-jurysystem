@@ -31,6 +31,11 @@ const JudgeReportDetailSchema = new mongoose.Schema(
     initialId: { type: String },
     divisionId: { type: String },
     raceId: { type: String },
+    // Babak H2H (dari H2HActiveRound.roundId di jurysystem) — dipakai
+    // validasi "1x per team per round" supaya tim yang sama di RONDE
+    // BERBEDA (mis. Round 1 lalu Semifinal) tidak salah ke-blok sbg
+    // "sudah pernah dinilai", sama pola dgn raceId di Sprint.
+    roundId: { type: String },
 
     // Status submit — "failed" dipakai utk mencatat percobaan submit yang
     // DITOLAK validasi (mis. team belum Start, atau sudah punya Start+Finish)

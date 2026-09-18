@@ -24,6 +24,10 @@ const H2HRoundTeamSchema = new mongoose.Schema(
 
 const H2HMatchSchema = new mongoose.Schema(
   {
+    // Nomor Heat yang sudah ditentukan operator (openHeatEditor di
+    // HeadToHead.vue) — dipakai jurysystem utk filter dropdown Team per
+    // Heat, bukan cuma per babak. null kalau belum ditentukan.
+    heat: { type: Number, default: null },
     team1: { type: H2HRoundTeamSchema, default: () => ({}) },
     team2: { type: H2HRoundTeamSchema, default: () => ({}) },
   },
