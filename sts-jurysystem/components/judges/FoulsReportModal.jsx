@@ -306,7 +306,7 @@ export default function FoulsReportModal({
             onClick={handleSubmit}
             className="w-full py-3.5 rounded-xl bg-sts text-white font-bold tracking-wide hover:bg-stsDark transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? "MENGIRIM..." : "SUBMIT"}
+            {submitting ? "MENGIRIM..." : "SUBMIT FOULS REPORT"}
           </button>
         </div>
       </div>
