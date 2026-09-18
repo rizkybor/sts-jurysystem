@@ -38,13 +38,28 @@ export const authOptions = {
       // 4. Return true to allow sign in
       return true;
     },
-    // Modifies the session object
+    // Modifies the session object — dipanggil NextAuth core di SETIAP
+    // request ke /api/auth/session, termasuk polling background
+    // (AuthProvider.jsx, refetchInterval 60 detik). Kalau callback ini
+    // throw, next-auth core (routes/session.js) menangkapnya dgn
+    // MENGHAPUS cookie session & mengirim body kosong — client
+    // (useSession) langsung baca itu sbg status "unauthenticated", lalu
+    // RequireAuth redirect ke Home. Itu penyebab bug "judges suka logout
+    // sendiri tiba-tiba, tapi refresh muncul lagi akunnya" — BUKAN logout
+    // asli, tapi callback ini gagal sesaat (koneksi Mongo belum siap /
+    // race) lalu next-auth SALAH mengira user benar-benar tidak login.
+    // Fix: connectDB() eksplisit (jangan andalkan koneksi sudah dibuka
+    // route lain) + null-guard (JANGAN throw kalau user tidak ketemu).
     async session({ session }) {
-      // 1. Get user from database
-      const user = await User.findOne({ email: session.user.email });
-      // 2. Assign the user id to the session
-      session.user.id = user._id.toString();
-      // 3. return session
+      try {
+        await connectDB();
+        const user = await User.findOne({ email: session.user.email });
+        if (user) {
+          session.user.id = user._id.toString();
+        }
+      } catch (err) {
+        console.error("❌ [authOptions.session] gagal ambil user:", err?.message);
+      }
       return session;
     },
   },

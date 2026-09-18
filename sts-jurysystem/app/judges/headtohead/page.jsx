@@ -764,7 +764,7 @@ const JudgesHeadToHeadPage = () => {
                       aria-pressed={cornerTouched === true}
                       className={`min-h-[52px] px-2 text-sm sm:text-base rounded-xl font-semibold border transition ${
                         cornerTouched === true
-                          ? "bg-red-500 text-white border-red-600"
+                          ? "bg-emerald-500 text-white border-emerald-600 "
                           : "bg-white border-gray-300 text-gray-700"
                       }`}
                     >
@@ -776,7 +776,7 @@ const JudgesHeadToHeadPage = () => {
                       aria-pressed={cornerTouched === false}
                       className={`min-h-[52px] px-2 text-sm sm:text-base rounded-xl font-semibold border transition ${
                         cornerTouched === false
-                          ? "bg-emerald-500 text-white border-emerald-600"
+                          ? "bg-red-500 text-white border-red-600"
                           : "bg-white border-gray-300 text-gray-700"
                       }`}
                     >
@@ -844,7 +844,6 @@ const JudgesHeadToHeadPage = () => {
             historyDisabled={submitting}
             submitting={submitting}
             submitDisabled={submitting}
-            submitLabel="Kirim ke Operator →"
           />
         </form>
 
