@@ -35,6 +35,10 @@ export default function JudgeCategoryTeamFields({
   // = tidak ada filter sama sekali (perilaku lama, dipakai Sprint/Slalom/
   // DRR/RX yang tidak punya konsep ini).
   activeTeamIds,
+  // Opsional — konten (mis. dropdown Heat di H2H) yang dirender di ANTARA
+  // field Kategori & Team, supaya urutannya Kategori > Heat > Team tanpa
+  // memecah komponen ini jadi 2 (yang dipakai bersama semua halaman judge).
+  betweenCategoryAndTeam,
 }) {
   const selectedTeamData = teams.find((t) => t._id === selectedTeam);
   const showInvalidTeamWarning =
@@ -78,6 +82,8 @@ export default function JudgeCategoryTeamFields({
           </p>
         )}
       </div>
+
+      {betweenCategoryAndTeam}
 
       <div>
         <label className="block text-gray-700 mb-2 font-medium">Team</label>
