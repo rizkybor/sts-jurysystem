@@ -19,8 +19,14 @@ export default function useJudgeSocket(pushToast) {
     // masing-masing (mis. "sprint:team-started" di app/judges/sprint/
     // page.jsx, "h2h:round-active" di app/judges/headtohead/page.jsx) —
     // jangan ikut ditampilkan sebagai toast generik di sini, supaya tidak
-    // dobel.
-    const INTERNAL_EVENT_TYPES = ["sprint:team-started", "h2h:round-active"];
+    // dobel. "FoulsReport" khusus: cuma boleh dilihat operator timing
+    // system, juri LAIN yang sedang buka halaman H2H tidak perlu (dan
+    // tidak boleh) ikut dapat notifikasi soal laporan fouls juri lain.
+    const INTERNAL_EVENT_TYPES = [
+      "sprint:team-started",
+      "h2h:round-active",
+      "FoulsReport",
+    ];
 
     const handler = (msg) => {
       if (msg?.senderId && msg.senderId === socketRef.current?.id) return;
