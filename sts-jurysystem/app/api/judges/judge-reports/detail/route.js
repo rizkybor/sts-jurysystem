@@ -376,6 +376,7 @@ export const POST = async (req) => {
       initialId,
       raceId,
       divisionId,
+      roundId,
       operationType,
       section, // <-- untuk DRR (bisa '1' | 1 | 'Section 1')
       remarks,
@@ -450,6 +451,7 @@ export const POST = async (req) => {
           initialId,
           divisionId,
           raceId,
+          roundId,
           status: "failed",
           failReason: reason,
           createdAt: stamp.createdAt,
@@ -546,6 +548,35 @@ export const POST = async (req) => {
         (position === "Finish" && hasFinish)
       ) {
         const reason = `Team ${team} sudah memiliki posisi ${position}.`;
+        await recordFailedAttempt(reason);
+        return new Response(
+          JSON.stringify({ success: false, message: reason }),
+          { status: 400 }
+        );
+      }
+    }
+
+    // VALIDASI H2H: juri hanya boleh submit 1x per tipe penalty (position:
+    // start/cl/finish/other/r1/r2/l1/l2) per team per BABAK (roundId) —
+    // tidak bisa double. Di-scope per raceId+divisionId+roundId (bukan
+    // cuma eventId+team) supaya tim yang sama di ROUND BERBEDA (mis.
+    // Round 1 lalu lanjut Semifinal) tidak salah ke-blok sbg "sudah
+    // pernah dinilai" — sama pola bug fix cross-race yang sudah dilakukan
+    // di Sprint (lihat MEMORY-SPRINT.md).
+    if (normalizedType === "H2H") {
+      const existingH2H = await JudgeReportDetail.find({
+        eventId,
+        eventType: "H2H",
+        team,
+        raceId,
+        divisionId,
+        roundId,
+        position,
+        status: { $ne: "failed" },
+      }).lean();
+
+      if (existingH2H.length > 0) {
+        const reason = `Team ${team} sudah pernah diberi penalty tipe "${position}" di babak ini — tidak bisa disubmit 2x.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
@@ -977,6 +1008,7 @@ export const POST = async (req) => {
       initialId,
       divisionId,
       raceId,
+      roundId,
       createdAt: stamp.createdAt,
       createdAtLocal: stamp.createdAtLocal,
       createdAtTz: stamp.createdAtTz,

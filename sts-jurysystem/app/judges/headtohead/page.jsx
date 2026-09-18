@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import useJudgeToasts from "@/hooks/judges/useJudgeToasts";
@@ -80,6 +80,7 @@ const JudgesHeadToHeadPage = () => {
   const { settings: raceSettings } = useRaceSettings(eventId);
 
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedHeat, setSelectedHeat] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [selectedPenalty, setSelectedPenalty] = useState(null);
@@ -133,6 +134,7 @@ const JudgesHeadToHeadPage = () => {
 
   const handleCategoryChange = (value) => {
     setSelectedCategory(value);
+    setSelectedHeat("");
     setSelectedTeam("");
     setSelectedType("");
     setSelectedPenalty(null);
@@ -140,6 +142,11 @@ const JudgesHeadToHeadPage = () => {
     setCornerTouched(null);
     setActiveRound(null);
     resetTeams();
+  };
+
+  const handleHeatChange = (value) => {
+    setSelectedHeat(value);
+    setSelectedTeam("");
   };
 
   // Muat babak aktif tersimpan (kalau ada) begitu kategori dipilih — supaya
@@ -243,16 +250,45 @@ const JudgesHeadToHeadPage = () => {
     return () => socket.off("custom:event", handler);
   }, [eventId, socketRef, pushToast, selectedCategory]);
 
+  // Daftar Heat yang sudah ditentukan operator (openHeatEditor) utk babak
+  // aktif ini — dipakai dropdown Heat. Match tanpa heat (belum
+  // ditentukan operator) tidak muncul di daftar.
+  const availableHeats = useMemo(() => {
+    if (!activeRound?.matches?.length) return [];
+    const heats = activeRound.matches
+      .filter((m) => m?.heat !== null && m?.heat !== undefined)
+      .map((m) => Number(m.heat));
+    return Array.from(new Set(heats)).sort((a, b) => a - b);
+  }, [activeRound]);
+
+  // Match yang sesuai Heat terpilih — dipakai narrow-kan activeTeamIds ke
+  // 2 tim di heat itu SAJA (lebih presisi drpd "semua tim di babak").
+  const selectedHeatMatch = useMemo(() => {
+    if (!selectedHeat || !activeRound?.matches?.length) return null;
+    return (
+      activeRound.matches.find((m) => String(m?.heat) === String(selectedHeat)) ||
+      null
+    );
+  }, [selectedHeat, activeRound]);
+
   // Set teamId dari activeRound (kalau ada babak aktif tersimpan) — dipakai
   // JudgeCategoryTeamFields utk disable tim yang tidak ada di babak itu.
-  // undefined (bukan Set kosong) kalau belum ada info sama sekali, supaya
-  // tidak salah menganggap "semua tim tidak aktif" sebelum data termuat.
+  // Kalau Heat dipilih, di-narrow lagi ke 2 tim di heat itu saja. undefined
+  // (bukan Set kosong) kalau belum ada info sama sekali, supaya tidak
+  // salah menganggap "semua tim tidak aktif" sebelum data termuat.
   const activeTeamIds = useMemo(() => {
+    if (selectedHeatMatch) {
+      return new Set(
+        [selectedHeatMatch.team1?.teamId, selectedHeatMatch.team2?.teamId]
+          .map((id) => String(id || ""))
+          .filter(Boolean)
+      );
+    }
     if (!activeRound?.teams?.length) return undefined;
     return new Set(
       activeRound.teams.map((t) => String(t.teamId || "")).filter(Boolean)
     );
-  }, [activeRound]);
+  }, [activeRound, selectedHeatMatch]);
 
   const handleTypeChange = (key) => {
     setSelectedType(key);
@@ -279,6 +315,14 @@ const JudgesHeadToHeadPage = () => {
     return null;
   }, [selectedTeamData, activeRound]);
 
+  // Cegah juri submit Fouls Report yang PERSIS SAMA (tim+babak+posisi+
+  // detail) 2x — cek sesi lokal (ref, bukan state, supaya tidak trigger
+  // re-render) sebelum mengirim. Ini lapisan pertama (langsung, tanpa
+  // round-trip); lapisan kedua ada di sts-timingsystem
+  // (insertH2HFoulsReport, cek DB) sbg jaring pengaman kalau ada juri
+  // lain/device lain yang kebetulan kirim kombinasi identik.
+  const submittedFoulsKeysRef = useRef(new Set());
+
   // Kirim Fouls Report — MURNI socket, TIDAK lewat
   // /api/judges/judge-reports/detail sama sekali, supaya tidak pernah
   // menyentuh alur penalty resmi (STEP 0 validasi, JudgeReportDetail,
@@ -292,6 +336,27 @@ const JudgesHeadToHeadPage = () => {
           title: "Gagal Mengirim",
           text: "Koneksi realtime belum siap atau team tidak valid.",
           type: "error",
+        });
+        resolve(false);
+        return;
+      }
+
+      const foulsKey = [
+        selectedTeamData.teamId,
+        activeRound?.roundId || "",
+        payload.position,
+        payload.detail,
+      ].join("|");
+      if (submittedFoulsKeysRef.current.has(foulsKey)) {
+        pushToast({
+          title: "Sudah Pernah Dilaporkan",
+          text: `Fouls "${payload.detailLabel || payload.detail}" di posisi "${
+            payload.positionLabel || payload.position
+          }" utk team ${
+            selectedTeamData.nameTeam
+          } di babak ini sudah pernah dilaporkan. Tidak bisa dikirim 2x.`,
+          type: "warning",
+          ttlMs: 6000,
         });
         resolve(false);
         return;
@@ -340,6 +405,7 @@ const JudgesHeadToHeadPage = () => {
         clearTimeout(timeout);
         setFoulsSubmitting(false);
         if (ok) {
+          submittedFoulsKeysRef.current.add(foulsKey);
           pushToast({
             title: "Fouls Report Terkirim",
             text: `${payload.detailLabel || "Fouls"} — ${
@@ -496,6 +562,7 @@ const JudgesHeadToHeadPage = () => {
       initialId,
       divisionId,
       raceId,
+      roundId: activeRound?.roundId || "",
       position: selectedType,
       remarks: isCornerType
         ? cornerTouched
@@ -597,6 +664,31 @@ const JudgesHeadToHeadPage = () => {
                     : "Babak aktif belum diketahui — menunggu update dari timing system."}
                 </div>
               )}
+
+              {selectedCategory && availableHeats.length > 0 && (
+                <div>
+                  <label className="block text-gray-700 mb-2 font-medium">
+                    Heat
+                  </label>
+                  <select
+                    value={selectedHeat}
+                    onChange={(e) => handleHeatChange(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base bg-white focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
+                  >
+                    <option value="">Semua Team di Babak Ini</option>
+                    {availableHeats.map((h) => (
+                      <option key={h} value={h}>
+                        Heat {h}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    Pilih Heat utk mempersempit pilihan Team ke 2 tim yang
+                    ditugaskan admin timing di heat tsb.
+                  </p>
+                </div>
+              )}
+
               <JudgeCategoryTeamFields
                 loadingEvent={loadingEvent}
                 combinedCategories={combinedCategories}
@@ -779,6 +871,7 @@ const JudgesHeadToHeadPage = () => {
           data={history.data}
           renderItem={(item) => {
             const p = Number(item.penalty ?? 0);
+            const isFailed = item?.status === "failed";
             const timeStr = item?.createdAt
               ? new Date(item.createdAt).toLocaleTimeString("id-ID", {
                   hour: "2-digit",
@@ -795,29 +888,55 @@ const JudgesHeadToHeadPage = () => {
             return (
               <>
                 <div
-                  className={`grid place-items-center h-12 w-12 rounded-xl ring shrink-0 ${penaltyBadgeColor(
-                    p
-                  )}`}
+                  className={`grid place-items-center h-12 w-12 rounded-xl ring shrink-0 ${
+                    isFailed
+                      ? "bg-red-50 text-red-600 ring-red-200"
+                      : penaltyBadgeColor(p)
+                  }`}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    className="h-6 w-6"
-                  >
-                    <path
-                      fill="currentColor"
-                      d="M6 2a1 1 0 0 0-1 1v18h2v-6h9l-1-4 1-4H7V3a1 1 0 0 0-1-1Z"
-                    />
-                  </svg>
+                  {isFailed ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-6 w-6"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2Zm0-4h-2V7h2Z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-6 w-6"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M6 2a1 1 0 0 0-1 1v18h2v-6h9l-1-4 1-4H7V3a1 1 0 0 0-1-1Z"
+                      />
+                    </svg>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-semibold text-gray-900 flex items-center gap-1.5">
                     H2H Penalty — {typeLabel}
+                    {isFailed && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 ring-1 ring-red-200 rounded-full px-2 py-0.5">
+                        Gagal
+                      </span>
+                    )}
                   </div>
-                  <div className="text-gray-600 text-sm">
-                    {item?.teamInfo?.nameTeam || "Team"} BIB{" "}
-                    {item?.teamInfo?.bibTeam || "-"} • {valueLabel}
-                  </div>
+                  {isFailed ? (
+                    <div className="text-red-600 text-sm">
+                      {item?.failReason || "Submit ditolak sistem."}
+                    </div>
+                  ) : (
+                    <div className="text-gray-600 text-sm">
+                      {item?.teamInfo?.nameTeam || "Team"} BIB{" "}
+                      {item?.teamInfo?.bibTeam || "-"} • {valueLabel}
+                    </div>
+                  )}
                   <small className="text-gray-500">
                     Oleh: {item?.judge || "Undefined"}
                   </small>
