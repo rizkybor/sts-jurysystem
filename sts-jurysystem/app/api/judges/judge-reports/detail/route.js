@@ -3,6 +3,7 @@ import JudgeReport from "@/models/JudgeReport";
 import JudgeReportDetail from "@/models/JudgeReportDetail";
 import TeamsRegistered from "@/models/TeamsRegistered";
 import SprintTeamStatus from "@/models/SprintTeamStatus";
+import SlalomTeamStatus from "@/models/SlalomTeamStatus";
 import User from "@/models/User";
 import RaceSetting from "@/models/RaceSetting";
 import { getSessionUser } from "@/utils/getSessionUser";
@@ -446,6 +447,8 @@ export const POST = async (req) => {
           eventType: normalizedType,
           team,
           position,
+          runNumber,
+          gateNumber,
           penalty: Number.isFinite(Number(penalty)) ? Number(penalty) : 0,
           judge: username,
           initialId,
@@ -577,6 +580,45 @@ export const POST = async (req) => {
 
       if (existingH2H.length > 0) {
         const reason = `Team ${team} sudah pernah diberi penalty tipe "${position}" di babak ini — tidak bisa disubmit 2x.`;
+        await recordFailedAttempt(reason);
+        return new Response(
+          JSON.stringify({ success: false, message: reason }),
+          { status: 400 }
+        );
+      }
+    }
+
+    // VALIDASI SLALOM: team harus sudah benar-benar Start di RUN yang
+    // sesuai (runNumber) sebelum juri boleh submit penalty Start/Finish/
+    // Gate apa pun utk run itu — pola sama persis dgn Sprint
+    // (SprintTeamStatus), cuma di-scope tambahan per `runNumber` krn
+    // Slalom py 2 run independen (Run 1/Run 2 py startTime sendiri).
+    //
+    // Sumbernya BUKAN TeamsRegistered langsung — field startTime di sana
+    // cuma terisi SETELAH operator klik "Save" (bulk, di akhir run),
+    // padahal juri menilai justru saat run masih LIVE. Sinyal live yang
+    // dipakai di sini datang dari broadcast socket `slalom:team-started`
+    // yang dikirim timing system begitu operator mengisi Start Time
+    // (lihat updateTime() di SlalomRace.vue) — diteruskan browser juri
+    // yang sedang online ke SlalomTeamStatus lewat
+    // /api/judges/slalom/team-started.
+    //
+    // Keterbatasan yang disadari & diterima (sama dgn Sprint): kalau
+    // tidak ada juri yang online tepat saat event itu terkirim, flag ini
+    // tidak akan terisi walau tim sungguhan sudah start.
+    if (normalizedType === "SLALOM") {
+      const slalomStartStatus = await SlalomTeamStatus.findOne({
+        eventId: String(eventId),
+        raceId: String(raceId),
+        divisionId: String(divisionId),
+        teamId: String(team),
+        runNumber: Number(runNumber) || 1,
+      }).lean();
+
+      if (!slalomStartStatus) {
+        const reason = `Team ${team} belum melakukan Start di Run ${
+          runNumber || 1
+        } — penalty tidak dapat disimpan.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
