@@ -309,6 +309,32 @@ const JudgesHeadToHeadPage = () => {
     );
   }, [activeRound, selectedHeatMatch]);
 
+  // 2 tombol Team 1 vs Team 2 begitu Heat dipilih — menggantikan dropdown
+  // Team (lihat `teamFieldOverride` di JudgeCategoryTeamFields). Setiap
+  // Heat yang sudah ditentukan operator PASTI cuma py 2 team (team1/team2
+  // di H2HActiveRound.matches), jadi dropdown jadi langkah ekstra yang
+  // tidak perlu. `_id` dicari dari `teams` (daftar dari useJudgeTeams,
+  // sumber `hasValidTeamId` & yang dipakai `selectedTeam` state) via
+  // `teamId` yang sama supaya tetap konsisten dgn alur submit yang ada.
+  const heatTeamButtons = useMemo(() => {
+    if (!selectedHeatMatch) return null;
+    const resolve = (slot) => {
+      const tid = slot?.teamId ? String(slot.teamId) : "";
+      if (!tid) return null;
+      const matched = teams.find((t) => String(t.teamId) === tid);
+      return {
+        _id: matched?._id || "",
+        nameTeam: matched?.nameTeam || slot.nameTeam || "-",
+        bibTeam: matched?.bibTeam || slot.bibTeam || "",
+        hasValidTeamId: matched ? matched.hasValidTeamId : false,
+      };
+    };
+    const t1 = resolve(selectedHeatMatch.team1);
+    const t2 = resolve(selectedHeatMatch.team2);
+    if (!t1 && !t2) return null;
+    return [t1, t2].filter(Boolean);
+  }, [selectedHeatMatch, teams]);
+
   const handleTypeChange = (key) => {
     setSelectedType(key);
     setSelectedPenalty(null);
@@ -721,6 +747,45 @@ const JudgesHeadToHeadPage = () => {
                         Pilih Heat utk mempersempit pilihan Team ke 2 tim
                         yang ditugaskan admin timing di heat tsb.
                       </p>
+                    </div>
+                  ) : null
+                }
+                teamFieldOverride={
+                  heatTeamButtons ? (
+                    <div>
+                      <label className="block text-gray-700 mb-2 font-medium">
+                        Team
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {heatTeamButtons.map((t, idx) => {
+                          const selected =
+                            !!t._id && selectedTeam === t._id;
+                          const disabled = !t._id || !t.hasValidTeamId;
+                          return (
+                            <button
+                              key={t._id || idx}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => setSelectedTeam(t._id)}
+                              className={`px-3 py-3 rounded-xl text-sm font-semibold border transition text-center ${
+                                selected
+                                  ? "bg-sts text-white border-sts shadow-md"
+                                  : disabled
+                                  ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                  : "bg-white text-gray-800 border-gray-300 hover:border-sts hover:text-sts"
+                              }`}
+                            >
+                              {t.nameTeam}
+                              {t.bibTeam ? ` - ${t.bibTeam}` : ""}
+                              {disabled && !t._id
+                                ? " (tidak ditemukan)"
+                                : disabled
+                                ? " (ID tidak valid)"
+                                : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : null
                 }
