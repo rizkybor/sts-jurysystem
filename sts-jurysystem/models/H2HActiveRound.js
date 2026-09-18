@@ -22,6 +22,14 @@ const H2HRoundTeamSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const H2HMatchSchema = new mongoose.Schema(
+  {
+    team1: { type: H2HRoundTeamSchema, default: () => ({}) },
+    team2: { type: H2HRoundTeamSchema, default: () => ({}) },
+  },
+  { _id: false }
+);
+
 const H2HActiveRoundSchema = new mongoose.Schema(
   {
     eventId: { type: String, required: true },
@@ -31,6 +39,10 @@ const H2HActiveRoundSchema = new mongoose.Schema(
     roundId: { type: String },
     roundName: { type: String },
     teams: { type: [H2HRoundTeamSchema], default: [] },
+    // Pasangan match (team1 vs team2) di babak ini — dipakai fitur Fouls
+    // Report utk otomatis menentukan "Unfouls Team" (lawan dari team yang
+    // dipilih juri sbg pelaku foul), tanpa juri perlu pilih manual.
+    matches: { type: [H2HMatchSchema], default: [] },
   },
   { timestamps: true }
 );
