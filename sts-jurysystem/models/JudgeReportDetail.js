@@ -18,9 +18,15 @@ const JudgeReportDetailSchema = new mongoose.Schema(
 
     // === DRR specific ===
     section: { type: Number }, // untuk DRR (Section 1, 2, ...)
+    // BUG FIX: enum ini sebelumnya cuma menutupi DRR (start/finish/
+    // section) & RX (gate1/gate2) — Slalom TIDAK PERNAH bisa submit
+    // Gate sama sekali (route.js selalu kirim operationType: "gate",
+    // singular, tidak ada di enum lama) → Mongoose validation error
+    // "operationType: `gate` is not a valid enum value", muncul ke
+    // client sbg 500 Internal Server Error generik. Tambahkan "gate".
     operationType: {
       type: String,
-      enum: ["start", "finish", "section", "gate1", "gate2"],
+      enum: ["start", "finish", "section", "gate", "gate1", "gate2"],
       // optional: tidak required agar tetap kompatibel dengan existing records
     },
 
