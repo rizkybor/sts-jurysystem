@@ -152,33 +152,35 @@ export default function FoulsReportModal({
               <h3 className="text-center text-sm font-bold text-gray-800 mb-3">
                 Pen Position
               </h3>
-              <div className="relative mx-auto w-full max-w-[180px] aspect-[3/4] bg-gray-200 rounded-t-full rounded-b-2xl p-3">
-                <div className="grid grid-cols-2 grid-rows-2 gap-2 h-full">
-                  {FOUL_POSITIONS.map((p) => {
-                    const selected = position === p.key;
-                    return (
-                      <button
-                        key={p.key}
-                        type="button"
-                        onClick={() => setPosition(p.key)}
-                        aria-pressed={selected}
-                        className={`rounded-full flex items-center justify-center text-center transition ${
-                          selected
-                            ? "bg-white ring-4 ring-sts"
-                            : "bg-white/90 hover:bg-white"
-                        }`}
-                      >
-                        {selected ? (
-                          <span className="h-4 w-4 rounded-full bg-red-500" />
-                        ) : (
-                          <span className="text-[10px] leading-tight text-gray-400 px-1.5">
-                            {p.label}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="relative mx-auto w-full max-w-[190px] aspect-[9/16] bg-gray-200 rounded-t-full rounded-b-[36px]">
+                {FOUL_POSITIONS.map((p) => {
+                  const selected = position === p.key;
+                  const isTop = p.key.startsWith("front");
+                  const isLeft = p.key.endsWith("left");
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => setPosition(p.key)}
+                      aria-pressed={selected}
+                      className={`absolute aspect-square w-[38%] rounded-full flex items-center justify-center text-center transition ${
+                        isTop ? "top-[10%]" : "bottom-[8%]"
+                      } ${isLeft ? "left-[8%]" : "right-[8%]"} ${
+                        selected
+                          ? "bg-white ring-4 ring-sts"
+                          : "bg-white/90 hover:bg-white"
+                      }`}
+                    >
+                      {selected ? (
+                        <span className="h-4 w-4 rounded-full bg-red-500" />
+                      ) : (
+                        <span className="text-[10px] leading-tight text-gray-400 px-1.5">
+                          {p.label}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               {position && (
                 <p className="text-center text-xs font-semibold text-sts mt-2">
