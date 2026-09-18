@@ -19,7 +19,7 @@ const TYPE_ICON_BG = {
 function ToastIcon({ type }) {
   if (type === "success") {
     return (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
         <path
           fillRule="evenodd"
           d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.4 7.4a1 1 0 0 1-1.4 0L3.3 9.5a1 1 0 1 1 1.4-1.4l3.6 3.6 6.7-6.7a1 1 0 0 1 1.4 0Z"
@@ -30,7 +30,7 @@ function ToastIcon({ type }) {
   }
   if (type === "error" || type === "warning") {
     return (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
         <path
           fillRule="evenodd"
           d="M8.485 3.495c.673-1.165 2.357-1.165 3.03 0l6.28 10.875c.673 1.167-.17 2.63-1.516 2.63H3.72c-1.346 0-2.189-1.463-1.515-2.63L8.485 3.495ZM10 7a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 7Zm0 7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z"
@@ -40,7 +40,7 @@ function ToastIcon({ type }) {
     );
   }
   return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
       <path
         fillRule="evenodd"
         d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0ZM9 9a1 1 0 0 1 2 0v4a1 1 0 1 1-2 0V9Zm1-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"
@@ -59,37 +59,41 @@ function ToastIcon({ type }) {
 export default function JudgeToastStack({ toasts, onDismiss }) {
   return (
     <div
-      className="fixed z-50 flex flex-col gap-3 px-4 left-0 right-0 bottom-4 items-center
-        sm:left-auto sm:right-6 sm:bottom-auto sm:top-6 sm:items-end sm:px-0"
+      className="fixed z-50 flex flex-col gap-2 px-3 left-0 right-0 bottom-3 items-center
+        sm:left-auto sm:right-4 sm:bottom-auto sm:top-4 sm:items-end sm:px-0"
     >
       {toasts.map((toast) => (
         <motion.div
           key={toast.id}
-          initial={{ y: 40, opacity: 0 }}
+          initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 40, opacity: 0 }}
-          className={`w-full max-w-sm p-4 rounded-xl shadow-lg border backdrop-blur-xl bg-white/90 relative overflow-hidden ${
+          exit={{ y: 30, opacity: 0 }}
+          className={`w-full max-w-[15rem] p-2 rounded-lg shadow-md border backdrop-blur-xl bg-white/90 relative overflow-hidden ${
             TYPE_STYLES[toast.type] || TYPE_STYLES.info
           }`}
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-1.5">
             <div
-              className={`shrink-0 flex items-center justify-center h-8 w-8 rounded-full ${
+              className={`shrink-0 flex items-center justify-center h-5 w-5 rounded-full ${
                 TYPE_ICON_BG[toast.type] || TYPE_ICON_BG.info
               }`}
             >
               <ToastIcon type={toast.type} />
             </div>
-            <div className="flex-1 pt-0.5">
-              <p className="font-semibold text-sm">{toast.title}</p>
-              <p className="text-sm opacity-90">{toast.text}</p>
+            <div className="flex-1 pt-px min-w-0">
+              <p className="font-semibold text-[11px] leading-tight truncate">
+                {toast.title}
+              </p>
+              <p className="text-[11px] leading-snug opacity-90 line-clamp-2">
+                {toast.text}
+              </p>
             </div>
             <button
               onClick={() => onDismiss(toast.id)}
-              className="p-1 rounded-full hover:bg-black/10 shrink-0"
+              className="p-0.5 rounded-full hover:bg-black/10 shrink-0"
               aria-label="Close toast"
             >
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                 <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
               </svg>
             </button>
@@ -98,7 +102,7 @@ export default function JudgeToastStack({ toasts, onDismiss }) {
             initial={{ width: "100%" }}
             animate={{ width: 0 }}
             transition={{ duration: 4, ease: "linear" }}
-            className="absolute bottom-0 left-0 h-1 bg-sts"
+            className="absolute bottom-0 left-0 h-0.5 bg-sts"
           />
         </motion.div>
       ))}
