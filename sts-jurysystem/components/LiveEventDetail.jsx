@@ -37,6 +37,19 @@ const EVENT_CATEGORY_NAME_TO_CODE = {
   RX: "RX",
 };
 
+// Kode tab lokal -> key di eventsCollection.resultsOfficialByCategory
+// (ditulis sts-timingsystem, lihat insertNewEvent.js::setResultsOfficial()
+// — field lama `resultsOfficial` (event-wide, satu flag utk semua
+// kategori) sudah TIDAK dipakai lagi oleh timing system sejak migrasi
+// ke per-kategori, "raftingcross" bukan "rx").
+const CATEGORY_CODE_TO_OFFICIAL_KEY = {
+  SPRINT: "sprint",
+  H2H: "h2h",
+  SLALOM: "slalom",
+  DRR: "drr",
+  RX: "raftingcross",
+};
+
 // Kolom breakdown per kategori di tab Overall — persis field yang
 // dibangun mapOverallDetailed() di API, sama dengan tabel "Print Result
 // Overall" (event-overall-pdfResult.vue) di sts-timingsystem.
@@ -157,11 +170,14 @@ export default function LiveEventDetail() {
           categoriesInitial: data.categoriesInitial || [],
           categoriesDivision: data.categoriesDivision || [],
           categoriesRace: data.categoriesRace || [],
-          // Status Official/Unofficial diset operator di sts-timingsystem
-          // (event:set-official -> eventsCollection.resultsOfficial) —
-          // sama field & makna dengan stempel OFFICIAL/UNOFFICIAL di PDF
-          // Print Result timing system.
-          isOfficial: !!data.resultsOfficial,
+          // Status Official/Unofficial PER KATEGORI, diset operator di
+          // sts-timingsystem (event:set-official ->
+          // eventsCollection.resultsOfficialByCategory.<kategori>) — sama
+          // field & makna dengan stempel OFFICIAL/UNOFFICIAL di PDF Print
+          // Result timing system. Dibaca ulang scr live lewat
+          // refreshOfficialStatus() (poll + broadcast socket
+          // "official:changed"), lihat useEffect di bawah.
+          officialByCategory: data.resultsOfficialByCategory || {},
         };
 
         setEvent(normalized);
@@ -175,6 +191,26 @@ export default function LiveEventDetail() {
     fetchById();
     return () => controller.abort();
   }, [id]);
+
+  // Refresh RINGAN cuma status Official/Unofficial (bukan seluruh detail
+  // event) — dipanggil dari polling & socket "official:changed" di bawah,
+  // supaya badge Official ikut hidup tanpa perlu refetch seluruh payload
+  // event tiap kali.
+  const refreshOfficialStatus = async () => {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/matches/${id}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setEvent((prev) =>
+        prev
+          ? { ...prev, officialByCategory: data.resultsOfficialByCategory || {} }
+          : prev
+      );
+    } catch {
+      // non-fatal — badge cukup tetap nilai lama, poll berikutnya coba lagi
+    }
+  };
 
   // Tutup menu share saat klik di luar
   useEffect(() => {
@@ -384,6 +420,7 @@ export default function LiveEventDetail() {
   useEffect(() => {
     const timer = setInterval(() => {
       fetchResults();
+      refreshOfficialStatus();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -394,8 +431,28 @@ export default function LiveEventDetail() {
     socketRef.current = socket;
 
     const handler = (msg) => {
-      if (!msg || msg.type !== "results:updated") return;
-      if (String(msg.eventId || "") !== String(id)) return;
+      if (!msg || String(msg.eventId || "") !== String(id)) return;
+
+      // BUG FIX: operator toggle Official/Unofficial di timing system
+      // (event:set-official) sebelumnya TIDAK PERNAH broadcast apa pun —
+      // badge di sini cuma bisa "kebetulan" ikut benar kalau
+      // fetchResults() lain kejadian ke-trigger bersamaan. Sekarang
+      // timing system broadcast tipe "official:changed" (lihat
+      // notifyOfficialStatusChanged() di socketBroadcast.js) begitu
+      // toggle disimpan — refresh langsung, tidak nunggu poll 20 detik.
+      if (msg.type === "official:changed") {
+        refreshOfficialStatus();
+        pushToast({
+          title: "Status Resmi Diperbarui",
+          text: `Kategori ${msg.category || "-"} sekarang ${
+            msg.value ? "OFFICIAL" : "UNOFFICIAL"
+          }.`,
+          type: "info",
+        });
+        return;
+      }
+
+      if (msg.type !== "results:updated") return;
       if (String(msg.category || "") !== activeCategory) return;
       if (
         activeBucket &&
@@ -417,6 +474,12 @@ export default function LiveEventDetail() {
 
   const columns = CATEGORY_COLUMNS[activeCategory] || ["rank"];
   const activeTabLabel = availableTabs.find((t) => t.code === activeCategory)?.label || "";
+  // Status Official/Unofficial utk TAB YANG SEDANG AKTIF — key mapping
+  // lihat CATEGORY_CODE_TO_OFFICIAL_KEY (mis. RX -> "raftingcross").
+  const activeCategoryOfficialKey = CATEGORY_CODE_TO_OFFICIAL_KEY[activeCategory];
+  const isActiveCategoryOfficial = activeCategoryOfficialKey
+    ? !!event?.officialByCategory?.[activeCategoryOfficialKey]
+    : false;
   const isSprintDetailed = activeCategory === "SPRINT";
   const isDrrDetailed = activeCategory === "DRR";
   const isSlalomDetailed = activeCategory === "SLALOM";
@@ -721,13 +784,13 @@ export default function LiveEventDetail() {
                 {activeCategory !== "OVERALL" && (
                   <span
                     className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
-                      event.isOfficial
+                      isActiveCategoryOfficial
                         ? "border-emerald-400/60 text-emerald-300 bg-emerald-500/10"
                         : "border-red-400/60 text-red-300 bg-red-500/10"
                     }`}
-                    title="Status hasil ditetapkan operator di timing system"
+                    title="Status hasil ditetapkan operator di timing system, per kategori"
                   >
-                    {event.isOfficial ? "Official" : "Unofficial"}
+                    {isActiveCategoryOfficial ? "Official" : "Unofficial"}
                   </span>
                 )}
               </div>
@@ -776,13 +839,24 @@ export default function LiveEventDetail() {
                             key={`${r.bib}-${r.name}`}
                             className={`border-b border-white/5 last:border-b-0 ${
                               isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
-                            } transition-colors`}
+                            } ${r.isLivePreview ? "bg-emerald-500/[0.04]" : ""} transition-colors`}
                           >
                             <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
                             <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
-                              {r.name}
+                              <span className="inline-flex items-center gap-1.5">
+                                {r.name}
+                                {r.isLivePreview && (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30"
+                                    title="Tim sudah selesai di timing system, hasil sementara ini belum di-Save Result oleh operator"
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    Live
+                                  </span>
+                                )}
+                              </span>
                             </td>
                             <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
                             <td className="px-4 py-3 text-right whitespace-nowrap">

@@ -119,6 +119,17 @@ const JudgesHeadToHeadPage = () => {
   const activePenaltyChoices =
     penaltyChoicesByType[selectedType] || DEFAULT_PENALTY_CHOICES;
 
+  // Pilihan "Pen Detail" di Fouls Report ikut kustomisasi Race Settings
+  // event ini (kalau operator sudah mengaturnya) — fallback ke
+  // FOUL_DETAILS bawaan (hardcode) kalau event belum pernah diatur sama
+  // sekali. Bentuk data dari Race Settings SUDAH `{key,label,seconds}[]`
+  // (lihat editRaceSettings.js cleanFoulDetailsList()), sama persis dgn
+  // shape yang dipakai FoulsReportModal — tidak perlu transformasi lagi.
+  const foulDetails = useMemo(() => {
+    const list = raceSettings?.h2h?.foulsDetails;
+    return Array.isArray(list) && list.length ? list : undefined;
+  }, [raceSettings]);
+
   const { teams, loadingTeams, resetTeams } = useJudgeTeams({
     eventId,
     eventName: "HEADTOHEAD",
@@ -871,6 +882,7 @@ const JudgesHeadToHeadPage = () => {
           foulTeam={selectedTeamData}
           unfoulTeam={unfoulTeamData}
           submitting={foulsSubmitting}
+          foulDetails={foulDetails}
           onSubmit={handleFoulsSubmit}
         />
 
