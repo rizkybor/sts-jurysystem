@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import NavigationButton from "@/components/NavigationButton";
+import { firstEventFileUrl } from "@/utils/eventMedia";
 
 /* === UI Utility Components === */
 const Badge = ({ children, color = "bg-gray-100 text-gray-700" }) => (
@@ -101,6 +102,33 @@ const JudgesPage = () => {
       }
     }
     return null;
+  };
+
+  // Nama kategori di eventsCollection.categoriesEvent -> key
+  // judgeButtonsConfig, sama pola dgn EVENT_CATEGORY_NAME_TO_CODE di
+  // LiveEventDetail.jsx.
+  const EVENT_CATEGORY_NAME_TO_KEY = {
+    SPRINT: "sprint",
+    HEAD2HEAD: "h2h",
+    SLALOM: "slalom",
+    DRR: "drr",
+    RX: "rx",
+  };
+
+  // Kategori yang BENAR-BENAR dipertandingkan di event ini — kalau event
+  // tidak punya Rafting Cross sama sekali, tombolnya jangan ditampilkan
+  // sama sekali (beda dari "tidak aktif utk juri ini", yang tetap tampil
+  // sbg Pill abu-abu). undefined/kosong `categoriesEvent` = fallback
+  // tampilkan semua (data lama yang belum punya field ini).
+  const getEventCategoryKeys = (event) => {
+    if (!Array.isArray(event?.categoriesEvent) || !event.categoriesEvent.length) {
+      return null; // null = tidak difilter
+    }
+    return new Set(
+      event.categoriesEvent
+        .map((c) => EVENT_CATEGORY_NAME_TO_KEY[String(c?.name || "").toUpperCase()])
+        .filter(Boolean)
+    );
   };
 
   // === Konfigurasi tombol navigasi juri ===
@@ -349,20 +377,22 @@ const JudgesPage = () => {
           >
             {sortedEvents.map((event, index) => {
               const assignment = getJudgeAssignment(event._id);
-              const logo = event.eventLogo?.trim() || "/images/logo-dummy.png";
-              const flags = {
-                sprint: judgeButtonsConfig[0].checkActive(assignment),
-                h2h: judgeButtonsConfig[1].checkActive(assignment),
-                slalom: judgeButtonsConfig[2].checkActive(assignment),
-                drr: judgeButtonsConfig[3].checkActive(assignment),
-                rx: judgeButtonsConfig[4].checkActive(assignment),
-              };
-              const anyActive =
-                flags.sprint ||
-                flags.h2h ||
-                flags.slalom ||
-                flags.drr ||
-                flags.rx;
+              // BUG FIX: "eventLogo" TIDAK PERNAH ditulis oleh
+              // sts-timingsystem — logo event yang sebenarnya ada di
+              // elemen pertama `eventFiles[]` (lihat utils/eventMedia.js,
+              // pola sama dgn LiveEventDetail.jsx).
+              const logo =
+                firstEventFileUrl(event.eventFiles) || "/images/logo-dummy.png";
+              // Cuma tampilkan tombol kategori yang BENAR-BENAR
+              // dipertandingkan di event ini (mis. event tanpa Rafting
+              // Cross tidak menampilkan tombol RX sama sekali).
+              const eventCategoryKeys = getEventCategoryKeys(event);
+              const visibleButtons = eventCategoryKeys
+                ? judgeButtonsConfig.filter((btn) => eventCategoryKeys.has(btn.key))
+                : judgeButtonsConfig;
+              const anyActive = visibleButtons.some((btn) =>
+                btn.checkActive(assignment)
+              );
 
               return (
                 <motion.div
@@ -425,7 +455,7 @@ const JudgesPage = () => {
                     {assignment ? (
                       anyActive ? (
                         <div className="grid grid-cols-2 gap-2">
-                          {judgeButtonsConfig.map((btn) => {
+                          {visibleButtons.map((btn) => {
                             const isActive = btn.checkActive(assignment);
                             return isActive ? (
                               <NavigationButton
