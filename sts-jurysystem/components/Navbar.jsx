@@ -61,7 +61,16 @@ const Navbar = () => {
   }, [pathname]);
 
   return (
-    <nav className="surface-sts sticky top-0 z-30 shadow-md">
+    // BUG FIX: sebelumnya z-30 — lebih RENDAH dari sticky sub-header
+    // halaman judge (JudgeTopBar, z-40), padahal keduanya sibling
+    // (bukan nested) jadi z-index bersaing langsung di root stacking
+    // context. Akibatnya dropdown profil/notifikasi Navbar (nested di
+    // dalam z-30 ini) ketutup sebagian oleh JudgeTopBar begitu discroll
+    // sampai sub-header itu jadi sticky. Navbar (nav global) harus SELALU
+    // di atas sticky header halaman manapun — z-45, sengaja masih di
+    // BAWAH modal/toast (z-50 & z-[90]) supaya modal tetap bisa menutupi
+    // Navbar sepenuhnya saat terbuka.
+    <nav className="surface-sts sticky top-0 z-[45] shadow-md">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="relative flex h-16 sm:h-20 items-center justify-between">
           {/* Logo */}
