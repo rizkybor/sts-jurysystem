@@ -449,6 +449,11 @@ export const POST = async (req) => {
           position,
           runNumber,
           gateNumber,
+          // operationType/section jg disimpan di sini (bukan cuma di
+          // detailPayload sukses) supaya penolakan anti-duplikat
+          // Slalom/DRR tetap terbaca jelas jenisnya di Riwayat.
+          operationType: operationType ? String(operationType).toLowerCase() : undefined,
+          section: Number.isFinite(Number(section)) ? Number(section) : undefined,
           penalty: Number.isFinite(Number(penalty)) ? Number(penalty) : 0,
           judge: username,
           initialId,
@@ -619,6 +624,98 @@ export const POST = async (req) => {
         const reason = `Team ${team} belum melakukan Start di Run ${
           runNumber || 1
         } — penalty tidak dapat disimpan.`;
+        await recordFailedAttempt(reason);
+        return new Response(
+          JSON.stringify({ success: false, message: reason }),
+          { status: 400 }
+        );
+      }
+
+      // VALIDASI ANTI-DUPLIKAT SLALOM: juri hanya boleh submit 1x per
+      // JENIS tindakan (Start / Finish / nomor Gate tertentu) per
+      // team+kategori (raceId+divisionId)+Run — sama pola dgn H2H
+      // (1x per position per babak). Run BEDA tetap boleh (Slalom py 2
+      // Run independen), dan Gate nomor berbeda tetap dianggap tindakan
+      // berbeda (bukan "sudah pernah Gate" scr umum) — cuma Gate yg SAMA
+      // di Run yg SAMA yang ditolak kalau sudah pernah dikirim.
+      const opTypeSlalomDup = operationType
+        ? String(operationType).toLowerCase()
+        : null;
+      const slalomDupFilter = {
+        eventId,
+        eventType: "SLALOM",
+        team,
+        raceId,
+        divisionId,
+        runNumber: Number(runNumber) || 1,
+        operationType: opTypeSlalomDup,
+        status: { $ne: "failed" },
+      };
+      if (opTypeSlalomDup === "gate") {
+        slalomDupFilter.gateNumber = Number(gateNumber);
+      }
+      const existingSlalom = await JudgeReportDetail.find(
+        slalomDupFilter
+      ).lean();
+      if (existingSlalom.length > 0) {
+        const label =
+          opTypeSlalomDup === "gate"
+            ? `Gate ${gateNumber}`
+            : opTypeSlalomDup === "start"
+            ? "Start"
+            : "Finish";
+        const reason = `Team ${team} sudah pernah diberi penalty "${label}" di Run ${
+          runNumber || 1
+        } — tidak bisa disubmit 2x.`;
+        await recordFailedAttempt(reason);
+        return new Response(
+          JSON.stringify({ success: false, message: reason }),
+          { status: 400 }
+        );
+      }
+    }
+
+    // VALIDASI ANTI-DUPLIKAT DRR: juri hanya boleh submit 1x per JENIS
+    // tindakan (Start / Finish / nomor Section tertentu) per
+    // team+kategori (raceId+divisionId) — DRR tidak punya konsep Run
+    // ganda spt Slalom, jadi cukup di-scope sampai raceId+divisionId.
+    // Section nomor berbeda tetap dianggap tindakan berbeda, sama pola
+    // dgn Gate di Slalom.
+    if (normalizedType === "DRR") {
+      const opTypeDrrDup = operationType
+        ? String(operationType).toLowerCase()
+        : null;
+      const parseSectionNumberForDup = (raw) => {
+        if (typeof raw === "number") return raw;
+        if (typeof raw === "string") {
+          const m = raw.match(/(\d+)/);
+          return m ? parseInt(m[1], 10) : undefined;
+        }
+        if (raw === undefined || raw === null) return undefined;
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : undefined;
+      };
+      const drrDupFilter = {
+        eventId,
+        eventType: "DRR",
+        team,
+        raceId,
+        divisionId,
+        operationType: opTypeDrrDup,
+        status: { $ne: "failed" },
+      };
+      if (opTypeDrrDup === "section") {
+        drrDupFilter.section = parseSectionNumberForDup(section);
+      }
+      const existingDrr = await JudgeReportDetail.find(drrDupFilter).lean();
+      if (existingDrr.length > 0) {
+        const label =
+          opTypeDrrDup === "section"
+            ? `Section ${parseSectionNumberForDup(section)}`
+            : opTypeDrrDup === "start"
+            ? "Start"
+            : "Finish";
+        const reason = `Team ${team} sudah pernah diberi penalty "${label}" — tidak bisa disubmit 2x.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
