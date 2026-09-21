@@ -185,6 +185,12 @@ export default function LiveEventDetail() {
           // refreshOfficialStatus() (poll + broadcast socket
           // "official:changed"), lihat useEffect di bawah.
           officialByCategory: data.resultsOfficialByCategory || {},
+          // Kapan status Official/Unofficial di-set (otomatis = waktu
+          // submit, atau override manual operator) — field TERPISAH dari
+          // boolean di atas (lihat setResultsOfficial() di
+          // insertNewEvent.js sts-timingsystem), supaya badge boolean yang
+          // sudah ada di sini tidak berubah bentuk.
+          officialSetAtByCategory: data.resultsOfficialSetAt || {},
         };
 
         setEvent(normalized);
@@ -211,7 +217,11 @@ export default function LiveEventDetail() {
       const data = await res.json();
       setEvent((prev) =>
         prev
-          ? { ...prev, officialByCategory: data.resultsOfficialByCategory || {} }
+          ? {
+              ...prev,
+              officialByCategory: data.resultsOfficialByCategory || {},
+              officialSetAtByCategory: data.resultsOfficialSetAt || {},
+            }
           : prev
       );
     } catch {
@@ -525,6 +535,28 @@ export default function LiveEventDetail() {
   const isActiveCategoryOfficial = activeCategoryOfficialKey
     ? !!event?.officialByCategory?.[activeCategoryOfficialKey]
     : false;
+  const activeCategoryOfficialSetAt = activeCategoryOfficialKey
+    ? event?.officialSetAtByCategory?.[activeCategoryOfficialKey]
+    : null;
+  // WIB (Asia/Jakarta) — sama zona & format dgn stempel PDF Print Result
+  // di sts-timingsystem, supaya waktu yang dilihat juri/penonton Live
+  // Result konsisten dgn yang dicetak operator.
+  const formattedOfficialSetAt = activeCategoryOfficialSetAt
+    ? (() => {
+        const d = new Date(activeCategoryOfficialSetAt);
+        if (isNaN(d.getTime())) return null;
+        return (
+          d.toLocaleString("id-ID", {
+            timeZone: "Asia/Jakarta",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }) + " WIB"
+        );
+      })()
+    : null;
   const isSprintDetailed = activeCategory === "SPRINT";
   const isDrrDetailed = activeCategory === "DRR";
   const isSlalomDetailed = activeCategory === "SLALOM";
@@ -857,15 +889,22 @@ export default function LiveEventDetail() {
               <div className="flex items-center gap-2.5">
                 <h2 className="text-lg sm:text-xl font-bold text-white/90">{activeTabLabel}</h2>
                 {activeCategory !== "OVERALL" && (
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
-                      isActiveCategoryOfficial
-                        ? "border-emerald-400/60 text-emerald-300 bg-emerald-500/10"
-                        : "border-red-400/60 text-red-300 bg-red-500/10"
-                    }`}
-                    title="Status hasil ditetapkan operator di timing system, per kategori"
-                  >
-                    {isActiveCategoryOfficial ? "Official" : "Unofficial"}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
+                        isActiveCategoryOfficial
+                          ? "border-emerald-400/60 text-emerald-300 bg-emerald-500/10"
+                          : "border-red-400/60 text-red-300 bg-red-500/10"
+                      }`}
+                      title="Status hasil ditetapkan operator di timing system, per kategori"
+                    >
+                      {isActiveCategoryOfficial ? "Official" : "Unofficial"}
+                    </span>
+                    {formattedOfficialSetAt && (
+                      <span className="text-[10px] sm:text-[11px] text-white/40">
+                        {formattedOfficialSetAt}
+                      </span>
+                    )}
                   </span>
                 )}
               </div>
