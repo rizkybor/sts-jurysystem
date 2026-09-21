@@ -487,6 +487,34 @@ const JudgesPage = () => {
                         ⚠️ You don’t have any assignments for this event yet
                       </EmptyNote>
                     )}
+
+                    {/* Riwayat Aktivitas Saya — semua penalty/fouls yang
+                        SUDAH pernah dikirim juri ini di event ini, lintas
+                        kategori, dalam satu halaman. Tampil selama juri
+                        punya assignment apa pun di event ini (tidak
+                        tergantung anyActive — riwayat lama tetap relevan
+                        dilihat walau tugas aktif sekarang kosong). */}
+                    {assignment && (
+                      <a
+                        href={`/judges/history?eventId=${event._id}${
+                          user?._id ? `&userId=${user._id}` : ""
+                        }`}
+                        className="mt-2 flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition"
+                      >
+                        <svg
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="w-4 h-4 text-gray-400"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .27.144.518.378.651l3.5 2a.75.75 0 0 0 .744-1.302L10.75 9.567V5Z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        Riwayat Aktivitas Saya
+                      </a>
+                    )}
                   </div>
                 </motion.div>
               );
