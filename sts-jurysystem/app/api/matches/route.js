@@ -51,8 +51,13 @@ export const GET = async (request) => {
     const q = (sp.get("q") || "").trim(); // keyword (nama event / lokasi)
     const level = sp.get("level") || "All"; // Classification level (A–I)
 
-    // 🧱 bangun filter pencarian
-    const filter = {};
+    // 🧱 bangun filter pencarian — statusEvent Active-only berlaku selalu
+    // (dipakai /matches dan /live, keduanya konsumen endpoint ini), supaya
+    // event yang di-nonaktifkan operator lewat toggle Active/Inactive di
+    // All Events (sts-timingsystem) tidak lagi tampil ke publik. Case-
+    // insensitive krn nilai lama di beberapa dokumen historis bisa
+    // "activated" huruf kecil semua.
+    const filter = { statusEvent: /^activated$/i };
 
     // cari berdasarkan nama event atau lokasi — escape dulu karakter
     // spesial regex di `q` (input user mentah). Tanpa ini, `q=(` bikin
