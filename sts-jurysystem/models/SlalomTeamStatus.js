@@ -17,6 +17,7 @@ import mongoose from "mongoose";
 const SlalomTeamStatusSchema = new mongoose.Schema(
   {
     eventId: { type: String, required: true },
+    initialId: { type: String },
     raceId: { type: String, required: true },
     divisionId: { type: String, required: true },
     teamId: { type: String, required: true },
@@ -27,8 +28,13 @@ const SlalomTeamStatusSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// BUG FIX (2026-09-23): index unik sebelumnya TIDAK ikutkan initialId —
+// padahal raceId+divisionId+teamId yang KEBETULAN sama bisa muncul di
+// Initial berbeda (mis. tim "FAJI DKI JAKARTA" di Initial "SENIOR" R4
+// BIB 100 vs Initial "U23" BIB 200) — tanpa initialId, flag "sudah
+// Start" bisa salah nyasar antar-Initial. Lihat MEMORY-SLALOM.md.
 SlalomTeamStatusSchema.index(
-  { eventId: 1, raceId: 1, divisionId: 1, teamId: 1, runNumber: 1 },
+  { eventId: 1, initialId: 1, raceId: 1, divisionId: 1, teamId: 1, runNumber: 1 },
   { unique: true }
 );
 
