@@ -22,7 +22,14 @@ const HomeMatches = async () => {
     // terjauh di masa depan (sort lama: descending by startDateEvent
     // malah menampilkan event yang jadwalnya paling jauh, bukan yang
     // paling baru dibuat).
-    recentMatches = await Event.find({})
+    //
+    // Hanya event Active yang ditampilkan — statusEvent bisa diubah
+    // Active/Inactive dari All Events di sts-timingsystem (toggle switch
+    // baru), tapi query ini dulu tidak filter sama sekali sehingga event
+    // yang sudah di-nonaktifkan operator tetap muncul di homepage.
+    // Case-insensitive krn nilai lama di beberapa dokumen historis bisa
+    // "activated" huruf kecil semua.
+    recentMatches = await Event.find({ statusEvent: /^activated$/i })
       .sort({ createdAt: -1 })
       .limit(3)
       .lean()
