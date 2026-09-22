@@ -251,6 +251,14 @@ const JudgesSprintPage = () => {
   const sendRealtimeMessage = () => {
     const socket = socketRef.current;
     if (!socket) return;
+    // BUG FIX (2026-09-23): payload ini sebelumnya cuma teamId — kalau
+    // teamId yang sama dipakai ulang di Initial lain (mis. tim yang sama
+    // tampil di SENIOR & U23, lihat MEMORY-SPRINT.md), applyPenaltyFromSocket
+    // di timing system bisa salah menempelkan nilai penalty ini ke baris
+    // kategori LAIN yang sedang dibuka operator, krn cuma cek teamId tanpa
+    // verifikasi kategori. initialId/raceId/divisionId ditambahkan supaya
+    // timing system bisa memverifikasi kategori aktifnya cocok dulu.
+    const [initialId, divisionId, raceId] = selectedCategory.split("|");
     socket.emit(
       "custom:event",
       {
@@ -262,6 +270,9 @@ const JudgesSprintPage = () => {
         value: selectedPenalty,
         judge: user?.username || user?.name || "",
         eventId,
+        initialId,
+        divisionId,
+        raceId,
         ts: new Date().toISOString(),
       },
       (ok) => {

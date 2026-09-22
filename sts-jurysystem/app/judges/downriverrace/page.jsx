@@ -140,6 +140,11 @@ const JudgesDRRPage = () => {
       sectionValue = selectedSection.replace("Section ", "");
     }
 
+    // BUG FIX (2026-09-23): sama pola dgn Sprint/Slalom (MEMORY-SPRINT.md)
+    // — initialId/raceId/divisionId ditambahkan supaya timing system bisa
+    // verifikasi kategori aktifnya cocok sebelum menempelkan penalty ini.
+    const [initialId, divisionId, raceId] = selectedCategory.split("|");
+
     const messageData = {
       senderId: socket.id,
       from: "Judges Dashboard - DRR",
@@ -150,6 +155,9 @@ const JudgesDRRPage = () => {
       section: sectionValue,
       penalty: Number(selectedPenalty),
       eventId,
+      initialId,
+      divisionId,
+      raceId,
       ts: new Date().toISOString(),
       type:
         operationType === "start"

@@ -16,6 +16,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// H2H's teams tersimpan di TeamsRegistered dgn eventName "HEAD2HEAD" ATAU
+// "HEAD2HEAD" tergantung siapa yang menulis (lihat catatan di STEP 1 POST
+// handler) — dipakai POST (validasi & write) DAN GET (enrichment Riwayat).
+const TEAMS_EVENTNAME_BY_TYPE = { H2H: ["HEADTOHEAD", "HEAD2HEAD"] };
+function teamsEventNameFilterFor(normalizedType) {
+  return TEAMS_EVENTNAME_BY_TYPE[normalizedType]
+    ? { $in: TEAMS_EVENTNAME_BY_TYPE[normalizedType] }
+    : normalizedType;
+}
+
 /* ============================================================
  🟢 GET — Ambil Data Judge Report Detail (Semua EventType)
    - Filter: eventId, eventType, team
@@ -158,11 +168,27 @@ export const GET = async (req) => {
       ]);
 
       // 4) Enrich info tim (opsional, seperti sebelumnya)
+      // (2026-09-23) BUG FIX: lookup ini sebelumnya cuma eventId+teamId,
+      // tanpa initialId/raceId/divisionId — kalau teamId yang sama dipakai
+      // ulang di Initial berbeda (mis. tim yang sama tampil di SENIOR &
+      // U23, lihat MEMORY-SPRINT.md bug #5/#6), BIB/nama yang ditampilkan
+      // di Riwayat bisa salah nyasar ambil dari kategori lain. Setiap
+      // record JudgeReportDetail sudah menyimpan initialId/raceId/
+      // divisionId sendiri saat dibuat — pakai itu utk scope lookupnya.
       const enriched = await Promise.all(
         items.map(async (d) => {
           try {
             const teamDoc = await TeamsRegistered.findOne(
-              { eventId: d.eventId, "teams.teamId": d.team },
+              {
+                eventId: d.eventId,
+                initialId: d.initialId,
+                raceId: d.raceId,
+                divisionId: d.divisionId,
+                eventName: teamsEventNameFilterFor(
+                  String(d.eventType || "").toUpperCase()
+                ),
+                "teams.teamId": d.team,
+              },
               { "teams.$": 1 }
             ).lean();
             const t = teamDoc?.teams?.[0];
@@ -290,11 +316,22 @@ export const GET = async (req) => {
     }
 
     // 🧩 Enrich info tim (opsional)
+    // (2026-09-23) Sama dgn fix mode "fromReport" di atas — scope lookup
+    // ikut initialId/raceId/divisionId per record, bukan cuma eventId.
     const enriched = await Promise.all(
       items.map(async (d) => {
         try {
           const teamDoc = await TeamsRegistered.findOne(
-            { eventId: d.eventId, "teams.teamId": d.team },
+            {
+              eventId: d.eventId,
+              initialId: d.initialId,
+              raceId: d.raceId,
+              divisionId: d.divisionId,
+              eventName: teamsEventNameFilterFor(
+                String(d.eventType || "").toUpperCase()
+              ),
+              "teams.teamId": d.team,
+            },
             { "teams.$": 1 }
           ).lean();
           const t = teamDoc?.teams?.[0];
@@ -396,15 +433,10 @@ export const POST = async (req) => {
 
     const normalizedType = String(eventType).toUpperCase();
 
-    // H2H's teams tersimpan di TeamsRegistered dgn eventName "HEAD2HEAD"
-    // ATAU "HEADTOHEAD" tergantung siapa yang menulis (lihat catatan di
-    // STEP 1 di bawah) — dihoist ke sini (bukan cuma di STEP 1) supaya
-    // bisa dipakai jg utk lookup nama tim (`teamLabelForReason`) di awal
-    // fungsi ini.
-    const TEAMS_EVENTNAME_BY_TYPE = { H2H: ["HEADTOHEAD", "HEAD2HEAD"] };
-    const teamsEventNameFilter = TEAMS_EVENTNAME_BY_TYPE[normalizedType]
-      ? { $in: TEAMS_EVENTNAME_BY_TYPE[normalizedType] }
-      : normalizedType;
+    // Alias eventName H2H — dihoist ke module scope (lihat
+    // teamsEventNameFilterFor di atas) supaya bisa dipakai jg oleh GET
+    // handler (enrichment Riwayat), bukan cuma POST.
+    const teamsEventNameFilter = teamsEventNameFilterFor(normalizedType);
 
     if (penalty === undefined || penalty === null) {
       return new Response(
