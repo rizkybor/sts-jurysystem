@@ -35,11 +35,21 @@ export async function POST(req) {
       );
     }
 
+    // BUG FIX: filter upsert sebelumnya TIDAK ikutkan initialId — satu
+    // teamId+raceId+divisionId yang KEBETULAN sama bisa dipakai ulang
+    // di Initial berbeda (mis. "SENIOR" & "U23"), bikin flag "sudah
+    // Start" salah nyasar antar-Initial. Lihat catatan di
+    // models/SprintTeamStatus.js.
     await SprintTeamStatus.findOneAndUpdate(
-      { eventId: String(eventId), raceId: String(raceId), divisionId: String(divisionId), teamId: String(teamId) },
+      {
+        eventId: String(eventId),
+        initialId: String(initialId || ""),
+        raceId: String(raceId),
+        divisionId: String(divisionId),
+        teamId: String(teamId),
+      },
       {
         $set: {
-          initialId: initialId ? String(initialId) : undefined,
           bibTeam: bibTeam ? String(bibTeam) : undefined,
           startTime: String(startTime),
         },
@@ -64,6 +74,7 @@ export async function GET(req) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const eventId = searchParams.get("eventId");
+    const initialId = searchParams.get("initialId");
     const divisionId = searchParams.get("divisionId");
     const raceId = searchParams.get("raceId");
     const teamId = searchParams.get("teamId");
@@ -77,6 +88,7 @@ export async function GET(req) {
 
     const doc = await SprintTeamStatus.findOne({
       eventId: String(eventId),
+      initialId: String(initialId || ""),
       raceId: String(raceId),
       divisionId: String(divisionId),
       teamId: String(teamId),
