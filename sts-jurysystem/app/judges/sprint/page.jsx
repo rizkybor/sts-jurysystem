@@ -24,6 +24,7 @@ import JudgeStickyActions from "@/components/judges/JudgeStickyActions";
 import JudgeHistoryModal, {
   penaltyBadgeColor,
 } from "@/components/judges/JudgeHistoryModal";
+import FieldNotesModal from "@/components/judges/FieldNotesModal";
 
 // Fallback kalau event belum pernah dikustomisasi lewat Race Settings —
 // sesuai Peraturan Kompetisi Arung Jeram FAJI Pasal 37 & 43 (lihat
@@ -75,6 +76,7 @@ const JudgesSprintPage = () => {
   const [selectedTeam, setSelectedTeam] = useState("");
   const [selectedPenalty, setSelectedPenalty] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldNotesModalOpen, setFieldNotesModalOpen] = useState(false);
 
   const assignedPosition = useMemo(
     () => getSprintPositionFromAssignments(assignments, eventId),
@@ -274,6 +276,62 @@ const JudgesSprintPage = () => {
     );
   };
 
+  // Field Notes — catatan bebas juri ke operator, versi ringan Fouls
+  // Report H2H tanpa Pen Position/Detail (Sprint cuma 1 tim jalan per
+  // waktu, tidak ada konsep "Unfouls Team"). MURNI socket emit, tidak
+  // menyentuh /api/judges/judge-reports/detail sama sekali — sama pola
+  // dgn handleFoulsSubmit H2H. Alert sukses & tutup modal OPTIMISTIC
+  // (tidak menunggu ack) krn ini konfirmasi "juri sudah selesai
+  // melapor", bukan konfirmasi operator sudah menerima (lihat
+  // MEMORY-H2H.md, bagian sama persis).
+  const handleFieldNotesSubmit = (payload) => {
+    const socket = socketRef.current;
+    if (!socket || !selectedTeamData?.hasValidTeamId) {
+      pushToast({
+        title: "Gagal Mengirim",
+        text: "Koneksi realtime belum siap atau team tidak valid.",
+        type: "error",
+      });
+      return Promise.resolve(false);
+    }
+
+    const [initialId, divisionId, raceId] = selectedCategory.split("|");
+    const message = {
+      senderId: socket.id,
+      type: "FieldNotes",
+      from: "Judges Dashboard - Sprint",
+      eventId,
+      initialId,
+      divisionId,
+      raceId,
+      category: "SPRINT",
+      team: {
+        teamId: selectedTeamData.teamId,
+        bibTeam: selectedTeamData.bibTeam || "",
+        nameTeam: selectedTeamData.nameTeam || "",
+      },
+      judge: user?.username || user?.name || "",
+      ts: new Date().toISOString(),
+      ...payload,
+    };
+
+    pushToast({
+      title: "Field Notes Terkirim",
+      text: `Catatan lapangan utk ${selectedTeamData.nameTeam} berhasil disubmit.`,
+      type: "success",
+    });
+    setFieldNotesModalOpen(false);
+
+    socket.emit("custom:event", message, (ok) => {
+      if (!ok) {
+        console.warn(
+          "⚠️ FieldNotes: ack socket mengembalikan gagal — catatan mungkin belum sampai ke operator."
+        );
+      }
+    });
+    return Promise.resolve(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitDisabled) {
@@ -415,6 +473,37 @@ const JudgesSprintPage = () => {
             submitDisabled={isSubmitDisabled}
           />
         </form>
+
+        {/* Field Notes — di luar <form> spy tidak ikut ke-disable oleh
+            fieldset[disabled] submit penalty (sama pola dgn tombol
+            Fouls Report H2H). */}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setFieldNotesModalOpen(true)}
+            disabled={!selectedCategory || !selectedTeam}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-sts/30 text-sts font-semibold text-sm hover:bg-sts/5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path d="M10 2 3 6v5c0 4 3 6.5 7 7 4-.5 7-3 7-7V6l-7-4Z" />
+            </svg>
+            Laporkan Field Notes
+          </button>
+          {(!selectedCategory || !selectedTeam) && (
+            <p className="mt-1.5 text-xs text-gray-500 text-center">
+              Pilih kategori & team terlebih dahulu utk melaporkan field
+              notes.
+            </p>
+          )}
+        </div>
+
+        <FieldNotesModal
+          open={fieldNotesModalOpen}
+          onClose={() => setFieldNotesModalOpen(false)}
+          team={selectedTeamData}
+          categoryLabel={categoryLabelByKey[selectedCategory]}
+          onSubmit={handleFieldNotesSubmit}
+        />
 
         <JudgeHistoryModal
           open={history.isOpen}
