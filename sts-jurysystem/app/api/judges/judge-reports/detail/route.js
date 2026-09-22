@@ -4,6 +4,7 @@ import JudgeReportDetail from "@/models/JudgeReportDetail";
 import TeamsRegistered from "@/models/TeamsRegistered";
 import SprintTeamStatus from "@/models/SprintTeamStatus";
 import SlalomTeamStatus from "@/models/SlalomTeamStatus";
+import DRRTeamStatus from "@/models/DRRTeamStatus";
 import User from "@/models/User";
 import RaceSetting from "@/models/RaceSetting";
 import { getSessionUser } from "@/utils/getSessionUser";
@@ -713,6 +714,42 @@ export const POST = async (req) => {
         const reason = `${teamLabelForReason} sudah pernah diberi penalty "${label}" di Run ${
           runNumber || 1
         } — tidak bisa disubmit 2x.`;
+        await recordFailedAttempt(reason);
+        return new Response(
+          JSON.stringify({ success: false, message: reason }),
+          { status: 400 }
+        );
+      }
+    }
+
+    // VALIDASI BARU (2026-09-23): team harus sudah benar-benar Start (di
+    // timing system) sebelum juri boleh submit penalty Start/Finish/Section
+    // apa pun — pola sama persis dgn Sprint (lihat STEP 0 SPRINT di atas).
+    // Sumbernya DRRTeamStatus, diisi LANGSUNG oleh proses Electron
+    // sts-timingsystem (bukan lewat relay browser juri spt Sprint/Slalom
+    // awalnya — pelajaran dari bug "juri belum Start padahal sudah Start"
+    // yang ditemukan 2026-09-23, lihat MEMORY-SPRINT.md), jadi TIDAK
+    // bergantung ada/tidaknya tab juri yang online.
+    if (normalizedType === "DRR") {
+      const startStatus = await DRRTeamStatus.findOne({
+        eventId: String(eventId),
+        initialId: String(initialId || ""),
+        raceId: String(raceId),
+        divisionId: String(divisionId),
+        teamId: String(team),
+      }).lean();
+
+      if (!startStatus) {
+        const opTypeForLabel = operationType
+          ? String(operationType).toLowerCase()
+          : null;
+        const label =
+          opTypeForLabel === "section"
+            ? `Section ${section || ""}`.trim()
+            : opTypeForLabel === "start"
+            ? "Start"
+            : "Finish";
+        const reason = `${teamLabelForReason} belum melakukan Start — penalty ${label} tidak dapat disimpan.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
