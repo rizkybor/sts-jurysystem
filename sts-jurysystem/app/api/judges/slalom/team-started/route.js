@@ -21,8 +21,16 @@ export async function POST(req) {
 
     await connectDB();
     const body = await req.json();
-    const { eventId, divisionId, raceId, teamId, bibTeam, runNumber, startTime } =
-      body || {};
+    const {
+      eventId,
+      initialId,
+      divisionId,
+      raceId,
+      teamId,
+      bibTeam,
+      runNumber,
+      startTime,
+    } = body || {};
 
     if (!eventId || !divisionId || !raceId || !teamId || !runNumber || !startTime) {
       return Response.json(
@@ -35,9 +43,12 @@ export async function POST(req) {
       );
     }
 
+    // BUG FIX: filter upsert sebelumnya TIDAK ikutkan initialId — lihat
+    // catatan di models/SlalomTeamStatus.js.
     await SlalomTeamStatus.findOneAndUpdate(
       {
         eventId: String(eventId),
+        initialId: String(initialId || ""),
         raceId: String(raceId),
         divisionId: String(divisionId),
         teamId: String(teamId),
@@ -70,6 +81,7 @@ export async function GET(req) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const eventId = searchParams.get("eventId");
+    const initialId = searchParams.get("initialId");
     const divisionId = searchParams.get("divisionId");
     const raceId = searchParams.get("raceId");
     const teamId = searchParams.get("teamId");
@@ -87,6 +99,7 @@ export async function GET(req) {
 
     const doc = await SlalomTeamStatus.findOne({
       eventId: String(eventId),
+      initialId: String(initialId || ""),
       raceId: String(raceId),
       divisionId: String(divisionId),
       teamId: String(teamId),

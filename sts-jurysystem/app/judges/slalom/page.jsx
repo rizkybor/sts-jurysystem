@@ -139,6 +139,7 @@ const JudgesSlalomPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           eventId: msg.eventId,
+          initialId: msg.initialId,
           divisionId: msg.divisionId,
           raceId: msg.raceId,
           teamId: msg.teamId,

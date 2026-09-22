@@ -394,6 +394,17 @@ export const POST = async (req) => {
     }
 
     const normalizedType = String(eventType).toUpperCase();
+
+    // H2H's teams tersimpan di TeamsRegistered dgn eventName "HEAD2HEAD"
+    // ATAU "HEADTOHEAD" tergantung siapa yang menulis (lihat catatan di
+    // STEP 1 di bawah) — dihoist ke sini (bukan cuma di STEP 1) supaya
+    // bisa dipakai jg utk lookup nama tim (`teamLabelForReason`) di awal
+    // fungsi ini.
+    const TEAMS_EVENTNAME_BY_TYPE = { H2H: ["HEADTOHEAD", "HEAD2HEAD"] };
+    const teamsEventNameFilter = TEAMS_EVENTNAME_BY_TYPE[normalizedType]
+      ? { $in: TEAMS_EVENTNAME_BY_TYPE[normalizedType] }
+      : normalizedType;
+
     if (penalty === undefined || penalty === null) {
       return new Response(
         JSON.stringify({
@@ -480,8 +491,19 @@ export const POST = async (req) => {
     // mentah (ObjectId string), bukan nama yang jelas dibaca juri.
     let teamLabelForReason = `Team ${team}`;
     try {
+      // (2026-09-23) Scope lengkap Event+Initial+Division+Race — bukan
+      // cuma eventId — supaya lookup nama tim tidak salah nyasar kalau
+      // teamId yang sama kebetulan tampil di Initial/kategori lain
+      // punya event yang sama (lihat catatan lengkap di STEP 1 bawah).
       const teamDocForReason = await TeamsRegistered.findOne(
-        { eventId, "teams.teamId": team },
+        {
+          eventId,
+          initialId,
+          raceId,
+          divisionId,
+          eventName: teamsEventNameFilter,
+          "teams.teamId": team,
+        },
         { "teams.$": 1 }
       ).lean();
       const tForReason = teamDocForReason?.teams?.[0];
@@ -521,6 +543,7 @@ export const POST = async (req) => {
       // walau tim sungguhan sudah start.
       const startStatus = await SprintTeamStatus.findOne({
         eventId: String(eventId),
+        initialId: String(initialId || ""),
         raceId: String(raceId),
         divisionId: String(divisionId),
         teamId: String(team),
@@ -546,10 +569,14 @@ export const POST = async (req) => {
       // status: != "failed" — percobaan yang sudah DITOLAK sebelumnya
       // (dicatat via recordFailedAttempt) tidak boleh ikut dihitung
       // sebagai "sudah punya Start/Finish".
+      // (2026-09-23) initialId ikut ditambahkan — raceId+divisionId bisa
+      // KEBETULAN sama antar Initial berbeda (mis. tim yang sama di
+      // Initial "SENIOR" vs "U23"), jadi belum cukup presisi sendirian.
       const existing = await JudgeReportDetail.find({
         eventId,
         eventType: "SPRINT",
         team,
+        initialId,
         raceId,
         divisionId,
         status: { $ne: "failed" },
@@ -581,9 +608,10 @@ export const POST = async (req) => {
 
     // VALIDASI H2H: juri hanya boleh submit 1x per tipe penalty (position:
     // start/cl/finish/other/r1/r2/l1/l2) per team per BABAK (roundId) —
-    // tidak bisa double. Di-scope per raceId+divisionId+roundId (bukan
-    // cuma eventId+team) supaya tim yang sama di ROUND BERBEDA (mis.
-    // Round 1 lalu lanjut Semifinal) tidak salah ke-blok sbg "sudah
+    // tidak bisa double. Di-scope per initialId+raceId+divisionId+roundId
+    // (bukan cuma eventId+team) supaya tim yang sama di ROUND BERBEDA
+    // (mis. Round 1 lalu lanjut Semifinal) ATAU di Initial category
+    // berbeda (mis. "SENIOR" vs "U23") tidak salah ke-blok sbg "sudah
     // pernah dinilai" — sama pola bug fix cross-race yang sudah dilakukan
     // di Sprint (lihat MEMORY-SPRINT.md).
     if (normalizedType === "H2H") {
@@ -591,6 +619,7 @@ export const POST = async (req) => {
         eventId,
         eventType: "H2H",
         team,
+        initialId,
         raceId,
         divisionId,
         roundId,
@@ -629,6 +658,7 @@ export const POST = async (req) => {
     if (normalizedType === "SLALOM") {
       const slalomStartStatus = await SlalomTeamStatus.findOne({
         eventId: String(eventId),
+        initialId: String(initialId || ""),
         raceId: String(raceId),
         divisionId: String(divisionId),
         teamId: String(team),
@@ -660,6 +690,7 @@ export const POST = async (req) => {
         eventId,
         eventType: "SLALOM",
         team,
+        initialId,
         raceId,
         divisionId,
         runNumber: Number(runNumber) || 1,
@@ -714,6 +745,7 @@ export const POST = async (req) => {
         eventId,
         eventType: "DRR",
         team,
+        initialId,
         raceId,
         divisionId,
         operationType: opTypeDrrDup,
@@ -752,6 +784,7 @@ export const POST = async (req) => {
         eventId,
         eventType: "RX",
         team,
+        initialId,
         raceId,
         divisionId,
         operationType: opTypeRxDup,
@@ -809,7 +842,7 @@ export const POST = async (req) => {
       // sama muncul di >1 dokumen — penalty/perbaikan data bisa kena
       // race/division yang tidak dimaksud juri.
       const rawTeamDoc = await TeamsRegistered.collection.findOne(
-        { eventId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
+        { eventId, initialId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
         { projection: { "teams.$": 1 } }
       );
       const rawResult = rawTeamDoc?.teams?.[0]?.result;
@@ -850,13 +883,13 @@ export const POST = async (req) => {
           judgesTime: "",
         };
         await TeamsRegistered.collection.updateOne(
-          { eventId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
+          { eventId, initialId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
           { $set: { "teams.$.result": [repairedRun, { ...emptyRun }] } }
         );
       }
 
       const teamDoc = await TeamsRegistered.findOne(
-        { eventId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
+        { eventId, initialId, raceId, divisionId, eventName: "SLALOM", "teams.teamId": team },
         { "teams.$": 1 }
       );
 
@@ -977,9 +1010,12 @@ export const POST = async (req) => {
       const raceSetting = await RaceSetting.findOne({ eventId });
       const totalSections = raceSetting?.settings?.drr?.totalSection || 6;
 
-      // Ambil dokumen tim DRR
+      // Ambil dokumen tim DRR — (2026-09-23) di-scope lengkap
+      // initialId+raceId+divisionId, bukan cuma eventId, supaya teamId
+      // yang KEBETULAN sama antar Initial/race/division berbeda tidak
+      // salah nyasar (lihat catatan lengkap di STEP 1 findOneAndUpdate).
       const teamDoc = await TeamsRegistered.findOne(
-        { eventId, eventName: "DRR", "teams.teamId": team },
+        { eventId, initialId, raceId, divisionId, eventName: "DRR", "teams.teamId": team },
         { "teams.$": 1 }
       );
 
@@ -1113,8 +1149,10 @@ export const POST = async (req) => {
        RX (Rafting Cross) — penalty Gate 1 / Gate 2
     ==========================*/
     if (normalizedType === "RX") {
+      // (2026-09-23) di-scope lengkap initialId+raceId+divisionId, bukan
+      // cuma eventId — lihat catatan lengkap di STEP 1 findOneAndUpdate.
       const teamDoc = await TeamsRegistered.findOne(
-        { eventId, eventName: "RX", "teams.teamId": team },
+        { eventId, initialId, raceId, divisionId, eventName: "RX", "teams.teamId": team },
         { "teams.$": 1 }
       );
 
@@ -1185,11 +1223,8 @@ export const POST = async (req) => {
     // inconsistency documented at views/TeamDetail/index.vue:
     // CATEGORY_KEY_ALIASES in sts-timingsystem). Query both spellings so
     // this lookup doesn't 404 on every H2H submission regardless of which
-    // one the registration actually used.
-    const TEAMS_EVENTNAME_BY_TYPE = { H2H: ["HEADTOHEAD", "HEAD2HEAD"] };
-    const teamsEventNameFilter = TEAMS_EVENTNAME_BY_TYPE[normalizedType]
-      ? { $in: TEAMS_EVENTNAME_BY_TYPE[normalizedType] }
-      : normalizedType;
+    // one the registration actually used. (`teamsEventNameFilter` sudah
+    // dihoist ke awal fungsi, dipakai jg utk `teamLabelForReason`.)
 
     // BUG FIX: query ini sebelumnya cuma eventId+eventName+teamId, TANPA
     // raceId/divisionId — padahal satu team bisa terdaftar di lebih dari
@@ -1200,9 +1235,15 @@ export const POST = async (req) => {
     // diperbaiki utk validasi duplikat Sprint (lihat MEMORY-SPRINT.md
     // bug #1), cuma sekarang diterapkan ke titik PENYIMPANAN-nya
     // langsung, dipakai bersama semua kategori (Sprint/H2H/Slalom/DRR/RX).
+    // (2026-09-23) initialId ikut ditambahkan — praktiknya raceId+
+    // divisionId bisa KEBETULAN sama antar Initial berbeda (mis. tim
+    // "FAJI DKI JAKARTA" di Initial "SENIOR" R4 BIB 100 vs Initial "U23"
+    // BIB 200), jadi Event/Division/Race SAJA belum cukup presisi —
+    // harus diperiksa bersama Initial Category juga.
     const updatedTeam = await TeamsRegistered.findOneAndUpdate(
       {
         eventId,
+        initialId,
         raceId,
         divisionId,
         eventName: teamsEventNameFilter,

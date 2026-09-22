@@ -28,8 +28,15 @@ const SprintTeamStatusSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// BUG FIX: index unik sebelumnya TIDAK ikutkan initialId — padahal
+// satu teamId yang sama bisa tampil di lebih dari satu Initial (mis.
+// tim yang sama, atau raceId+divisionId yang KEBETULAN sama, dipakai
+// ulang di Initial "SENIOR" DAN "U23" secara independen — pola bug yang
+// sama persis dgn yang ditemukan utk Slalom, lihat MEMORY-SLALOM.md
+// bug "raceId 1 DAN 2"). Tanpa initialId, upsert/query flag "sudah
+// Start" bisa salah nyasar ke Initial yang berbeda.
 SprintTeamStatusSchema.index(
-  { eventId: 1, raceId: 1, divisionId: 1, teamId: 1 },
+  { eventId: 1, initialId: 1, raceId: 1, divisionId: 1, teamId: 1 },
   { unique: true }
 );
 
