@@ -78,6 +78,10 @@ function mapSprint(doc, previewDocs) {
       totalTime: r.totalTime || null, // "Result" (race time + penalty time)
       score: Number.isFinite(r.score) ? r.score : null,
       rank: Number.isFinite(r.ranked) ? r.ranked : null,
+      // BUG FIX: dulu tidak ada di whitelist ini — status DNF/DNS/DSQ (di-set
+      // via markFlag() di SprintRace.vue, timingsystem) jadi tidak pernah
+      // sampai ke Live Result, walau sudah benar tersimpan di DB.
+      flag: r.flag || null,
     };
   });
 
@@ -126,6 +130,9 @@ function mapDrrDetailed(doc) {
       totalTime: r.totalTime || null, // "Result"
       score: Number.isFinite(r.score) ? r.score : null,
       rank: Number.isFinite(r.ranked) ? r.ranked : null,
+      // BUG FIX: sama pola dgn mapSprint() — dulu tidak dibawa, status
+      // DNF/DNS/DSQ (markFlag() di DownRiverRace.vue) tidak pernah tampil.
+      flag: r.flag || null,
     };
   });
   const hasRank = teams.some((t) => t.rank > 0);
@@ -142,9 +149,13 @@ function mapSlalomDetailed(doc) {
     const runsRaw = Array.isArray(t?.result) ? t.result : [];
     const runs = runsRaw.map((r, idx) => {
       const pt = r?.penaltyTotal || {};
-      const gatePenalty = Array.isArray(pt.gates)
-        ? pt.gates.reduce((sum, g) => sum + (Number(g) || 0), 0)
-        : 0;
+      // Array mentah per-gate (bukan cuma sum) — supaya Live Result bisa
+      // menampilkan rincian tiap gate, sama seperti tabel S/1..N/F di
+      // Result page timingsystem (SlalomResult.vue), bukan cuma total.
+      const gates = Array.isArray(pt.gates)
+        ? pt.gates.map((g) => Number(g) || 0)
+        : [];
+      const gatePenalty = gates.reduce((sum, g) => sum + g, 0);
       const startPenalty = Number.isFinite(pt.start) ? pt.start : 0;
       const finishPenalty = Number.isFinite(pt.finish) ? pt.finish : 0;
       return {
@@ -152,6 +163,7 @@ function mapSlalomDetailed(doc) {
         startPenalty,
         finishPenalty,
         gatePenalty,
+        gates,
         totalPenalty: Number.isFinite(r?.penalty)
           ? r.penalty
           : startPenalty + finishPenalty + gatePenalty,
@@ -160,6 +172,10 @@ function mapSlalomDetailed(doc) {
         finishTime: r?.finishTime || null,
         raceTime: r?.raceTime || null,
         totalTime: r?.totalTime || null, // "Result" per run
+        // BUG FIX: sama pola dgn mapSprint()/mapDrrDetailed() — dulu tidak
+        // dibawa, status DNF/DNS/DSQ PER RUN (markFlag() di SlalomRace.vue,
+        // independen per Run 1/Run 2) tidak pernah tampil.
+        flag: r?.flag || null,
       };
     });
     return {
