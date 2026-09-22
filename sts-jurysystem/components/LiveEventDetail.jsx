@@ -94,6 +94,27 @@ function LiveClock() {
   );
 }
 
+// Badge DNF/DNS/DSQ — status ditetapkan lewat markFlag() di sts-timingsystem
+// (SprintRace.vue/SlalomRace.vue/DownRiverRace.vue), dibaca apa adanya dari
+// field `flag` yang dibawa API live-results. Warna mengikuti idiom yang
+// sudah dipakai di timingsystem sendiri (merah=DNF, abu=DNS, gelap=DSQ).
+const FLAG_LABELS = { DNF: "DNF", DNS: "DNS", DSQ: "DSQ" };
+const FLAG_STYLES = {
+  DNF: "bg-red-500/15 text-red-300 border-red-400/30",
+  DNS: "bg-slate-500/15 text-slate-300 border-slate-400/30",
+  DSQ: "bg-zinc-700/40 text-zinc-200 border-zinc-500/40",
+};
+function FlagBadge({ flag }) {
+  if (!flag || !FLAG_LABELS[flag]) return null;
+  return (
+    <span
+      className={`inline-flex items-center text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full border ${FLAG_STYLES[flag]}`}
+    >
+      {FLAG_LABELS[flag]}
+    </span>
+  );
+}
+
 export default function LiveEventDetail() {
   const { id } = useParams(); // "/live/[id]"
 
@@ -185,6 +206,14 @@ export default function LiveEventDetail() {
           // refreshOfficialStatus() (poll + broadcast socket
           // "official:changed"), lihat useEffect di bawah.
           officialByCategory: data.resultsOfficialByCategory || {},
+          // Status 3-pilihan (Provisional/Unofficial/Official) BARU per
+          // kategori — field TERPISAH dari boolean officialByCategory di
+          // atas (lihat setResultsStatus() di insertNewEvent.js
+          // sts-timingsystem). Event lama yang belum pernah disentuh lewat
+          // UI baru tidak akan punya field ini sama sekali — fallback ke
+          // officialByCategory boolean tetap dipakai di badge (lihat
+          // isActiveCategoryOfficial/activeCategoryStatus di bawah).
+          statusByCategory: data.resultsStatusByCategory || {},
           // Kapan status Official/Unofficial di-set (otomatis = waktu
           // submit, atau override manual operator) — field TERPISAH dari
           // boolean di atas (lihat setResultsOfficial() di
@@ -220,6 +249,7 @@ export default function LiveEventDetail() {
           ? {
               ...prev,
               officialByCategory: data.resultsOfficialByCategory || {},
+              statusByCategory: data.resultsStatusByCategory || {},
               officialSetAtByCategory: data.resultsOfficialSetAt || {},
             }
           : prev
@@ -535,6 +565,29 @@ export default function LiveEventDetail() {
   const isActiveCategoryOfficial = activeCategoryOfficialKey
     ? !!event?.officialByCategory?.[activeCategoryOfficialKey]
     : false;
+  // Status 3-pilihan (mirror deriveResultStatus() di
+  // sts-timingsystem/src/utils/officialStamp.js, diinline di sini krn
+  // repo terpisah, tanpa shared import): field statusByCategory eksplisit
+  // menang kalau ada; event LAMA yang belum pernah disentuh lewat UI baru
+  // (statusByCategory kosong) fallback ke boolean officialByCategory yang
+  // sudah ada, supaya badge tidak berubah utk event lama.
+  const activeCategoryExplicitStatus = activeCategoryOfficialKey
+    ? event?.statusByCategory?.[activeCategoryOfficialKey]
+    : null;
+  const activeCategoryStatus =
+    activeCategoryExplicitStatus &&
+    ["provisional", "unofficial", "official"].includes(activeCategoryExplicitStatus)
+      ? activeCategoryExplicitStatus
+      : isActiveCategoryOfficial
+      ? "official"
+      // BUG FIX: dulu fallback ke "unofficial" di sini, TIDAK cocok dgn
+      // deriveResultStatus() di sts-timingsystem yg fallback ke
+      // "provisional" — akibatnya event lama (statusByCategory belum
+      // pernah di-set, boolean lama = false) tampil "Provisional" di
+      // timingsystem tapi "Unofficial" di Live Result. Samakan jadi
+      // "provisional" persis spt sumber aslinya.
+      : "provisional";
+  const isActiveCategoryProvisional = activeCategoryStatus === "provisional";
   const activeCategoryOfficialSetAt = activeCategoryOfficialKey
     ? event?.officialSetAtByCategory?.[activeCategoryOfficialKey]
     : null;
@@ -562,6 +615,18 @@ export default function LiveEventDetail() {
   const isSlalomDetailed = activeCategory === "SLALOM";
   const isH2HDetailed = activeCategory === "H2H";
   const isOverallDetailed = activeCategory === "OVERALL";
+  // Jumlah gate terbanyak di antara semua run tim (bervariasi per event,
+  // lihat SLALOM_GATES di SlalomRace.vue/Race Settings) — dipakai bikin
+  // kolom G1..GN dinamis supaya rincian tiap gate tampil, bukan cuma sum.
+  const maxGates = isSlalomDetailed
+    ? (results.teams || []).reduce((max, t) => {
+        (t.runs || []).forEach((run) => {
+          const n = Array.isArray(run.gates) ? run.gates.length : 0;
+          if (n > max) max = n;
+        });
+        return max;
+      }, 0)
+    : 0;
   const overallCategories = OVERALL_CATEGORY_META.filter((c) =>
     availableTabs.some((t) => t.code === c.code)
   );
@@ -888,17 +953,23 @@ export default function LiveEventDetail() {
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2.5">
                 <h2 className="text-lg sm:text-xl font-bold text-white/90">{activeTabLabel}</h2>
-                {activeCategory !== "OVERALL" && (
+                {activeCategory !== "OVERALL" && results.teams.length > 0 && (
                   <span className="inline-flex items-center gap-1.5">
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
                         isActiveCategoryOfficial
                           ? "border-emerald-400/60 text-emerald-300 bg-emerald-500/10"
+                          : isActiveCategoryProvisional
+                          ? "border-amber-400/60 text-amber-300 bg-amber-500/10"
                           : "border-red-400/60 text-red-300 bg-red-500/10"
                       }`}
                       title="Status hasil ditetapkan operator di timing system, per kategori"
                     >
-                      {isActiveCategoryOfficial ? "Official" : "Unofficial"}
+                      {isActiveCategoryOfficial
+                        ? "Official Result"
+                        : isActiveCategoryProvisional
+                        ? "Provisional Result"
+                        : "Unofficial Result"}
                     </span>
                     {formattedOfficialSetAt && (
                       <span className="text-[10px] sm:text-[11px] text-white/40">
@@ -931,17 +1002,17 @@ export default function LiveEventDetail() {
                 </div>
               ) : isSprintDetailed ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
+                  <table className="w-full text-xs border-collapse">
                     <thead>
-                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
-                        <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Start Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Finish Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Penalty Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Result</th>
+                      <tr className="text-[10px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Result</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -953,14 +1024,15 @@ export default function LiveEventDetail() {
                             key={`${r.bib}-${r.name}`}
                             className={`border-b border-white/5 last:border-b-0 ${
                               isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
-                            } ${r.isLivePreview ? "bg-emerald-500/[0.04]" : ""} transition-colors`}
+                            } ${r.isLivePreview ? "bg-emerald-500/[0.04]" : ""} transition-colors h-14`}
                           >
-                            <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-white/50 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
-                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 font-bold text-white whitespace-nowrap">
                               <span className="inline-flex items-center gap-1.5">
                                 {r.name}
+                                {r.flag && <FlagBadge flag={r.flag} />}
                                 {r.isLivePreview && (
                                   <span
                                     className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30"
@@ -972,15 +1044,15 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
-                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-white/60 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1 font-bold tabular-nums ${
                                   isTop3 ? "text-yellow-300" : "text-white"
                                 }`}
                               >
-                                {r.rank ?? "-"}
-                                {isProvisional && (
+                                {r.flag ? "-" : r.rank ?? "-"}
+                                {isProvisional && !r.flag && (
                                   <span
                                     className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10"
                                     title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
@@ -990,16 +1062,16 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
                               {r.startTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
                               {r.finishTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
                               {r.penaltyTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap">
                               {r.totalTime || "-"}
                             </td>
                           </tr>
@@ -1010,17 +1082,17 @@ export default function LiveEventDetail() {
                 </div>
               ) : isDrrDetailed ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
+                  <table className="w-full text-xs border-collapse">
                     <thead>
-                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
-                        <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Penalty Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Start Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Finish Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Result</th>
+                      <tr className="text-[10px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Result</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1032,23 +1104,26 @@ export default function LiveEventDetail() {
                             key={`${r.bib}-${r.name}`}
                             className={`border-b border-white/5 last:border-b-0 ${
                               isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
-                            } transition-colors`}
+                            } transition-colors h-14`}
                           >
-                            <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-white/50 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
-                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
-                              {r.name}
+                            <td className="px-2.5 py-1.5 font-bold text-white whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5">
+                                {r.name}
+                                {r.flag && <FlagBadge flag={r.flag} />}
+                              </span>
                             </td>
-                            <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
-                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-white/60 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1 font-bold tabular-nums ${
                                   isTop3 ? "text-yellow-300" : "text-white"
                                 }`}
                               >
-                                {r.rank ?? "-"}
-                                {isProvisional && (
+                                {r.flag ? "-" : r.rank ?? "-"}
+                                {isProvisional && !r.flag && (
                                   <span
                                     className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10"
                                     title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
@@ -1058,16 +1133,16 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
                               {r.penaltyTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
                               {r.startTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
                               {r.finishTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap">
                               {r.totalTime || "-"}
                             </td>
                           </tr>
@@ -1078,18 +1153,29 @@ export default function LiveEventDetail() {
                 </div>
               ) : isSlalomDetailed ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
+                  <table className="w-full text-xs border-collapse">
                     <thead>
-                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
-                        <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
-                        <th className="text-left px-4 py-3 whitespace-nowrap">Run</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Penalty Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Start Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Finish Time</th>
-                        <th className="text-right px-4 py-3 whitespace-nowrap">Result</th>
+                      <tr className="text-[10px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Run</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Pen. Start</th>
+                        {Array.from({ length: maxGates }, (_, gi) => (
+                          <th
+                            key={`gate-head-${gi}`}
+                            className="text-right px-2.5 py-1.5 whitespace-nowrap"
+                          >
+                            G{gi + 1}
+                          </th>
+                        ))}
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Pen. Finish</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Pen. Total</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Result</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1116,12 +1202,12 @@ export default function LiveEventDetail() {
                                 : isTop3
                                 ? "bg-white/[0.04]"
                                 : "hover:bg-white/[0.02]"
-                            } transition-colors`}
+                            } transition-colors h-14`}
                           >
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-4 py-3 text-white/50 font-medium whitespace-nowrap align-top"
+                                className="px-2.5 py-1.5 text-white/50 font-medium whitespace-nowrap align-top"
                               >
                                 {idx + 1}
                               </td>
@@ -1129,7 +1215,7 @@ export default function LiveEventDetail() {
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-4 py-3 font-bold text-white whitespace-nowrap align-top"
+                                className="px-2.5 py-1.5 font-bold text-white whitespace-nowrap align-top"
                               >
                                 {r.name}
                               </td>
@@ -1137,7 +1223,7 @@ export default function LiveEventDetail() {
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-4 py-3 text-white/60 whitespace-nowrap align-top"
+                                className="px-2.5 py-1.5 text-white/60 whitespace-nowrap align-top"
                               >
                                 {r.bib}
                               </td>
@@ -1145,7 +1231,7 @@ export default function LiveEventDetail() {
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-4 py-3 text-right whitespace-nowrap align-top"
+                                className="px-2.5 py-1.5 text-right whitespace-nowrap align-top"
                               >
                                 <span
                                   className={`inline-flex items-center gap-1 font-bold tabular-nums ${
@@ -1164,13 +1250,14 @@ export default function LiveEventDetail() {
                                 </span>
                               </td>
                             )}
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1.5 ${
                                   isBestRun ? "text-emerald-400 font-semibold" : "text-white/70"
                                 }`}
                               >
                                 {run.runNo ? `Run ${run.runNo}` : "-"}
+                                {run.flag && <FlagBadge flag={run.flag} />}
                                 {isBestRun && (
                                   <span
                                     className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
@@ -1181,17 +1268,37 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-white/60 tabular-nums whitespace-nowrap">
+                              {Number.isFinite(run.startPenalty) ? run.startPenalty : "-"}
+                            </td>
+                            {Array.from({ length: maxGates }, (_, gi) => {
+                              const g = Array.isArray(run.gates) ? run.gates[gi] : undefined;
+                              return (
+                                <td
+                                  key={`gate-${runIdx}-${gi}`}
+                                  className="px-2.5 py-1.5 text-right font-mono text-white/60 tabular-nums whitespace-nowrap"
+                                >
+                                  {Number.isFinite(g) ? g : "-"}
+                                </td>
+                              );
+                            })}
+                            <td className="px-2.5 py-1.5 text-right font-mono text-white/60 tabular-nums whitespace-nowrap">
+                              {Number.isFinite(run.finishPenalty) ? run.finishPenalty : "-"}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right font-mono text-red-400 font-semibold tabular-nums whitespace-nowrap">
+                              {Number.isFinite(run.totalPenalty) ? run.totalPenalty : "-"}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right font-mono text-red-400 tabular-nums whitespace-nowrap">
                               {run.penaltyTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
                               {run.startTime || "-"}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right font-mono text-white/70 tabular-nums whitespace-nowrap">
                               {run.finishTime || "-"}
                             </td>
                             <td
-                              className={`px-4 py-3 text-right font-mono font-bold tabular-nums whitespace-nowrap ${
+                              className={`px-2.5 py-1.5 text-right font-mono font-bold tabular-nums whitespace-nowrap ${
                                 isBestRun ? "text-emerald-400" : "text-white"
                               }`}
                             >
@@ -1206,7 +1313,7 @@ export default function LiveEventDetail() {
                 </div>
               ) : isH2HDetailed ? (
                 <Fragment>
-                  <div className="flex items-start gap-2.5 px-4 py-3 border-b border-white/10 bg-sts/10 text-white/70 text-xs sm:text-sm">
+                  <div className="flex items-start gap-2.5 px-2.5 py-1.5 border-b border-white/10 bg-sts/10 text-white/70 text-xs sm:text-sm">
                     <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mt-0.5 text-sts shrink-0">
                       <path
                         fillRule="evenodd"
@@ -1220,13 +1327,13 @@ export default function LiveEventDetail() {
                     </span>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
+                    <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
-                          <th className="text-left px-4 py-3 whitespace-nowrap">No</th>
-                          <th className="text-left px-4 py-3 whitespace-nowrap">Team Name</th>
-                          <th className="text-left px-4 py-3 whitespace-nowrap">BIB</th>
-                          <th className="text-right px-4 py-3 whitespace-nowrap">Ranked</th>
+                        <tr className="text-[10px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                          <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
+                          <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
+                          <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
+                          <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
                         </tr>
                       </thead>
                     <tbody>
@@ -1238,16 +1345,16 @@ export default function LiveEventDetail() {
                             key={`${r.bib}-${r.name}`}
                             className={`border-b border-white/5 last:border-b-0 ${
                               isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
-                            } transition-colors`}
+                            } transition-colors h-14`}
                           >
-                            <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-white/50 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
-                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 font-bold text-white whitespace-nowrap">
                               {r.name}
                             </td>
-                            <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
-                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-white/60 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1 font-bold tabular-nums ${
                                   isTop3 ? "text-yellow-300" : "text-white"
@@ -1273,12 +1380,12 @@ export default function LiveEventDetail() {
                 </Fragment>
               ) : isOverallDetailed ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
+                  <table className="w-full text-xs border-collapse">
                     <thead>
-                      <tr className="text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
-                        <th rowSpan={2} className="text-left px-4 py-3 align-bottom whitespace-nowrap">No</th>
-                        <th rowSpan={2} className="text-left px-4 py-3 align-bottom whitespace-nowrap">Team Name</th>
-                        <th rowSpan={2} className="text-left px-4 py-3 align-bottom whitespace-nowrap">BIB</th>
+                      <tr className="text-[10px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                        <th rowSpan={2} className="text-left px-2.5 py-1.5 align-bottom whitespace-nowrap">No</th>
+                        <th rowSpan={2} className="text-left px-2.5 py-1.5 align-bottom whitespace-nowrap">Team Name</th>
+                        <th rowSpan={2} className="text-left px-2.5 py-1.5 align-bottom whitespace-nowrap">BIB</th>
                         {overallCategories.map((cat) => (
                           <th
                             key={cat.code}
@@ -1288,10 +1395,10 @@ export default function LiveEventDetail() {
                             {cat.label}
                           </th>
                         ))}
-                        <th rowSpan={2} className="text-right px-4 py-3 align-bottom whitespace-nowrap border-l border-white/10">
+                        <th rowSpan={2} className="text-right px-2.5 py-1.5 align-bottom whitespace-nowrap border-l border-white/10">
                           Total Score
                         </th>
-                        <th rowSpan={2} className="text-right px-4 py-3 align-bottom whitespace-nowrap">Rank</th>
+                        <th rowSpan={2} className="text-right px-2.5 py-1.5 align-bottom whitespace-nowrap">Rank</th>
                       </tr>
                       <tr className="text-[10px] uppercase tracking-wider text-white/30 font-semibold border-b border-white/10">
                         {overallCategories.map((cat) => (
@@ -1314,15 +1421,15 @@ export default function LiveEventDetail() {
                             key={`${r.bib}-${r.name}`}
                             className={`border-b border-white/5 last:border-b-0 ${
                               isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
-                            } transition-colors`}
+                            } transition-colors h-14`}
                           >
-                            <td className="px-4 py-3 text-white/50 font-medium whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-white/50 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
-                            <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 font-bold text-white whitespace-nowrap">
                               {r.name}
                             </td>
-                            <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-2.5 py-1.5 text-white/60 whitespace-nowrap">{r.bib}</td>
                             {overallCategories.map((cat) => (
                               <Fragment key={cat.code}>
                                 <td className="px-3 py-3 text-right font-mono text-white/70 tabular-nums whitespace-nowrap border-l border-white/5">
@@ -1333,10 +1440,10 @@ export default function LiveEventDetail() {
                                 </td>
                               </Fragment>
                             ))}
-                            <td className="px-4 py-3 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap border-l border-white/10">
+                            <td className="px-2.5 py-1.5 text-right font-mono font-bold text-white tabular-nums whitespace-nowrap border-l border-white/10">
                               {r.totalScore ?? 0}
                             </td>
-                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
                               <span
                                 className={`font-bold tabular-nums ${
                                   isTop3 ? "text-yellow-300" : "text-white"
@@ -1354,7 +1461,7 @@ export default function LiveEventDetail() {
               ) : (
                 <>
                   {/* Header row (desktop) */}
-                  <div className="hidden sm:grid grid-cols-[64px_1fr_100px_repeat(3,110px)] gap-3 px-5 py-3 text-[11px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
+                  <div className="hidden sm:grid grid-cols-[64px_1fr_100px_repeat(3,110px)] gap-3 px-4 py-2 text-[10px] uppercase tracking-wider text-white/40 font-semibold border-b border-white/10">
                     <span>Rank</span>
                     <span>Tim</span>
                     <span>BIB</span>
@@ -1375,26 +1482,26 @@ export default function LiveEventDetail() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ duration: 0.35 }}
-                          className={`grid grid-cols-[48px_1fr_auto] sm:grid-cols-[64px_1fr_100px_repeat(3,110px)] items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-white/5 last:border-b-0 ${
+                          className={`grid grid-cols-[48px_1fr_auto] sm:grid-cols-[64px_1fr_100px_repeat(3,110px)] items-center gap-3 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/5 last:border-b-0 ${
                             isTop3 ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"
                           } transition-colors`}
                         >
                           <div className="flex items-center">
                             {isTop3 ? (
                               <span
-                                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-extrabold text-sm sm:text-base bg-gradient-to-br ${RANK_BADGE[rank]}`}
+                                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-extrabold text-xs sm:text-sm bg-gradient-to-br ${RANK_BADGE[rank]}`}
                               >
                                 {rank}
                               </span>
                             ) : (
-                              <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-sm sm:text-base text-white/50 border border-white/10">
+                              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm text-white/50 border border-white/10">
                                 {rank ?? "-"}
                               </span>
                             )}
                           </div>
 
                           <div className="min-w-0">
-                            <p className="font-bold text-base sm:text-xl text-white truncate flex items-center gap-2">
+                            <p className="font-bold text-sm sm:text-base text-white truncate flex items-center gap-2">
                               <span className="truncate">{r.name}</span>
                               {isProvisional && (
                                 <span
@@ -1405,29 +1512,29 @@ export default function LiveEventDetail() {
                                 </span>
                               )}
                             </p>
-                            <p className="sm:hidden text-[11px] text-white/40">BIB {r.bib}</p>
+                            <p className="sm:hidden text-[10px] text-white/40">BIB {r.bib}</p>
                           </div>
 
-                          <p className="hidden sm:block text-white/50 font-medium">{r.bib}</p>
+                          <p className="hidden sm:block text-white/50 font-medium text-sm">{r.bib}</p>
 
                           {columns.includes("time") && (
-                            <p className="hidden sm:block text-right font-mono text-lg sm:text-xl font-bold text-white tabular-nums">
+                            <p className="hidden sm:block text-right font-mono text-sm sm:text-base font-bold text-white tabular-nums">
                               {r.totalTime || "-"}
                             </p>
                           )}
                           {columns.includes("penalty") && (
-                            <p className="hidden sm:block text-right text-white/60 tabular-nums">
+                            <p className="hidden sm:block text-right text-sm text-white/60 tabular-nums">
                               {r.penaltyTime || "-"}
                             </p>
                           )}
                           {columns.includes("score") && (
-                            <p className="hidden sm:block text-right font-mono text-lg sm:text-xl font-bold text-white tabular-nums">
+                            <p className="hidden sm:block text-right font-mono text-sm sm:text-base font-bold text-white tabular-nums">
                               {r.score ?? "-"}
                             </p>
                           )}
 
                           {/* Mobile compact value (time atau score) */}
-                          <p className="sm:hidden text-right font-mono text-base font-bold text-white tabular-nums">
+                          <p className="sm:hidden text-right font-mono text-sm font-bold text-white tabular-nums">
                             {columns.includes("time") ? r.totalTime || "-" : r.score ?? "-"}
                           </p>
                         </motion.div>
