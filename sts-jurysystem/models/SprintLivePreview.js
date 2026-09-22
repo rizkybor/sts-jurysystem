@@ -24,7 +24,12 @@ import mongoose from "mongoose";
 const SprintLivePreviewSchema = new mongoose.Schema(
   {
     eventId: { type: String, required: true },
-    initialId: { type: String },
+    // BUG FIX: sebelumnya tidak required & tidak ikut unique index di bawah
+    // — akibatnya preview tim yg sama (raceId+divisionId sama) dari initial
+    // (kategori usia) BERBEDA (mis. SENIOR vs U23 vs JUNIOR, yg berbagi
+    // divisionId "R4" & raceId "MEN") saling timpa/bocor ke tab Live Result
+    // initial lain. Lihat juga BUG FIX di live-results/route.js.
+    initialId: { type: String, required: true },
     divisionId: { type: String, required: true },
     raceId: { type: String, required: true },
     teamId: { type: String, required: true },
@@ -42,7 +47,7 @@ const SprintLivePreviewSchema = new mongoose.Schema(
 );
 
 SprintLivePreviewSchema.index(
-  { eventId: 1, raceId: 1, divisionId: 1, teamId: 1 },
+  { eventId: 1, initialId: 1, raceId: 1, divisionId: 1, teamId: 1 },
   { unique: true }
 );
 

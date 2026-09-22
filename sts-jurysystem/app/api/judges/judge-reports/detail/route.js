@@ -475,6 +475,21 @@ export const POST = async (req) => {
       }
     }
 
+    // Nama tim utk pesan validasi di bawah (toast juri) — sebelumnya semua
+    // pesan "sudah pernah diberi penalty ..." di STEP 0 memakai `team`
+    // mentah (ObjectId string), bukan nama yang jelas dibaca juri.
+    let teamLabelForReason = `Team ${team}`;
+    try {
+      const teamDocForReason = await TeamsRegistered.findOne(
+        { eventId, "teams.teamId": team },
+        { "teams.$": 1 }
+      ).lean();
+      const tForReason = teamDocForReason?.teams?.[0];
+      if (tForReason?.nameTeam) teamLabelForReason = tForReason.nameTeam;
+    } catch {
+      // best-effort — fallback ke `Team ${team}` kalau lookup gagal
+    }
+
     /* =========================
        STEP 0: VALIDASI KHUSUS
     ==========================*/
@@ -512,7 +527,7 @@ export const POST = async (req) => {
       }).lean();
 
       if (!startStatus) {
-        const reason = `Team ${team} belum melakukan Start — penalty ${position} tidak dapat disimpan.`;
+        const reason = `${teamLabelForReason} belum melakukan Start — penalty ${position} tidak dapat disimpan.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
@@ -544,7 +559,7 @@ export const POST = async (req) => {
       const hasFinish = existing.some((r) => r.position === "Finish");
 
       if (hasStart && hasFinish) {
-        const reason = `Team ${team} sudah memiliki Start dan Finish.`;
+        const reason = `${teamLabelForReason} sudah memiliki Start dan Finish.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
@@ -555,7 +570,7 @@ export const POST = async (req) => {
         (position === "Start" && hasStart) ||
         (position === "Finish" && hasFinish)
       ) {
-        const reason = `Team ${team} sudah memiliki posisi ${position}.`;
+        const reason = `${teamLabelForReason} sudah memiliki posisi ${position}.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
@@ -584,7 +599,7 @@ export const POST = async (req) => {
       }).lean();
 
       if (existingH2H.length > 0) {
-        const reason = `Team ${team} sudah pernah diberi penalty tipe "${position}" di babak ini — tidak bisa disubmit 2x.`;
+        const reason = `${teamLabelForReason} sudah pernah diberi penalty tipe "${position}" di babak ini — tidak bisa disubmit 2x.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
@@ -621,7 +636,7 @@ export const POST = async (req) => {
       }).lean();
 
       if (!slalomStartStatus) {
-        const reason = `Team ${team} belum melakukan Start di Run ${
+        const reason = `${teamLabelForReason} belum melakukan Start di Run ${
           runNumber || 1
         } — penalty tidak dapat disimpan.`;
         await recordFailedAttempt(reason);
@@ -664,7 +679,7 @@ export const POST = async (req) => {
             : opTypeSlalomDup === "start"
             ? "Start"
             : "Finish";
-        const reason = `Team ${team} sudah pernah diberi penalty "${label}" di Run ${
+        const reason = `${teamLabelForReason} sudah pernah diberi penalty "${label}" di Run ${
           runNumber || 1
         } — tidak bisa disubmit 2x.`;
         await recordFailedAttempt(reason);
@@ -715,7 +730,7 @@ export const POST = async (req) => {
             : opTypeDrrDup === "start"
             ? "Start"
             : "Finish";
-        const reason = `Team ${team} sudah pernah diberi penalty "${label}" — tidak bisa disubmit 2x.`;
+        const reason = `${teamLabelForReason} sudah pernah diberi penalty "${label}" — tidak bisa disubmit 2x.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),
@@ -744,7 +759,7 @@ export const POST = async (req) => {
       }).lean();
       if (existingRx.length > 0) {
         const label = opTypeRxDup === "gate1" ? "Gate 1" : "Gate 2";
-        const reason = `Team ${team} sudah pernah diberi penalty "${label}" — tidak bisa disubmit 2x.`;
+        const reason = `${teamLabelForReason} sudah pernah diberi penalty "${label}" — tidak bisa disubmit 2x.`;
         await recordFailedAttempt(reason);
         return new Response(
           JSON.stringify({ success: false, message: reason }),

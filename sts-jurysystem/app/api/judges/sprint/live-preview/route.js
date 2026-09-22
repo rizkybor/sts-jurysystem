@@ -38,9 +38,16 @@ export async function POST(req) {
       totalTime,
     } = body || {};
 
-    if (!eventId || !divisionId || !raceId || !teamId) {
+    // BUG FIX: initialId sebelumnya tidak required & tidak ikut filter
+    // findOneAndUpdate di bawah (cuma di-$set) — SENIOR/U23/JUNIOR berbagi
+    // raceId+divisionId yang sama, jadi upsert dari initial berbeda saling
+    // timpa 1 dokumen yang sama & bocor ke tab Live Result initial lain.
+    if (!eventId || !initialId || !divisionId || !raceId || !teamId) {
       return Response.json(
-        { success: false, message: "eventId, divisionId, raceId, teamId are required" },
+        {
+          success: false,
+          message: "eventId, initialId, divisionId, raceId, teamId are required",
+        },
         { status: 400 }
       );
     }
@@ -48,13 +55,13 @@ export async function POST(req) {
     await SprintLivePreview.findOneAndUpdate(
       {
         eventId: String(eventId),
+        initialId: String(initialId),
         raceId: String(raceId),
         divisionId: String(divisionId),
         teamId: String(teamId),
       },
       {
         $set: {
-          initialId: initialId ? String(initialId) : undefined,
           bibTeam: bibTeam ? String(bibTeam) : undefined,
           nameTeam: nameTeam ? String(nameTeam) : undefined,
           startTime: startTime ? String(startTime) : undefined,

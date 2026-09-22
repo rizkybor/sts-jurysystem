@@ -335,8 +335,12 @@ export const GET = async (req, { params }) => {
       // Gabungkan dgn pratinjau tim yang genuinely selesai tapi belum
       // ter-Save Result (lihat models/SprintLivePreview.js) — Live Result
       // jadi reaktif per-tim, bukan cuma saat bulk Save Result.
+      // BUG FIX: initialId sebelumnya tidak ikut filter — SENIOR/U23/
+      // JUNIOR berbagi raceId+divisionId yang sama (cuma beda initialId),
+      // jadi preview tim dari initial lain ikut ke-merge ke tab ini.
       const previewDocs = await SprintLivePreview.find({
         eventId,
+        initialId,
         raceId,
         divisionId,
       }).lean();
