@@ -300,6 +300,7 @@ const JudgesRaftingCrossPage = () => {
           data={history.data}
           renderItem={(item) => {
             const p = Number(item.penalty ?? 0);
+            const isFailed = item?.status === "failed";
             const timeStr = item?.createdAt
               ? new Date(item.createdAt).toLocaleTimeString("id-ID", {
                   hour: "2-digit",
@@ -315,29 +316,55 @@ const JudgesRaftingCrossPage = () => {
             return (
               <>
                 <div
-                  className={`grid place-items-center h-12 w-12 rounded-xl ring shrink-0 ${penaltyBadgeColor(
-                    p
-                  )}`}
+                  className={`grid place-items-center h-12 w-12 rounded-xl ring shrink-0 ${
+                    isFailed
+                      ? "bg-red-50 text-red-600 ring-red-200"
+                      : penaltyBadgeColor(p)
+                  }`}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    className="h-6 w-6"
-                  >
-                    <path
-                      fill="currentColor"
-                      d="M6 2a1 1 0 0 0-1 1v18h2v-6h9l-1-4 1-4H7V3a1 1 0 0 0-1-1Z"
-                    />
-                  </svg>
+                  {isFailed ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-6 w-6"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2Zm0-4h-2V7h2Z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-6 w-6"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M6 2a1 1 0 0 0-1 1v18h2v-6h9l-1-4 1-4H7V3a1 1 0 0 0-1-1Z"
+                      />
+                    </svg>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-semibold text-gray-900 flex items-center gap-1.5">
                     Rafting Cross Penalty — {gateLabel}
+                    {isFailed && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 ring-1 ring-red-200 rounded-full px-2 py-0.5">
+                        Gagal
+                      </span>
+                    )}
                   </div>
-                  <div className="text-gray-600 text-sm">
-                    {item?.teamInfo?.nameTeam || "Team"} BIB{" "}
-                    {item?.teamInfo?.bibTeam || "-"} • Penalty: {p} points
-                  </div>
+                  {isFailed ? (
+                    <div className="text-red-600 text-sm">
+                      {item?.failReason || "Submit ditolak sistem."}
+                    </div>
+                  ) : (
+                    <div className="text-gray-600 text-sm">
+                      {item?.teamInfo?.nameTeam || "Team"} BIB{" "}
+                      {item?.teamInfo?.bibTeam || "-"} • Penalty: {p} points
+                    </div>
+                  )}
                   <small className="text-gray-500">
                     Oleh: {item?.judge || "Undefined"}
                   </small>

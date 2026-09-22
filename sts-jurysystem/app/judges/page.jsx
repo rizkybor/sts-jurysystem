@@ -393,6 +393,10 @@ const JudgesPage = () => {
               const anyActive = visibleButtons.some((btn) =>
                 btn.checkActive(assignment)
               );
+              // Event yang sudah di-nonaktifkan panitia (statusEvent !==
+              // "Activated") — card & tombol aksinya (navigasi kategori)
+              // ikut dinonaktifkan, bukan cuma label status yang berubah.
+              const isEventActive = event.statusEvent === "Activated";
 
               return (
                 <motion.div
@@ -400,7 +404,11 @@ const JudgesPage = () => {
                   initial={{ y: 16, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: index * 0.05 }}
-                  className="min-w-[280px] sm:min-w-0 max-w-[320px] sm:max-w-none flex-shrink-0 sm:flex-shrink snap-start bg-white rounded-3xl shadow-xl border border-gray-100 p-6 flex flex-col"
+                  className={`min-w-[280px] sm:min-w-0 max-w-[320px] sm:max-w-none flex-shrink-0 sm:flex-shrink snap-start bg-white rounded-3xl shadow-xl border border-gray-100 p-6 flex flex-col ${
+                    isEventActive
+                      ? ""
+                      : "opacity-60 saturate-0 pointer-events-none select-none"
+                  }`}
                 >
                   {/* Logo */}
                   <div className="w-20 h-20 mx-auto rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center">
@@ -434,14 +442,10 @@ const JudgesPage = () => {
                       <span className="font-semibold">Status: </span>
                       <span
                         className={
-                          event.statusEvent === "Activated"
-                            ? "text-green-600"
-                            : "text-gray-500"
+                          isEventActive ? "text-green-600" : "text-red-500"
                         }
                       >
-                        {event.statusEvent === "Activated"
-                          ? "Actived"
-                          : "InActived"}
+                        {isEventActive ? "Actived" : "InActived"}
                       </span>
                     </p>
                     <p>
@@ -452,7 +456,12 @@ const JudgesPage = () => {
 
                   {/* Buttons / Empty */}
                   <div className="mt-4">
-                    {assignment ? (
+                    {!isEventActive ? (
+                      <EmptyNote>
+                        🚫 Event ini sedang tidak aktif — aksi juri
+                        dinonaktifkan sementara.
+                      </EmptyNote>
+                    ) : assignment ? (
                       anyActive ? (
                         <div className="grid grid-cols-2 gap-2">
                           {visibleButtons.map((btn) => {
