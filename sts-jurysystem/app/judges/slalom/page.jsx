@@ -182,6 +182,11 @@ const JudgesSlalomPage = () => {
     if (!socket) return;
     const teamName = selectedTeamData?.nameTeam || "Unknown Team";
     const actualTeamId = selectedTeamData?.teamId || selectedTeam;
+    // BUG FIX (2026-09-23): sama pola dgn Sprint (MEMORY-SPRINT.md) —
+    // initialId/raceId/divisionId ditambahkan supaya timing system bisa
+    // verifikasi kategori aktifnya cocok sebelum menempelkan penalty ini
+    // ke baris yg sedang tampil (teamId bisa dipakai ulang lintas Initial).
+    const [initialId, divisionId, raceId] = selectedCategory.split("|");
 
     let messageData = {
       senderId: socket.id,
@@ -191,6 +196,9 @@ const JudgesSlalomPage = () => {
       runNumber,
       penalty: Number(selectedPenalty),
       eventId,
+      initialId,
+      divisionId,
+      raceId,
       ts: new Date().toISOString(),
       bib: selectedTeamData?.bibTeam || "",
       run: runNumber,

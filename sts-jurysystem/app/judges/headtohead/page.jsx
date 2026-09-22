@@ -489,6 +489,12 @@ const JudgesHeadToHeadPage = () => {
 
       const teamName = selectedTeamData?.nameTeam || "Unknown Team";
       const actualTeamId = selectedTeamData?.teamId || selectedTeam;
+      // BUG FIX (2026-09-23): sama pola dgn Sprint/Slalom/DRR/RX
+      // (MEMORY-SPRINT.md) — initialId/raceId/divisionId/roundId
+      // ditambahkan supaya timing system bisa verifikasi kategori+babak
+      // aktifnya cocok sebelum menempelkan penalty ini (teamId bisa
+      // dipakai ulang lintas Initial).
+      const [initialId, divisionId, raceId] = selectedCategory.split("|");
 
       const base = {
         senderId: socket.id,
@@ -498,6 +504,10 @@ const JudgesHeadToHeadPage = () => {
         bibTeam: selectedTeamData?.bibTeam || "",
         judge: user?.username || user?.name || "",
         eventId,
+        initialId,
+        divisionId,
+        raceId,
+        roundId: activeRound?.roundId || "",
         ts: new Date().toISOString(),
       };
 
