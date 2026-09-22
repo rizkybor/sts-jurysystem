@@ -724,6 +724,35 @@ export const POST = async (req) => {
       }
     }
 
+    // VALIDASI ANTI-DUPLIKAT RX: juri hanya boleh submit 1x per Gate
+    // (Gate 1 ATAU Gate 2) per team+kategori (raceId+divisionId). Beda
+    // dari Slalom/DRR: RX cuma punya 2 kemungkinan `operationType` tetap
+    // ("gate1"/"gate2", bukan nomor gate/section bebas), jadi tidak perlu
+    // field tambahan (gateNumber/section) di filter duplikat.
+    if (normalizedType === "RX") {
+      const opTypeRxDup = operationType
+        ? String(operationType).toLowerCase()
+        : null;
+      const existingRx = await JudgeReportDetail.find({
+        eventId,
+        eventType: "RX",
+        team,
+        raceId,
+        divisionId,
+        operationType: opTypeRxDup,
+        status: { $ne: "failed" },
+      }).lean();
+      if (existingRx.length > 0) {
+        const label = opTypeRxDup === "gate1" ? "Gate 1" : "Gate 2";
+        const reason = `Team ${team} sudah pernah diberi penalty "${label}" — tidak bisa disubmit 2x.`;
+        await recordFailedAttempt(reason);
+        return new Response(
+          JSON.stringify({ success: false, message: reason }),
+          { status: 400 }
+        );
+      }
+    }
+
     /* ===================================
        STEP 1: UPDATE TeamsRegistered
     ====================================*/
