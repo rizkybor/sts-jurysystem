@@ -92,6 +92,10 @@ const JudgesRaftingCrossPage = () => {
     if (!socket) return;
     const teamName = selectedTeamData?.nameTeam || "Unknown Team";
     const actualTeamId = selectedTeamData?.teamId || selectedTeam;
+    // BUG FIX (2026-09-23): sama pola dgn Sprint/Slalom/DRR (MEMORY-SPRINT.md)
+    // — initialId/raceId/divisionId ditambahkan supaya timing system bisa
+    // verifikasi kategori aktifnya cocok sebelum menempelkan penalty ini.
+    const [initialId, divisionId, raceId] = selectedCategory.split("|");
 
     const messageData = {
       senderId: socket.id,
@@ -103,6 +107,9 @@ const JudgesRaftingCrossPage = () => {
       gate: gateNumber === 1 ? "gate1" : "gate2",
       value: Number(selectedPenalty),
       eventId,
+      initialId,
+      divisionId,
+      raceId,
       ts: new Date().toISOString(),
     };
 
