@@ -488,7 +488,7 @@ const JudgesSprintPage = () => {
         {/* Field Notes — di luar <form> spy tidak ikut ke-disable oleh
             fieldset[disabled] submit penalty (sama pola dgn tombol
             Fouls Report H2H). */}
-        <div className="mt-4">
+        <div className="max-w-2xl mx-auto px-4 pb-6 mt-4">
           <button
             type="button"
             onClick={() => setFieldNotesModalOpen(true)}
