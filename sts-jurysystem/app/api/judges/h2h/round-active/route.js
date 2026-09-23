@@ -38,15 +38,21 @@ export async function POST(req) {
       );
     }
 
+    // BUG FIX (2026-09-23): filter ini sebelumnya TIDAK ikutkan initialId
+    // — kalau raceId+divisionId KEBETULAN sama di Initial berbeda (mis.
+    // SENIOR vs U23, sama pola dgn bug initialId Sprint/Slalom/DRR, lihat
+    // MEMORY-SPRINT.md), upsert babak aktif SALAH NYASAR menimpa dokumen
+    // Initial lain — babak/Heat SENIOR bisa hilang tertimpa data U23 atau
+    // sebaliknya.
     await H2HActiveRound.findOneAndUpdate(
       {
         eventId: String(eventId),
+        initialId: String(initialId || ""),
         raceId: String(raceId),
         divisionId: String(divisionId),
       },
       {
         $set: {
-          initialId: initialId ? String(initialId) : undefined,
           roundId: roundId ? String(roundId) : "",
           roundName: roundName ? String(roundName) : "",
           teams: Array.isArray(teams)
@@ -93,6 +99,7 @@ export async function GET(req) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const eventId = searchParams.get("eventId");
+    const initialId = searchParams.get("initialId");
     const divisionId = searchParams.get("divisionId");
     const raceId = searchParams.get("raceId");
 
@@ -103,8 +110,10 @@ export async function GET(req) {
       );
     }
 
+    // (2026-09-23) initialId ikut discope — lihat catatan lengkap di POST.
     const doc = await H2HActiveRound.findOne({
       eventId: String(eventId),
+      initialId: String(initialId || ""),
       raceId: String(raceId),
       divisionId: String(divisionId),
     }).lean();
