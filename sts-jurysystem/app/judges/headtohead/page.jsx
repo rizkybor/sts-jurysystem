@@ -165,12 +165,17 @@ const JudgesHeadToHeadPage = () => {
   // MEMORY-H2H.md).
   useEffect(() => {
     if (!eventId || !selectedCategory) return;
-    const [, divisionId, raceId] = selectedCategory.split("|");
+    // BUG FIX (2026-09-23): initialId sebelumnya dibuang (destructure `[,
+    // divisionId, raceId]`) — kalau raceId+divisionId KEBETULAN sama di
+    // Initial berbeda (mis. SENIOR vs U23, sama pola dgn bug initialId
+    // Sprint/Slalom/DRR, lihat MEMORY-SPRINT.md), babak aktif/Heat yang
+    // ditampilkan bisa salah nyasar ambil dari kategori lain.
+    const [initialId, divisionId, raceId] = selectedCategory.split("|");
     if (!divisionId || !raceId) return;
 
     let cancelled = false;
     fetch(
-      `/api/judges/h2h/round-active?eventId=${eventId}&divisionId=${divisionId}&raceId=${raceId}`,
+      `/api/judges/h2h/round-active?eventId=${eventId}&initialId=${initialId}&divisionId=${divisionId}&raceId=${raceId}`,
       { cache: "no-store" }
     )
       .then((res) => res.json())
