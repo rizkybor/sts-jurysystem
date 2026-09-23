@@ -51,8 +51,16 @@ const H2HActiveRoundSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// BUG FIX (2026-09-23): index unik sebelumnya TIDAK ikutkan initialId —
+// raceId+divisionId bisa KEBETULAN sama antar Initial berbeda (mis.
+// SENIOR vs U23), bikin upsert babak aktif salah nyasar menimpa dokumen
+// Initial lain (sama pola dgn bug #5 Sprint, lihat MEMORY-SPRINT.md).
+// PENTING: index LAMA `eventId_1_raceId_1_divisionId_1` di production
+// HARUS di-dropIndex() manual setelah deploy — Mongoose TIDAK pernah
+// menghapus index lama secara otomatis begitu definisi index berubah
+// (lihat bug index kritis di MEMORY-SPRINT.md, ditemukan hari yang sama).
 H2HActiveRoundSchema.index(
-  { eventId: 1, raceId: 1, divisionId: 1 },
+  { eventId: 1, initialId: 1, raceId: 1, divisionId: 1 },
   { unique: true }
 );
 
