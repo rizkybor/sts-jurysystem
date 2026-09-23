@@ -10,6 +10,10 @@ import useEventDetail from "@/hooks/judges/useEventDetail";
 import useJudgeTeams from "@/hooks/judges/useJudgeTeams";
 import useJudgeHistory from "@/hooks/judges/useJudgeHistory";
 import useRaceSettings from "@/hooks/judges/useRaceSettings";
+import {
+  fetchWithTimeout,
+  TIMEOUT_RETRY_MESSAGE,
+} from "@/utils/fetchWithTimeout";
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
@@ -284,7 +288,7 @@ const JudgesDRRPage = () => {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/judges/judge-reports/detail", {
+      const res = await fetchWithTimeout("/api/judges/judge-reports/detail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -315,11 +319,17 @@ const JudgesDRRPage = () => {
       }
     } catch (err) {
       console.error("Submit error:", err);
-      pushToast({
-        title: "Network Error",
-        text: "Gagal mengirim data! Coba lagi.",
-        type: "error",
-      });
+      const timedOut = err?.name === "AbortError";
+      pushToast(
+        {
+          title: timedOut ? "Timeout" : "Network Error",
+          text: timedOut
+            ? TIMEOUT_RETRY_MESSAGE
+            : "Gagal mengirim data! Coba lagi.",
+          type: "error",
+        },
+        timedOut ? 8000 : undefined
+      );
     } finally {
       setSubmitting(false);
     }

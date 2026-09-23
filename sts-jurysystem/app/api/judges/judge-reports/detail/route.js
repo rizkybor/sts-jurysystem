@@ -1,4 +1,4 @@
-import connectDB from "@/config/database";
+import connectDB, { isDbConnectionError } from "@/config/database";
 import JudgeReport from "@/models/JudgeReport";
 import JudgeReportDetail from "@/models/JudgeReportDetail";
 import TeamsRegistered from "@/models/TeamsRegistered";
@@ -1430,6 +1430,24 @@ export const POST = async (req) => {
     );
   } catch (err) {
     console.error("❌ Error saving JudgeReportDetail:", err);
+    // BUG FIX (2026-09-23): koneksi/timeout MongoDB (Atlas lambat/tidak
+    // terjangkau) sebelumnya cuma jadi 500 generik dgn pesan teknis
+    // Mongoose ("buffering timed out...") — juri tidak tahu ini masalah
+    // koneksi (yang wajar dicoba ulang) vs bug aplikasi. Dibedakan di
+    // sini supaya toast di halaman juri bisa kasih pesan & sikap yang
+    // tepat (lihat handleSubmit di app/judges/*/page.jsx: status 503 +
+    // code "DB_TIMEOUT" ditangani terpisah dari error lain).
+    if (isDbConnectionError(err)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          code: "DB_TIMEOUT",
+          message:
+            "Koneksi ke server database timeout. Penalty BELUM tersimpan — periksa koneksi internet Anda lalu coba submit ulang.",
+        }),
+        { status: 503 }
+      );
+    }
     return new Response(
       JSON.stringify({
         success: false,

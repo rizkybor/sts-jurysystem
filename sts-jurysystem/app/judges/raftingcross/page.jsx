@@ -24,6 +24,10 @@ import JudgeHistoryModal, {
   penaltyBadgeColor,
 } from "@/components/judges/JudgeHistoryModal";
 import FieldNotesModal from "@/components/judges/FieldNotesModal";
+import {
+  fetchWithTimeout,
+  TIMEOUT_RETRY_MESSAGE,
+} from "@/utils/fetchWithTimeout";
 
 const GATE_PENALTIES = [0, 5, 50];
 
@@ -222,7 +226,7 @@ const JudgesRaftingCrossPage = () => {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/judges/judge-reports/detail", {
+      const res = await fetchWithTimeout("/api/judges/judge-reports/detail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -253,11 +257,17 @@ const JudgesRaftingCrossPage = () => {
       }
     } catch (err) {
       console.error("Submit error:", err);
-      pushToast({
-        title: "Network Error",
-        text: "Gagal mengirim data! Coba lagi.",
-        type: "error",
-      });
+      const timedOut = err?.name === "AbortError";
+      pushToast(
+        {
+          title: timedOut ? "Timeout" : "Network Error",
+          text: timedOut
+            ? TIMEOUT_RETRY_MESSAGE
+            : "Gagal mengirim data! Coba lagi.",
+          type: "error",
+        },
+        timedOut ? 8000 : undefined
+      );
     } finally {
       setSubmitting(false);
     }
