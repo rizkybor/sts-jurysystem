@@ -50,6 +50,20 @@ const CATEGORY_CODE_TO_OFFICIAL_KEY = {
   RX: "raftingcross",
 };
 
+// BUG FIX (2026-09-25): status Provisional/Unofficial/Official di
+// sts-timingsystem dulu FLAT per tipe kategori (satu status utk SEMUA
+// Division/Race/Initial bucket dalam kategori yang sama) — mengubah status
+// 1 bucket (mis. SENIOR R4 MEN) ikut mengubah bucket lain (SENIOR R4
+// WOMEN). Sekarang key-nya per-bucket, MIRROR persis buildCategoryStatusKey()
+// di sts-timingsystem/src/utils/officialStamp.js (diinline di sini krn repo
+// terpisah, tanpa shared import).
+function buildCategoryStatusKey(categoryType, bucket) {
+  const divisionId = String(bucket?.divisionId || "");
+  const raceId = String(bucket?.raceId || "");
+  const initialId = String(bucket?.initialId || "");
+  return `${categoryType}__${divisionId}__${raceId}__${initialId}`;
+}
+
 // Kolom breakdown per kategori di tab Overall — persis field yang
 // dibangun mapOverallDetailed() di API, sama dengan tabel "Print Result
 // Overall" (event-overall-pdfResult.vue) di sts-timingsystem.
@@ -543,9 +557,14 @@ export default function LiveEventDetail() {
             : msg.status === "official" || (!msg.status && msg.value)
             ? "OFFICIAL"
             : "UNOFFICIAL";
+        // msg.category sekarang key KOMPOSIT per-bucket (mis.
+        // "sprint__1__1__12", lihat buildCategoryStatusKey() di atas) —
+        // ambil cuma tipe kategorinya (sebelum "__") utk teks toast,
+        // supaya tidak menampilkan string mentah composite key ke user.
+        const baseCategoryLabel = String(msg.category || "-").split("__")[0].toUpperCase();
         pushToast({
           title: "Status Resmi Diperbarui",
-          text: `Kategori ${msg.category || "-"} sekarang ${statusLabel}.`,
+          text: `Kategori ${baseCategoryLabel} sekarang ${statusLabel}.`,
           type: "info",
         });
         return;
@@ -573,21 +592,36 @@ export default function LiveEventDetail() {
 
   const columns = CATEGORY_COLUMNS[activeCategory] || ["rank"];
   const activeTabLabel = availableTabs.find((t) => t.code === activeCategory)?.label || "";
-  // Status Official/Unofficial utk TAB YANG SEDANG AKTIF — key mapping
-  // lihat CATEGORY_CODE_TO_OFFICIAL_KEY (mis. RX -> "raftingcross").
+  // Status Official/Unofficial utk TAB + BUCKET YANG SEDANG AKTIF — key
+  // mapping dasar lihat CATEGORY_CODE_TO_OFFICIAL_KEY (mis. RX ->
+  // "raftingcross"), lalu dijadikan key KOMPOSIT per-bucket lewat
+  // buildCategoryStatusKey() (lihat catatan BUG FIX di atasnya) supaya
+  // badge ini menunjuk ke Division/Race/Initial yang sama persis dgn yang
+  // sedang dilihat operator di sts-timingsystem.
   const activeCategoryOfficialKey = CATEGORY_CODE_TO_OFFICIAL_KEY[activeCategory];
-  const isActiveCategoryOfficial = activeCategoryOfficialKey
-    ? !!event?.officialByCategory?.[activeCategoryOfficialKey]
-    : false;
+  const activeCategoryBucketKey =
+    activeCategoryOfficialKey && activeBucket
+      ? buildCategoryStatusKey(activeCategoryOfficialKey, activeBucket)
+      : null;
+  // Fallback ke key FLAT lama (activeCategoryOfficialKey) kalau key
+  // komposit belum ada datanya sama sekali — event LAMA yang statusnya
+  // di-set SEBELUM migrasi per-bucket ini cuma punya key flat, jadi
+  // jangan sampai badge-nya "mundur" ke Provisional gara-gara migrasi.
+  const isActiveCategoryOfficial =
+    !!event?.officialByCategory?.[activeCategoryBucketKey] ||
+    (activeCategoryOfficialKey
+      ? !!event?.officialByCategory?.[activeCategoryOfficialKey]
+      : false);
   // Status 3-pilihan (mirror deriveResultStatus() di
   // sts-timingsystem/src/utils/officialStamp.js, diinline di sini krn
   // repo terpisah, tanpa shared import): field statusByCategory eksplisit
-  // menang kalau ada; event LAMA yang belum pernah disentuh lewat UI baru
-  // (statusByCategory kosong) fallback ke boolean officialByCategory yang
-  // sudah ada, supaya badge tidak berubah utk event lama.
-  const activeCategoryExplicitStatus = activeCategoryOfficialKey
-    ? event?.statusByCategory?.[activeCategoryOfficialKey]
-    : null;
+  // (komposit dulu, lalu flat) menang kalau ada; event LAMA yang belum
+  // pernah disentuh lewat UI baru (statusByCategory kosong) fallback ke
+  // boolean officialByCategory yang sudah ada, supaya badge tidak berubah
+  // utk event lama.
+  const activeCategoryExplicitStatus =
+    event?.statusByCategory?.[activeCategoryBucketKey] ||
+    (activeCategoryOfficialKey ? event?.statusByCategory?.[activeCategoryOfficialKey] : null);
   const activeCategoryStatus =
     activeCategoryExplicitStatus &&
     ["provisional", "unofficial", "official"].includes(activeCategoryExplicitStatus)
@@ -602,9 +636,11 @@ export default function LiveEventDetail() {
       // "provisional" persis spt sumber aslinya.
       : "provisional";
   const isActiveCategoryProvisional = activeCategoryStatus === "provisional";
-  const activeCategoryOfficialSetAt = activeCategoryOfficialKey
-    ? event?.officialSetAtByCategory?.[activeCategoryOfficialKey]
-    : null;
+  const activeCategoryOfficialSetAt =
+    event?.officialSetAtByCategory?.[activeCategoryBucketKey] ||
+    (activeCategoryOfficialKey
+      ? event?.officialSetAtByCategory?.[activeCategoryOfficialKey]
+      : null);
   // WIB (Asia/Jakarta) — sama zona & format dgn stempel PDF Print Result
   // di sts-timingsystem, supaya waktu yang dilihat juri/penonton Live
   // Result konsisten dgn yang dicetak operator.
