@@ -292,6 +292,60 @@ function mapOverallDetailed(doc) {
   }));
 }
 
+// Bracket H2H (pohon Round -> Match) utk tampilan publik Live Result,
+// mirror data yang sudah tersimpan di `h2h_brackets` (ditulis
+// upsertBracket() di sts-timingsystem) — DIGABUNG dgn `h2h_results`
+// (waktu/penalty/Win-Lose per babak per tim, ditulis upsertRoundRows()/
+// upsertAllRounds()) supaya tiap kotak match di bracket bisa menampilkan
+// hasil pertandingannya, bukan cuma nama tim & pemenang.
+//
+// Kedua koleksi di-scope oleh key yang SAMA persis:
+// `[eventId, initialId, raceId, divisionId].join("|")` — lihat
+// makeKey() di app/src/controllers/INSERT/upsertHeadToHead.js
+// (sts-timingsystem). Join hasil ke match dilakukan via roundId+nama
+// tim+BIB (h2h_results TIDAK punya teamId, cuma nameTeam/bibTeam —
+// sama seperti bracket.rounds[].matches[].team1/team2).
+async function buildH2HBracket(db, key) {
+  const [bracketDoc, resultRows] = await Promise.all([
+    db.collection("h2h_brackets").findOne({ key }),
+    db.collection("h2h_results").find({ key }).toArray(),
+  ]);
+
+  if (!bracketDoc) return null;
+
+  const resultByRoundTeam = new Map();
+  resultRows.forEach((r) => {
+    const rk = `${String(r.roundId || "")}|${String(
+      r.nameTeam || ""
+    ).toUpperCase()}|${String(r.bibTeam || "")}`;
+    resultByRoundTeam.set(rk, r.result || null);
+  });
+
+  const attachResult = (roundId, team) => {
+    if (!team || !team.name) return team;
+    const rk = `${String(roundId || "")}|${String(
+      team.name || ""
+    ).toUpperCase()}|${String(team.bibTeam || "")}`;
+    return { ...team, result: resultByRoundTeam.get(rk) || null };
+  };
+
+  const rounds = (bracketDoc.rounds || []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    bronze: !!r.bronze,
+    size: r.size,
+    matches: (r.matches || []).map((m) => ({
+      heat: m.heat != null ? m.heat : null,
+      bye: !!m.bye,
+      team1: attachResult(r.id, m.team1),
+      team2: attachResult(r.id, m.team2),
+      winner: m.winner || null,
+    })),
+  }));
+
+  return { rounds, showBronze: !!bracketDoc.showBronze };
+}
+
 export const GET = async (req, { params }) => {
   try {
     await connectDB();
@@ -327,6 +381,7 @@ export const GET = async (req, { params }) => {
     let doc = null;
     let teams = [];
     let latestPreviewAt = null;
+    let bracket = null;
 
     if (category === "SPRINT") {
       doc = await db
@@ -365,6 +420,7 @@ export const GET = async (req, { params }) => {
       const key = [eventId, initialId, raceId, divisionId].join("|");
       doc = await db.collection("h2h_overall").findOne({ key });
       teams = mapOverallRows(doc);
+      bracket = await buildH2HBracket(db, key);
     } else if (category === "RX") {
       const key = [eventId, initialId, raceId, divisionId].join("|");
       doc = await db.collection("rx_overall").findOne({ key });
@@ -398,6 +454,7 @@ export const GET = async (req, { params }) => {
         category,
         updatedAt: combinedUpdatedAt,
         teams,
+        ...(category === "H2H" ? { bracket } : {}),
       }),
       { status: 200 }
     );
