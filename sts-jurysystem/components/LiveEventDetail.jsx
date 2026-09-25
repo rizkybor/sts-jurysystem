@@ -1,10 +1,28 @@
 "use client";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import NextDynamic from "next/dynamic";
 import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import getSocket from "@/utils/socket";
 import { firstEventFileUrl } from "@/utils/eventMedia";
+
+// Dynamic import, ssr:false — komponen ini pakai styled-components +
+// SVG yang butuh ukuran window (@g-loot/react-tournament-brackets),
+// dan Live Result adalah client component yang tetap di-SSR Next.js
+// pada request pertama; render di client saja menghindari mismatch
+// hydration & style-injection-order dari styled-components.
+const HeadToHeadBracket = NextDynamic(
+  () => import("@/components/HeadToHeadBracket"),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-gray-400 text-center py-8 text-sm">
+        Memuat bracket...
+      </p>
+    ),
+  }
+);
 
 const DEFAULT_IMG = "/images/logo-dummy.png";
 
@@ -140,7 +158,11 @@ export default function LiveEventDetail() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedBucket, setSelectedBucket] = useState("");
 
-  const [results, setResults] = useState({ teams: [], updatedAt: null });
+  const [results, setResults] = useState({
+    teams: [],
+    updatedAt: null,
+    bracket: null,
+  });
   const [loadingResults, setLoadingResults] = useState(false);
   const [resultsError, setResultsError] = useState(null);
   const [justUpdated, setJustUpdated] = useState(false);
@@ -499,7 +521,11 @@ export default function LiveEventDetail() {
             setJustUpdated(true);
             setTimeout(() => setJustUpdated(false), 1200);
           }
-          return { teams: data.teams || [], updatedAt: data.updatedAt };
+          return {
+            teams: data.teams || [],
+            updatedAt: data.updatedAt,
+            bracket: data.bracket || null,
+          };
         });
       } else {
         setResultsError(data.message || "Gagal memuat hasil");
@@ -1372,60 +1398,23 @@ export default function LiveEventDetail() {
                       />
                     </svg>
                     <span>
-                      Informasi Overall — hasil akhir Head to Head dari seluruh babak
-                      ({results.teams.length} tim tercatat), bukan hasil per-babak.
+                      Bracket di bawah menampilkan progres pertandingan per-babak
+                      ({results.teams.length} tim tercatat), live mengikuti
+                      perubahan dari operator timing.
                     </span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse">
-                      <thead className="bg-slate-700">
-                        <tr className="text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
-                          <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
-                          <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
-                          <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
-                          <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
-                        </tr>
-                      </thead>
-                    <tbody>
-                      {results.teams.map((r, idx) => {
-                        const isTop3 = r.rank >= 1 && r.rank <= 3;
-                        const isProvisional = r.rank != null && !r.rankIsFinal;
-                        return (
-                          <tr
-                            key={`${r.bib}-${r.name}`}
-                            className={`border-b border-gray-100 last:border-b-0 ${
-                              isTop3 ? "bg-amber-50" : "hover:bg-gray-50"
-                            } transition-colors h-14`}
-                          >
-                            <td className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap">
-                              {idx + 1}
-                            </td>
-                            <td className="px-2.5 py-1.5 font-bold text-gray-900 whitespace-nowrap">
-                              {r.name}
-                            </td>
-                            <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{r.bib}</td>
-                            <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
-                              <span
-                                className={`inline-flex items-center gap-1 font-bold tabular-nums ${
-                                  isTop3 ? "text-amber-600" : "text-gray-900"
-                                }`}
-                              >
-                                {r.rank ?? "-"}
-                                {isProvisional && (
-                                  <span
-                                    className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
-                                    title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
-                                  >
-                                    Live
-                                  </span>
-                                )}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    </table>
+
+                  <div className="p-2.5 sm:p-4 lg:p-5 bg-white">
+                    <div className="flex items-center justify-between mb-2.5 sm:mb-3">
+                      <h3 className="text-xs sm:text-sm lg:text-base font-bold text-gray-900">
+                        Bracket Pertandingan
+                      </h3>
+                      <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-1.5 sm:px-2 py-0.5 flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live
+                      </span>
+                    </div>
+                    <HeadToHeadBracket bracket={results.bracket} />
                   </div>
                 </Fragment>
               ) : isOverallDetailed ? (

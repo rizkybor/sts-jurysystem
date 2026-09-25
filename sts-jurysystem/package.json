@@ -29,6 +29,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@g-loot/react-tournament-brackets": "^1.0.31-rc",
     "@headlessui/react": "^2.2.0",
     "cloudinary": "^2.5.1",
     "framer-motion": "^12.23.22",
@@ -46,8 +47,10 @@
     "react-photoswipe-gallery": "^3.0.2",
     "react-share": "^5.1.1",
     "react-spinners": "^0.15.0",
+    "react-svg-pan-zoom": "^3.13.1",
     "react-toastify": "^10.0.6",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "styled-components": "^4.4.1"
   },
   "devDependencies": {
     "postcss": "^8",
