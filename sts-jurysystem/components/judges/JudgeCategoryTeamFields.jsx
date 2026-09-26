@@ -3,6 +3,25 @@
 const selectClass =
   "w-full px-4 py-3 border border-gray-300 rounded-xl text-base bg-white focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition disabled:bg-gray-100 disabled:text-gray-400";
 
+// Style tombol pilihan — SAMA PERSIS dgn tombol Run/Gate yang sudah ada di
+// app/judges/slalom/page.jsx, dipakai di sini via categoryAsButtons/
+// teamAsButtons supaya konsisten visual, bukan reka ulang gaya baru.
+// `activeColor` opsional (default "sts") — Slalom pakai "orange" saat
+// Run 2 dipilih, supaya juri langsung sadar sedang di Run mana dari
+// warna tombol aktifnya, tanpa perlu baca label.
+const ACTIVE_COLOR_CLASSES = {
+  sts: "bg-sts text-white border-sts shadow-sm",
+  orange: "bg-orange-500 text-white border-orange-500 shadow-sm",
+};
+const optionButtonClass = (selected, disabled, activeColor = "sts") =>
+  `min-h-[48px] px-3 rounded-xl border text-sm font-semibold transition text-left ${
+    disabled
+      ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
+      : selected
+      ? ACTIVE_COLOR_CLASSES[activeColor] || ACTIVE_COLOR_CLASSES.sts
+      : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+  }`;
+
 function WarningIcon({ className = "w-4 h-4" }) {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
@@ -46,6 +65,17 @@ export default function JudgeCategoryTeamFields({
   // drpd buka dropdown utk 2 opsi. undefined/null = pakai dropdown default
   // (perilaku lama, dipakai Sprint/Slalom/DRR/RX & H2H saat Heat blm dipilih).
   teamFieldOverride,
+  // Opsional — kalau true, tampilkan pilihan Kategori/Team sbg grid tombol
+  // (gaya sama persis dgn tombol Run/Gate di Slalom) drpd dropdown
+  // <select>. Default false utk SEMUA halaman lain (Sprint/DRR/RX/H2H)
+  // supaya tidak ada perubahan tampilan di luar yang diminta — cuma
+  // Slalom yang mengaktifkan ini.
+  categoryAsButtons = false,
+  teamAsButtons = false,
+  // Opsional — warna tombol AKTIF saat categoryAsButtons/teamAsButtons
+  // dipakai (lihat ACTIVE_COLOR_CLASSES di atas). Default "sts", tidak
+  // berpengaruh sama sekali kalau categoryAsButtons/teamAsButtons false.
+  activeColor = "sts",
 }) {
   const selectedTeamData = teams.find((t) => t._id === selectedTeam);
   const showInvalidTeamWarning =
@@ -64,25 +94,41 @@ export default function JudgeCategoryTeamFields({
         <label className="block text-gray-700 mb-2 font-medium">
           Kategori
         </label>
-        <select
-          value={selectedCategory}
-          onChange={(e) => onCategoryChange(e.target.value)}
-          className={selectClass}
-          required
-        >
-          <option value="" disabled>
-            {loadingEvent
-              ? "Loading..."
-              : combinedCategories.length
-              ? "Pilih Kategori"
-              : "Tidak ada kategori"}
-          </option>
-          {combinedCategories.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
+        {categoryAsButtons ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {combinedCategories.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onCategoryChange(opt.value)}
+                aria-pressed={selectedCategory === opt.value}
+                className={optionButtonClass(selectedCategory === opt.value, false, activeColor)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <select
+            value={selectedCategory}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            className={selectClass}
+            required
+          >
+            <option value="" disabled>
+              {loadingEvent
+                ? "Loading..."
+                : combinedCategories.length
+                ? "Pilih Kategori"
+                : "Tidak ada kategori"}
             </option>
-          ))}
-        </select>
+            {combinedCategories.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        )}
         {!loadingEvent && !combinedCategories.length && (
           <p className="mt-1.5 text-xs text-gray-500">
             Belum ada kategori untuk event ini.
@@ -95,40 +141,75 @@ export default function JudgeCategoryTeamFields({
       {teamFieldOverride || (
         <div>
           <label className="block text-gray-700 mb-2 font-medium">Team</label>
-          <select
-            value={selectedTeam}
-            onChange={(e) => onTeamChange(e.target.value)}
-            className={selectClass}
-            required
-            disabled={!selectedCategory || loadingTeams}
-          >
-            <option value="" disabled>
-              {loadingTeams
-                ? "Loading teams..."
-                : teams.length
-                ? "Pilih Team"
-                : "Tidak ada tim"}
-            </option>
-            {teams.map((t) => (
-              <option
-                key={t._id}
-                value={t._id}
-                disabled={isTeamInactive(t)}
-                className={
-                  !t.hasValidTeamId || isTeamInactive(t)
-                    ? "text-orange-500 bg-orange-50"
-                    : ""
-                }
-              >
-                {t.nameTeam} {t.bibTeam ? `(BIB ${t.bibTeam})` : ""}
-                {!t.hasValidTeamId
-                  ? " — Tidak bisa submit"
-                  : isTeamInactive(t)
-                  ? " — Belum di babak aktif"
-                  : ""}
+          {teamAsButtons ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {teams.map((t) => {
+                const disabled = !t.hasValidTeamId || isTeamInactive(t);
+                return (
+                  <button
+                    key={t._id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onTeamChange(t._id)}
+                    aria-pressed={selectedTeam === t._id}
+                    className={optionButtonClass(selectedTeam === t._id, disabled, activeColor)}
+                  >
+                    {t.nameTeam} {t.bibTeam ? `(BIB ${t.bibTeam})` : ""}
+                    {!t.hasValidTeamId
+                      ? " — Tidak bisa submit"
+                      : isTeamInactive(t)
+                      ? " — Belum di babak aktif"
+                      : ""}
+                  </button>
+                );
+              })}
+              {!loadingTeams && !teams.length && (
+                <p className="text-xs text-gray-500 col-span-full">
+                  Tidak ada tim.
+                </p>
+              )}
+              {loadingTeams && (
+                <p className="text-xs text-gray-500 col-span-full">
+                  Loading teams...
+                </p>
+              )}
+            </div>
+          ) : (
+            <select
+              value={selectedTeam}
+              onChange={(e) => onTeamChange(e.target.value)}
+              className={selectClass}
+              required
+              disabled={!selectedCategory || loadingTeams}
+            >
+              <option value="" disabled>
+                {loadingTeams
+                  ? "Loading teams..."
+                  : teams.length
+                  ? "Pilih Team"
+                  : "Tidak ada tim"}
               </option>
-            ))}
-          </select>
+              {teams.map((t) => (
+                <option
+                  key={t._id}
+                  value={t._id}
+                  disabled={isTeamInactive(t)}
+                  className={
+                    !t.hasValidTeamId || isTeamInactive(t)
+                      ? "text-orange-500 bg-orange-50"
+                      : ""
+                  }
+                >
+                  {t.nameTeam} {t.bibTeam ? `(BIB ${t.bibTeam})` : ""}
+                  {!t.hasValidTeamId
+                    ? " — Tidak bisa submit"
+                    : isTeamInactive(t)
+                    ? " — Belum di babak aktif"
+                    : ""}
+                </option>
+              ))}
+            </select>
+          )}
           {!selectedCategory && (
             <p className="mt-1.5 text-xs text-gray-500">
               Pilih kategori terlebih dahulu.

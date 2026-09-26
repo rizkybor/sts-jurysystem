@@ -8,6 +8,13 @@ import { useEffect, useRef } from "react";
  * changes (i.e. the caller switched context), any currently selected
  * value that is no longer in the new list is cleared automatically.
  */
+// Sama pola dgn ACTIVE_COLOR_CLASSES di JudgeCategoryTeamFields.jsx —
+// Slalom pakai "orange" saat Run 2 dipilih.
+const ACTIVE_COLOR_CLASSES = {
+  sts: "bg-sts text-white border-sts shadow-sm",
+  orange: "bg-orange-500 text-white border-orange-500 shadow-sm",
+};
+
 export default function JudgePenaltyGrid({
   values,
   selected,
@@ -15,6 +22,10 @@ export default function JudgePenaltyGrid({
   label = "Nilai Penalty (detik)",
   columns = 4,
   disabled = false,
+  // Opsional — warna tombol AKTIF (lihat ACTIVE_COLOR_CLASSES di atas).
+  // Default "sts", tidak mengubah apa pun kalau tidak di-set (Sprint/
+  // DRR/RX/H2H tetap biru spt sebelumnya).
+  activeColor = "sts",
 }) {
   const prevValuesKey = useRef(null);
 
@@ -51,7 +62,7 @@ export default function JudgePenaltyGrid({
             aria-pressed={selected === v}
             className={`min-h-[48px] py-2 px-2 rounded-xl border text-sm font-semibold transition disabled:opacity-50 ${
               selected === v
-                ? "bg-sts text-white border-sts shadow-sm"
+                ? ACTIVE_COLOR_CLASSES[activeColor] || ACTIVE_COLOR_CLASSES.sts
                 : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
             }`}
           >
