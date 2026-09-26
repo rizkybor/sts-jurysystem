@@ -86,6 +86,12 @@ const JudgesSlalomPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [fieldNotesModalOpen, setFieldNotesModalOpen] = useState(false);
 
+  // Warna tombol AKTIF (Kategori/Team/Gate/Nilai Penalty) — oranye saat
+  // Run 2, biru (default) saat Run 1 — supaya juri langsung sadar sedang
+  // di Run mana dari warnanya, tanpa perlu baca label. Tombol Run itu
+  // sendiri SENGAJA tidak diubah (di luar permintaan).
+  const runActiveColor = runNumber === 2 ? "orange" : "sts";
+
   const gateOptions = useMemo(
     () => getSlalomPositionsFromAssignments(assignments, eventId),
     [assignments, eventId]
@@ -449,10 +455,12 @@ const JudgesSlalomPage = () => {
                       type="button"
                       onClick={() => setRunNumber(r.value)}
                       aria-pressed={runNumber === r.value}
-                      className={`min-h-[48px] rounded-xl border text-sm font-semibold transition ${
+                      className={`min-h-[48px] rounded-xl border-2 text-sm font-semibold transition ${
                         runNumber === r.value
-                          ? "bg-sts text-white border-sts shadow-sm"
-                          : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+                          ? r.value === 2
+                            ? "border-orange-500 text-orange-600 bg-orange-50"
+                            : "border-sts text-sts bg-sts/5"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-sts/50"
                       }`}
                     >
                       {r.label}
@@ -470,6 +478,9 @@ const JudgesSlalomPage = () => {
                 teams={teams}
                 selectedTeam={selectedTeam}
                 onTeamChange={setSelectedTeam}
+                categoryAsButtons
+                teamAsButtons
+                activeColor={runActiveColor}
               />
             </JudgeSectionCard>
 
@@ -487,7 +498,9 @@ const JudgesSlalomPage = () => {
                       aria-pressed={selectedGate === gate}
                       className={`min-h-[48px] rounded-xl border text-sm font-semibold transition ${
                         selectedGate === gate
-                          ? "bg-sts text-white border-sts shadow-sm"
+                          ? runActiveColor === "orange"
+                            ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                            : "bg-sts text-white border-sts shadow-sm"
                           : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
                       }`}
                     >
@@ -507,6 +520,7 @@ const JudgesSlalomPage = () => {
                 selected={selectedPenalty}
                 onChange={setSelectedPenalty}
                 columns={3}
+                activeColor={runActiveColor}
               />
             </JudgeSectionCard>
           </fieldset>
