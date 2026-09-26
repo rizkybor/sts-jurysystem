@@ -157,6 +157,10 @@ export default function LiveEventDetail() {
 
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedBucket, setSelectedBucket] = useState("");
+  // Toggle "Bracket" vs "Tabel" khusus tab H2H — ditambahkan krn bracket
+  // (SVG pan/zoom) susah digeser-geser di mobile; Tabel jadi alternatif
+  // yang scroll-nya native (vertical biasa), tidak butuh pinch/pan.
+  const [h2hView, setH2hView] = useState("bracket");
 
   const [results, setResults] = useState({
     teams: [],
@@ -1398,23 +1402,129 @@ export default function LiveEventDetail() {
                       />
                     </svg>
                     <span>
-                      Bracket di bawah menampilkan progres pertandingan per-babak
-                      ({results.teams.length} tim tercatat), live mengikuti
+                      {h2hView === "bracket"
+                        ? "Bracket di bawah menampilkan progres pertandingan per-babak"
+                        : "Tabel di bawah = hasil akhir Head to Head dari seluruh babak"}
+                      {" "}({results.teams.length} tim tercatat), live mengikuti
                       perubahan dari operator timing.
                     </span>
                   </div>
 
-                  <div className="p-2.5 sm:p-4 lg:p-5 bg-white">
-                    <div className="flex items-center justify-between mb-2.5 sm:mb-3">
-                      <h3 className="text-xs sm:text-sm lg:text-base font-bold text-gray-900">
-                        Bracket Pertandingan
-                      </h3>
-                      <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-1.5 sm:px-2 py-0.5 flex items-center gap-1 shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Live
-                      </span>
+                  <div className="p-2.5 sm:p-4 lg:p-6 bg-white">
+                    <div className="flex items-center justify-between mb-2.5 sm:mb-3 lg:mb-5 lg:pb-4 lg:border-b lg:border-gray-100">
+                      <div className="flex items-center gap-2 lg:gap-3">
+                        <span className="hidden lg:flex w-9 h-9 rounded-lg bg-sts/10 text-sts items-center justify-center shrink-0">
+                          <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                            <path
+                              d="M4 5h4v4H4V5Zm0 10h4v4H4v-4Zm12-10h4v4h-4V5Zm0 10h4v4h-4v-4M8 7h6M8 17h6M18 7v10"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        <div>
+                          <h3 className="text-xs sm:text-sm lg:text-lg font-bold text-gray-900 leading-tight">
+                            {h2hView === "bracket" ? "Bracket Pertandingan" : "Tabel Hasil Akhir"}
+                          </h3>
+                          <p className="hidden lg:block text-xs text-gray-400 mt-0.5">
+                            {results.teams.length} tim terdaftar
+                            {results.bracket?.rounds?.length
+                              ? ` • ${results.bracket.rounds.length} babak`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+                        {/* Toggle Bracket/Tabel — bracket (SVG pan/zoom) susah
+                            digeser di mobile, Tabel jadi alternatif scroll
+                            native. Tersedia di semua ukuran layar. */}
+                        <div className="flex rounded-full bg-gray-100 p-0.5 text-[9px] sm:text-[10px] lg:text-xs font-semibold uppercase tracking-wider">
+                          <button
+                            type="button"
+                            onClick={() => setH2hView("bracket")}
+                            className={`px-2 sm:px-2.5 lg:px-4 py-1 lg:py-1.5 rounded-full transition-all ${
+                              h2hView === "bracket"
+                                ? "bg-white text-sts shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
+                            }`}
+                          >
+                            Bracket
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setH2hView("table")}
+                            className={`px-2 sm:px-2.5 lg:px-4 py-1 lg:py-1.5 rounded-full transition-all ${
+                              h2hView === "table"
+                                ? "bg-white text-sts shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
+                            }`}
+                          >
+                            Tabel
+                          </button>
+                        </div>
+                        <span className="text-[9px] sm:text-[10px] lg:text-xs font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-1.5 sm:px-2 lg:px-3 py-0.5 lg:py-1 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Live
+                        </span>
+                      </div>
                     </div>
-                    <HeadToHeadBracket bracket={results.bracket} />
+
+                    {h2hView === "bracket" ? (
+                      <HeadToHeadBracket bracket={results.bracket} />
+                    ) : (
+                      <div className="overflow-x-auto -mx-2.5 sm:mx-0">
+                        <table className="w-full text-xs border-collapse">
+                          <thead className="bg-slate-700">
+                            <tr className="text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
+                              <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
+                              <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
+                              <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
+                              <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {results.teams.map((r, idx) => {
+                              const isTop3 = r.rank >= 1 && r.rank <= 3;
+                              const isProvisional = r.rank != null && !r.rankIsFinal;
+                              return (
+                                <tr
+                                  key={`${r.bib}-${r.name}`}
+                                  className={`border-b border-gray-100 last:border-b-0 ${
+                                    isTop3 ? "bg-amber-50" : "hover:bg-gray-50"
+                                  } transition-colors h-14`}
+                                >
+                                  <td className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap">
+                                    {idx + 1}
+                                  </td>
+                                  <td className="px-2.5 py-1.5 font-bold text-gray-900 whitespace-nowrap">
+                                    {r.name}
+                                  </td>
+                                  <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{r.bib}</td>
+                                  <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
+                                    <span
+                                      className={`inline-flex items-center gap-1 font-bold tabular-nums ${
+                                        isTop3 ? "text-amber-600" : "text-gray-900"
+                                      }`}
+                                    >
+                                      {r.rank ?? "-"}
+                                      {isProvisional && (
+                                        <span
+                                          className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                                          title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
+                                        >
+                                          Live
+                                        </span>
+                                      )}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </Fragment>
               ) : isOverallDetailed ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   SingleEliminationBracket,
   SVGViewer,
@@ -228,6 +228,114 @@ function BracketMatch({
   );
 }
 
+// Kartu match utk view mobile — sama pola visual dgn BracketMatch (baris
+// atas/bawah, highlight pemenang) TAPI dirender sbg <div> biasa berjajar
+// VERTIKAL (scroll native, tidak butuh pinch/pan), bukan diposisikan
+// absolut di dalam SVG. Dipakai ganti SVG bracket khusus di mobile —
+// pan/zoom SVG terbukti susah dipakai jari di layar kecil (dilaporkan
+// user).
+function MobileMatchCard({ heat, team1, team2 }) {
+  const row = (party, won) => (
+    <div
+      className={`flex items-center gap-2 px-3 py-2 ${
+        won ? "bg-emerald-50" : "bg-white"
+      }`}
+      style={{ borderLeft: `3px solid ${won ? "#10b981" : "transparent"}` }}
+    >
+      <span
+        className="flex-1 min-w-0 truncate text-sm font-semibold"
+        style={{ color: won ? "#065f46" : "#111827" }}
+        title={party.name}
+      >
+        {party.name}
+      </span>
+      <span
+        className="shrink-0 text-xs tabular-nums"
+        style={{ color: won ? "#047857" : "#9ca3af" }}
+      >
+        {party.resultText}
+      </span>
+    </div>
+  );
+
+  return (
+    <div className="rounded-lg border border-gray-200 overflow-hidden bg-white">
+      {heat != null ? (
+        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400 bg-gray-50 border-b border-gray-100">
+          Heat {heat}
+        </div>
+      ) : null}
+      {row(team1, team1.isWinner)}
+      <div className="h-px bg-gray-100" />
+      {row(team2, team2.isWinner)}
+    </div>
+  );
+}
+
+// rounds -> bentuk yang dipakai MobileMatchCard (BEDA dari
+// toLibraryMatches() yang meratakan+format khusus @g-loot — di sini
+// struktur per-babak dipertahankan krn tampilannya per-babak jg, bukan
+// pohon).
+function toMobileRounds(rounds) {
+  return rounds.map((round) => ({
+    id: round.id,
+    name: round.bronze ? "Final B" : round.name,
+    matches: (round.matches || []).map((m, mi) => ({
+      key: `${round.id}-${mi}`,
+      heat: m.heat != null ? m.heat : null,
+      team1: toParticipant(m.team1, m.winner, `${round.id}-${mi}-1`),
+      team2: toParticipant(m.team2, m.winner, `${round.id}-${mi}-2`),
+    })),
+  }));
+}
+
+// View mobile: chip selector babak (scroll horizontal ringan, chip kecil
+// jauh lebih gampang di-swipe drpd nge-pan seluruh kanvas SVG) + daftar
+// match babak terpilih, scroll VERTIKAL biasa (native, tanpa pinch/pan).
+function MobileRoundList({ rounds }) {
+  const [selected, setSelected] = useState(0);
+  const round = rounds[Math.min(selected, rounds.length - 1)];
+
+  if (!rounds.length) return null;
+
+  return (
+    <div className="w-full">
+      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
+        {rounds.map((r, idx) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => setSelected(idx)}
+            className={`shrink-0 snap-start px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors ${
+              idx === selected
+                ? "bg-slate-700 text-white"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {r.name}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-2 mt-1">
+        {round?.matches?.length ? (
+          round.matches.map((m) => (
+            <MobileMatchCard
+              key={m.key}
+              heat={m.heat}
+              team1={m.team1}
+              team2={m.team2}
+            />
+          ))
+        ) : (
+          <p className="text-gray-400 text-xs text-center py-4">
+            Belum ada pasangan di babak ini.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function canvasSize(rounds, p) {
   const roundsCount = rounds.length || 1;
   const firstRoundMatches = rounds[0]?.matches?.length || 1;
@@ -238,9 +346,50 @@ function canvasSize(rounds, p) {
   return { width, height: Math.max(height, 180) };
 }
 
+// Lebar/tinggi kotak bracket TIDAK PERNAH menyusut sendiri mengikuti
+// container (SVGViewer butuh angka px pasti) — tanpa ini, bracket dgn
+// banyak babak/tim gampang lebih lebar dari layar tablet/desktop dan
+// operator/penonton terpaksa scroll manual utk lihat seluruh pohonnya.
+// Dipakai bareng `scale` (lihat useFitScale di bawah) supaya SELURUH
+// bracket otomatis "muat" di lebar container yang tersedia — "full
+// dinamis", ikut resize window scr real-time, bukan ukuran tetap.
+function useElementWidth() {
+  const ref = useRef(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => setWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return [ref, width];
+}
+
 function BracketBlock({ title, rounds, matches, profile }) {
-  if (!matches.length) return null;
-  const { width, height } = canvasSize(rounds, profile);
+  const { width: naturalWidth, height: naturalHeight } = canvasSize(
+    rounds,
+    profile
+  );
+  const [containerRef, containerWidth] = useElementWidth();
+
+  // Auto-fit: skala turun supaya SELURUH bracket langsung terlihat tanpa
+  // digeser manual di tablet/desktop, mengikuti lebar container yang
+  // SESUNGGUHNYA tersedia (bukan asumsi tetap). Dibatasi MIN_SCALE supaya
+  // bracket besar (byk tim, byk babak) tidak sampai jadi terlalu kecil
+  // dibaca — kalau skala minimum itu masih kurang, sisanya tetap bisa
+  // discroll (fallback, bukan dipaksa muat 100% dgn resiko tidak
+  // terbaca). Tidak pernah membesarkan (scale > 1) supaya tidak blur.
+  const MIN_SCALE = 0.55;
+  const usableWidth = Math.max(0, containerWidth - 24);
+  const rawScale = usableWidth > 0 ? usableWidth / naturalWidth : 1;
+  const scale = Math.max(MIN_SCALE, Math.min(1, rawScale));
+  const scaledWidth = naturalWidth * scale;
+  const scaledHeight = naturalHeight * scale;
 
   const style = {
     width: profile.boxWidth,
@@ -261,6 +410,8 @@ function BracketBlock({ title, rounds, matches, profile }) {
     },
   };
 
+  if (!matches.length) return null;
+
   return (
     <div className="w-full">
       {title ? (
@@ -269,24 +420,37 @@ function BracketBlock({ title, rounds, matches, profile }) {
         </h4>
       ) : null}
       <div
+        ref={containerRef}
         className={`w-full overflow-auto rounded-xl border border-gray-200 bg-gray-50/50 p-2 sm:p-3 ${profile.maxHeightClass}`}
-        // Team/Score/TopText/BottomText di komponen Match bawaan library
-        // TIDAK punya font-size sendiri (cuma warisan CSS) — nge-set di
-        // sini cukup, otomatis turun ke konten <foreignObject> di dalam
-        // SVG tanpa perlu bikin matchComponent custom.
-        style={{ fontSize: profile.matchFontSize }}
       >
-        <SingleEliminationBracket
-          matches={matches}
-          matchComponent={BracketMatch}
-          theme={BRACKET_THEME}
-          options={{ style }}
-          svgWrapper={({ children, ...props }) => (
-            <SVGViewer width={width} height={height} {...props}>
-              {children}
-            </SVGViewer>
-          )}
-        />
+        <div style={{ width: scaledWidth, height: scaledHeight }}>
+          <div
+            style={{
+              width: naturalWidth,
+              height: naturalHeight,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              // Team/Score/TopText/BottomText di komponen Match bawaan
+              // library TIDAK punya font-size sendiri (cuma warisan CSS)
+              // — nge-set di sini cukup, otomatis turun ke konten
+              // <foreignObject> di dalam SVG tanpa perlu ubah
+              // matchComponent lagi.
+              fontSize: profile.matchFontSize,
+            }}
+          >
+            <SingleEliminationBracket
+              matches={matches}
+              matchComponent={BracketMatch}
+              theme={BRACKET_THEME}
+              options={{ style }}
+              svgWrapper={({ children, ...props }) => (
+                <SVGViewer width={naturalWidth} height={naturalHeight} {...props}>
+                  {children}
+                </SVGViewer>
+              )}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -312,7 +476,7 @@ export default function HeadToHeadBracket({ bracket }) {
   const bp = useBracketBreakpoint();
   const profile = SIZE_PROFILES[bp];
 
-  const { mainRounds, bronzeRounds, mainMatches, bronzeMatches } =
+  const { mainRounds, bronzeRounds, mainMatches, bronzeMatches, mobileRounds } =
     useMemo(() => {
       const rounds = Array.isArray(bracket?.rounds) ? bracket.rounds : [];
       const main = rounds.filter((r) => !r.bronze);
@@ -322,6 +486,10 @@ export default function HeadToHeadBracket({ bracket }) {
         bronzeRounds: bronze,
         mainMatches: toLibraryMatches(main),
         bronzeMatches: toLibraryMatches(bronze),
+        // Bronze digabung ke daftar chip babak (BUKAN pohon terpisah spt
+        // versi SVG) — di mobile ditampilkan per-babak berurutan, "Final B"
+        // tinggal jadi chip terakhir, tidak perlu section terpisah.
+        mobileRounds: toMobileRounds([...main, ...bronze]),
       };
     }, [bracket]);
 
@@ -349,15 +517,24 @@ export default function HeadToHeadBracket({ bracket }) {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <BracketBlock rounds={mainRounds} matches={mainMatches} profile={profile} />
-      {bronzeMatches.length ? (
-        <BracketBlock
-          title="Final B — Perebutan Juara 3"
-          rounds={bronzeRounds}
-          matches={bronzeMatches}
-          profile={profile}
-        />
-      ) : null}
+      {bp === "mobile" ? (
+        // Mobile: kartu per-babak, scroll vertikal native — SVG pan/zoom
+        // (dipakai tablet/desktop di bawah) susah digeser jari di layar
+        // kecil, jadi diganti total, bukan cuma diperkecil.
+        <MobileRoundList rounds={mobileRounds} />
+      ) : (
+        <>
+          <BracketBlock rounds={mainRounds} matches={mainMatches} profile={profile} />
+          {bronzeMatches.length ? (
+            <BracketBlock
+              title="Final B — Perebutan Juara 3"
+              rounds={bronzeRounds}
+              matches={bronzeMatches}
+              profile={profile}
+            />
+          ) : null}
+        </>
+      )}
 
       {/* Legenda — bantu penonton awam baca warna kotak match. Wrap rapat
           di mobile (gap lebih kecil, font lebih kecil) supaya tidak makan
