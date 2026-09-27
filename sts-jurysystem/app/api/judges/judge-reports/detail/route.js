@@ -857,12 +857,20 @@ export const POST = async (req) => {
 
       // ============================================================
       // SPECIAL CASE:
-      // Hanya SECTION dengan penalty 10 yang repeatable.
-      // Start/Finish penalty 10 tetap tidak repeatable.
+      // Hanya SECTION dengan penalty bermagnitudo 10 yang repeatable —
+      // BUG FIX (2026-09-28): sebelumnya cuma cek `=== 10` (positif),
+      // padahal Race Settings event ini SENGAJA mengonfigurasi opsi
+      // Section Penalty "-10" (bonus/pengurang waktu, lihat komentar
+      // secondsToTimeString() di DownRiverRace.vue timing system yang
+      // memang mendukung nilai minus utk Pen. Section). Tombol -10 itu
+      // sebelumnya masih kena validasi anti-duplikat spt Section lain,
+      // jadi tidak bisa disubmit berkali-kali walau user memang butuh
+      // itu terakumulasi persis spt +10. Math.abs() menyamakan keduanya.
+      // Start/Finish penalty 10 (atau -10) tetap tidak repeatable.
       // ============================================================
       const isRepeatableSectionPenalty =
         opTypeDrrDup === "section" &&
-        Number(penalty) === 10;
+        Math.abs(Number(penalty)) === 10;
 
       if (!isRepeatableSectionPenalty) {
         const parseSectionNumberForDup = (raw) => {
@@ -1271,6 +1279,18 @@ export const POST = async (req) => {
           const pad = (n, w = 2) => String(n).padStart(w, "0");
           return `${neg ? "-" : ""}${pad(hr)}:${pad(min)}:${pad(sec)}.000`;
         };
+        // kebalikan secondsToTimeStr() — sama persis algoritma
+        // timeToPenaltyValue() di DownRiverRace.vue (timing system), dipakai
+        // utk BACA balik nilai section yg sudah tersimpan sblm diakumulasi.
+        const timeStrToSeconds = (timeStr) => {
+          const p = String(timeStr || "");
+          const neg = p.startsWith("-");
+          const t = p.replace("-", "");
+          const [hh = "0", mm = "0", ssms = "0"] = t.split(":");
+          const ss = parseFloat(ssms) || 0;
+          const val = Number(hh) * 3600 + Number(mm) * 60 + ss;
+          return (neg ? -1 : 1) * Math.round(val);
+        };
 
         // init / resize / update logic — ARRAY STRING WAKTU, bukan angka
         let sectionTimesArr;
@@ -1284,7 +1304,26 @@ export const POST = async (req) => {
         } else {
           sectionTimesArr = currentSectionTimes.slice();
         }
-        sectionTimesArr[sectionIndex] = secondsToTimeStr(Number(penalty));
+
+        // BUG FIX (2026-09-28): dulu SELALU replace (timpa) nilai section
+        // lama dgn yang baru — walau nilainya berulang persis sama. Section
+        // Penalty bermagnitudo 10 (termasuk opsi bonus "-10") SEKARANG
+        // SENGAJA boleh disubmit berkali-kali (lihat isRepeatableSectionPenalty
+        // di atas) & HARUS TERAKUMULASI di sini juga — bukan cuma di sisi
+        // client (DownRiverRace.vue's applyPenaltyFromSocketDirect()). Tulisan
+        // LANGSUNG ke TeamsRegistered INI-lah sumber kebenaran sesungguhnya
+        // (dibaca ulang timing system tiap fetchBucketTeamsByKey() via
+        // hydratePenaltiesFromRegistered()) — kalau di sini tetap replace,
+        // akumulasi yg terlihat di layar operator cuma ilusi sesaat, hilang
+        // lagi begitu operator Switch Category/refresh. Value section lain
+        // tetap replace spt semula (konsisten dgn scope isRepeatableSectionPenalty).
+        if (Math.abs(Number(penalty)) === 10) {
+          const existingSeconds = timeStrToSeconds(sectionTimesArr[sectionIndex]);
+          const addSeconds = Number(penalty) || 0;
+          sectionTimesArr[sectionIndex] = secondsToTimeStr(existingSeconds + addSeconds);
+        } else {
+          sectionTimesArr[sectionIndex] = secondsToTimeStr(Number(penalty));
+        }
         updateQuery.$set["teams.$.result.0.sectionPenaltyTime"] = sectionTimesArr;
 
         // keep parsedSection local for JudgeReportDetail creation below
