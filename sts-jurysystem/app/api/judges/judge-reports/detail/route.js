@@ -796,49 +796,136 @@ export const POST = async (req) => {
     // ganda spt Slalom, jadi cukup di-scope sampai raceId+divisionId.
     // Section nomor berbeda tetap dianggap tindakan berbeda, sama pola
     // dgn Gate di Slalom.
+    // SCRIPT LAMA 
+    // if (normalizedType === "DRR") {
+    //   const opTypeDrrDup = operationType
+    //     ? String(operationType).toLowerCase()
+    //     : null;
+    //   const parseSectionNumberForDup = (raw) => {
+    //     if (typeof raw === "number") return raw;
+    //     if (typeof raw === "string") {
+    //       const m = raw.match(/(\d+)/);
+    //       return m ? parseInt(m[1], 10) : undefined;
+    //     }
+    //     if (raw === undefined || raw === null) return undefined;
+    //     const n = Number(raw);
+    //     return Number.isFinite(n) ? n : undefined;
+    //   };
+    //   const drrDupFilter = {
+    //     eventId,
+    //     eventType: "DRR",
+    //     team,
+    //     initialId,
+    //     raceId,
+    //     divisionId,
+    //     operationType: opTypeDrrDup,
+    //     status: { $ne: "failed" },
+    //   };
+    //   if (opTypeDrrDup === "section") {
+    //     drrDupFilter.section = parseSectionNumberForDup(section);
+    //   }
+    //   const existingDrr = await JudgeReportDetail.find(drrDupFilter).lean();
+    //   if (existingDrr.length > 0) {
+    //     const label =
+    //       opTypeDrrDup === "section"
+    //         ? `Section ${parseSectionNumberForDup(section)}`
+    //         : opTypeDrrDup === "start"
+    //         ? "Start"
+    //         : "Finish";
+    //     const reason = `${teamLabelForReason} sudah pernah diberi penalty "${label}" — tidak bisa disubmit 2x.`;
+    //     await recordFailedAttempt(reason);
+    //     return new Response(
+    //       JSON.stringify({ success: false, message: reason }),
+    //       { status: 400 }
+    //     );
+    //   }
+    // }
+
+    // VALIDASI ANTI-DUPLIKAT DRR: juri hanya boleh submit 1x per JENIS
+    // tindakan (Start / Finish / nomor Section tertentu) per
+    // team+kategori (raceId+divisionId).
+    //
+    // KHUSUS:
+    // DRR operationType="section" dengan penalty=10 BOLEH disubmit
+    // berkali-kali untuk team + section yang sama.
+    //
+    // Start/Finish penalty=10 TETAP terkena validasi anti-duplikat.
     if (normalizedType === "DRR") {
       const opTypeDrrDup = operationType
         ? String(operationType).toLowerCase()
         : null;
-      const parseSectionNumberForDup = (raw) => {
-        if (typeof raw === "number") return raw;
-        if (typeof raw === "string") {
-          const m = raw.match(/(\d+)/);
-          return m ? parseInt(m[1], 10) : undefined;
+
+      // ============================================================
+      // SPECIAL CASE:
+      // Hanya SECTION dengan penalty 10 yang repeatable.
+      // Start/Finish penalty 10 tetap tidak repeatable.
+      // ============================================================
+      const isRepeatableSectionPenalty =
+        opTypeDrrDup === "section" &&
+        Number(penalty) === 10;
+
+      if (!isRepeatableSectionPenalty) {
+        const parseSectionNumberForDup = (raw) => {
+          if (typeof raw === "number") return raw;
+
+          if (typeof raw === "string") {
+            const m = raw.match(/(\d+)/);
+            return m ? parseInt(m[1], 10) : undefined;
+          }
+
+          if (raw === undefined || raw === null) {
+            return undefined;
+          }
+
+          const n = Number(raw);
+          return Number.isFinite(n) ? n : undefined;
+        };
+
+        const drrDupFilter = {
+          eventId,
+          eventType: "DRR",
+          team,
+          initialId,
+          raceId,
+          divisionId,
+          operationType: opTypeDrrDup,
+          status: { $ne: "failed" },
+        };
+
+        if (opTypeDrrDup === "section") {
+          drrDupFilter.section =
+            parseSectionNumberForDup(section);
         }
-        if (raw === undefined || raw === null) return undefined;
-        const n = Number(raw);
-        return Number.isFinite(n) ? n : undefined;
-      };
-      const drrDupFilter = {
-        eventId,
-        eventType: "DRR",
-        team,
-        initialId,
-        raceId,
-        divisionId,
-        operationType: opTypeDrrDup,
-        status: { $ne: "failed" },
-      };
-      if (opTypeDrrDup === "section") {
-        drrDupFilter.section = parseSectionNumberForDup(section);
-      }
-      const existingDrr = await JudgeReportDetail.find(drrDupFilter).lean();
-      if (existingDrr.length > 0) {
-        const label =
-          opTypeDrrDup === "section"
-            ? `Section ${parseSectionNumberForDup(section)}`
-            : opTypeDrrDup === "start"
-            ? "Start"
-            : "Finish";
-        const reason = `${teamLabelForReason} sudah pernah diberi penalty "${label}" — tidak bisa disubmit 2x.`;
-        await recordFailedAttempt(reason);
-        return new Response(
-          JSON.stringify({ success: false, message: reason }),
-          { status: 400 }
-        );
+
+        const existingDrr = await JudgeReportDetail.find(
+          drrDupFilter
+        ).lean();
+
+        if (existingDrr.length > 0) {
+          const label =
+            opTypeDrrDup === "section"
+              ? `Section ${parseSectionNumberForDup(section)}`
+              : opTypeDrrDup === "start"
+              ? "Start"
+              : "Finish";
+
+          const reason =
+            `${teamLabelForReason} sudah pernah diberi penalty "${label}" — ` +
+            `tidak bisa disubmit 2x.`;
+
+          await recordFailedAttempt(reason);
+
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: reason,
+            }),
+            { status: 400 }
+          );
+        }
       }
     }
+
 
     // VALIDASI ANTI-DUPLIKAT RX: juri hanya boleh submit 1x per Gate
     // (Gate 1 ATAU Gate 2) per team+kategori (raceId+divisionId). Beda
