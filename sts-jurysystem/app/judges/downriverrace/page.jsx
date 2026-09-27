@@ -33,7 +33,12 @@ import FieldNotesModal from "@/components/judges/FieldNotesModal";
 // Fallback kalau event belum pernah dikustomisasi lewat Race Settings —
 // sama dgn DEFAULT_DRR_SECTION_PENALTIES / DEFAULT_DRR_START_PENALTIES /
 // DEFAULT_DRR_FINISH_PENALTIES di timing system (editRaceSettings.js).
-const DEFAULT_SECTION_PENALTIES = [0, 5, 10, 50];
+// BUG FIX (2026-09-28): tambah "-10" (opsi bonus/pengurang waktu) ke
+// default — sama dgn DEFAULT_DRR_SECTION_PENALTIES di sts-timingsystem
+// (editRaceSettings.js/RaceSettings.vue). Fitur akumulasi Section Penalty
+// magnitude 10 (lihat isRepeatableSectionPenalty di judge-reports/detail/
+// route.js) sengaja mencakup +10 & -10 sbg standing capability.
+const DEFAULT_SECTION_PENALTIES = [0, 5, 10, -10, 50];
 const DEFAULT_START_FINISH_PENALTIES = [0, 10, 50];
 
 // {label, value}[] (lihat editRaceSettings.js cleanPenaltyList()) -> angka
