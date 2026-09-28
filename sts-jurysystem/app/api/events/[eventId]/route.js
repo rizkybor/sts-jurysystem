@@ -61,6 +61,14 @@ export async function GET(req, { params }) {
           // status
           statusEvent: event.statusEvent,
 
+          // Zona waktu event (WIB/WITA/WIT) — dipakai Live Result utk
+          // format tampilan waktu Provisional/Unofficial/Official, sama
+          // pengaturan dgn Event Settings sisi sts-timingsystem (lihat
+          // formatOfficialSetAt() di utils/officialStamp.js repo itu).
+          resultTimezone: ["WIB", "WITA", "WIT"].includes(event.resultTimezone)
+            ? event.resultTimezone
+            : "WIB",
+
           createdAt: event.createdAt,
           updatedAt: event.updatedAt,
         },

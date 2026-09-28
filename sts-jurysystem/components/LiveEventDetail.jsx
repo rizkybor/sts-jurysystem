@@ -260,6 +260,12 @@ export default function LiveEventDetail() {
           // insertNewEvent.js sts-timingsystem), supaya badge boolean yang
           // sudah ada di sini tidak berubah bentuk.
           officialSetAtByCategory: data.resultsOfficialSetAt || {},
+          // Zona waktu event (WIB/WITA/WIT), diatur lewat Event Settings
+          // sisi sts-timingsystem — dipakai format tampilan waktu
+          // Provisional/Unofficial/Official di bawah (dulu HARDCODE WIB).
+          resultTimezone: ["WIB", "WITA", "WIT"].includes(data.resultTimezone)
+            ? data.resultTimezone
+            : "WIB",
         };
 
         setEvent(normalized);
@@ -671,22 +677,37 @@ export default function LiveEventDetail() {
     (activeCategoryOfficialKey
       ? event?.officialSetAtByCategory?.[activeCategoryOfficialKey]
       : null);
-  // WIB (Asia/Jakarta) — sama zona & format dgn stempel PDF Print Result
-  // di sts-timingsystem, supaya waktu yang dilihat juri/penonton Live
-  // Result konsisten dgn yang dicetak operator.
+  // BUG FIX (2026-09-28): dulu HARDCODE "Asia/Jakarta" + suffix " WIB" —
+  // event di luar Jawa/Sumatra (WITA/WIT) tampil salah ~1-2 jam. Sekarang
+  // ikuti `event.resultTimezone` (1 pengaturan per-Event dari Event
+  // Settings sisi sts-timingsystem, lihat utils/officialStamp.js repo
+  // itu), supaya waktu yang dilihat juri/penonton Live Result konsisten
+  // dgn yang dicetak operator di PDF Print Result.
+  const RESULT_TZ_IANA = {
+    WIB: "Asia/Jakarta",
+    WITA: "Asia/Makassar",
+    WIT: "Asia/Jayapura",
+  };
+  const activeResultTimezone = ["WIB", "WITA", "WIT"].includes(
+    event?.resultTimezone
+  )
+    ? event.resultTimezone
+    : "WIB";
   const formattedOfficialSetAt = activeCategoryOfficialSetAt
     ? (() => {
         const d = new Date(activeCategoryOfficialSetAt);
         if (isNaN(d.getTime())) return null;
         return (
           d.toLocaleString("id-ID", {
-            timeZone: "Asia/Jakarta",
+            timeZone: RESULT_TZ_IANA[activeResultTimezone],
             day: "2-digit",
             month: "short",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-          }) + " WIB"
+          }) +
+          " " +
+          activeResultTimezone
         );
       })()
     : null;
