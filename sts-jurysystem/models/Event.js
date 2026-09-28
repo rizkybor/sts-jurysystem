@@ -51,6 +51,16 @@ const EventSchema = new Schema(
       default: "Activated",
       required: true,
     },
+
+    // Zona waktu event (WIB/WITA/WIT) — ditulis dari Event Settings sisi
+    // sts-timingsystem, dibaca di sini utk format tampilan waktu Live
+    // Result (Provisional/Unofficial/Official). Read-only dari sisi
+    // sts-jurysystem.
+    resultTimezone: {
+      type: String,
+      enum: ["WIB", "WITA", "WIT"],
+      default: "WIB",
+    },
   },
   {
     timestamps: true,
