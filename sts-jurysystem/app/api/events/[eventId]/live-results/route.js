@@ -426,10 +426,23 @@ export const GET = async (req, { params }) => {
       doc = await db.collection("rx_overall").findOne({ key });
       teams = mapOverallRows(doc);
     } else if (category === "OVERALL") {
+      // BUG FIX (2026-09-28): dulu filter di sini pakai `raceName` (string
+      // "MEN"/"WOMEN") — padahal identitas dokumen `temporaryOverallEventResults`
+      // yang SEBENARNYA adalah raceId (lihat komentar tegas di
+      // insertResultOverall.js upsertEventResultsDoc() sisi sts-timingsystem:
+      // "filter identitas dokumen HARUS sama persis... yaitu raceId, BUKAN
+      // raceName"). `raceId` SUDAH dikirim client (LiveEventDetail.jsx) tapi
+      // tidak pernah dipakai di sini. Kalau `raceName` kosong/tidak match
+      // persis (beda kapitalisasi dll), filter jatuh cuma ke eventId+
+      // initialId+divisionId — 1 Division bisa dipakai bareng oleh 2 Race
+      // (MEN & WOMEN, `raceId` beda tapi `divisionId` sama), jadi tab
+      // Overall utk MEN bisa salah menampilkan dokumen overall milik WOMEN
+      // (siapa pun yang ke-update paling akhir, krn cuma `sort:{updatedAt:-1}`
+      // yang membedakan). Sekarang match by `raceId`, konsisten dgn sisi tulis.
       const filter = { eventId };
       if (initialId) filter.initialId = initialId;
       if (divisionId) filter.divisionId = divisionId;
-      if (raceName) filter.raceName = raceName;
+      if (raceId) filter.raceId = raceId;
       doc = await db
         .collection("temporaryOverallEventResults")
         .findOne(filter, { sort: { updatedAt: -1 } });
