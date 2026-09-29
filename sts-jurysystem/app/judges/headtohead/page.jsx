@@ -417,6 +417,29 @@ const JudgesHeadToHeadPage = () => {
 
   const selectedTeamData = getSelectedTeamData(teams, selectedTeam);
 
+  // Tombol "Kirim ke Operator" — sebelumnya HANYA disable saat `submitting`,
+  // semua validasi lain (kategori/heat/tim/tipe/nilai belum lengkap) baru
+  // ketahuan SETELAH diklik lewat toast di handleSubmit(). Disamakan dgn
+  // pola isSubmitDisabled Sprint (app/judges/sprint/page.jsx) supaya juri
+  // langsung lihat tombolnya nonaktif kalau ada yg belum diisi — DITAMBAH
+  // `!selectedHeatItem` krn alur H2H (2026-09-29) sekarang WAJIB pilih Heat
+  // dulu (bukan lagi kategori manual) sebelum tim & tipe penalty bisa
+  // diisi. Cek `hasValidTeamId` sengaja TETAP di luar (spt Sprint) supaya
+  // juri dapat toast spesifik "Team Tidak Valid" di handleSubmit(), bukan
+  // cuma tombol mati tanpa penjelasan.
+  const isSubmitDisabled =
+    submitting ||
+    !eventId ||
+    !selectedHeatItem ||
+    !selectedCategory ||
+    !selectedTeam ||
+    !selectedType ||
+    (isCornerType
+      ? cornerTouched === null
+      : selectedType === "other"
+      ? otherValue === "" || Number.isNaN(Number(otherValue))
+      : selectedPenalty === null);
+
   // "Unfouls Team" utk modal Fouls Report — otomatis diambil dari lawan
   // team terpilih di Heat yang diklik (selectedHeatItem), TIDAK dipilih
   // manual oleh juri. Match by `bibTeam` (bracket tidak simpan teamId,
@@ -633,10 +656,33 @@ const JudgesHeadToHeadPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedCategory || !selectedTeam || !selectedType) {
+    // BUG FIX (2026-09-29): pesan lama selalu bilang "pilih kategori, tim,
+    // dan tipe penalty" sekaligus — membingungkan krn sejak redesign, juri
+    // TIDAK PERNAH memilih Kategori secara manual lagi (`selectedCategory`
+    // otomatis ke-derive dari tombol Heat yang diklik, lihat
+    // handleHeatButtonClick()). Jadi `!selectedCategory` di sini artinya
+    // "belum klik Heat manapun", bukan "belum pilih kategori" — pesannya
+    // dipecah per kondisi supaya sesuai apa yg benar2 juri lihat di layar.
+    if (!selectedHeatItem || !selectedCategory) {
       pushToast({
         title: "Data Belum Lengkap",
-        text: "Harap pilih kategori, tim, dan tipe penalty sebelum submit",
+        text: "Harap pilih salah satu Heat terlebih dahulu",
+        type: "error",
+      });
+      return;
+    }
+    if (!selectedTeam) {
+      pushToast({
+        title: "Data Belum Lengkap",
+        text: "Harap pilih Team terlebih dahulu",
+        type: "error",
+      });
+      return;
+    }
+    if (!selectedType) {
+      pushToast({
+        title: "Data Belum Lengkap",
+        text: "Harap pilih tipe penalty terlebih dahulu",
         type: "error",
       });
       return;
@@ -1021,7 +1067,7 @@ const JudgesHeadToHeadPage = () => {
             onHistory={history.open}
             historyDisabled={submitting}
             submitting={submitting}
-            submitDisabled={submitting}
+            submitDisabled={isSubmitDisabled}
           />
         </form>
 
