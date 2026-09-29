@@ -76,6 +76,17 @@ export default function JudgeCategoryTeamFields({
   // dipakai (lihat ACTIVE_COLOR_CLASSES di atas). Default "sts", tidak
   // berpengaruh sama sekali kalau categoryAsButtons/teamAsButtons false.
   activeColor = "sts",
+  // Opsional — kalau true, SEMBUNYIKAN seluruh blok "Kategori" (label +
+  // selector) sepenuhnya. Dipakai H2H (2026-09-29): juri tidak perlu lagi
+  // pilih Kategori dulu secara eksplisit — kategori otomatis ke-derive
+  // begitu juri klik salah satu tombol Heat (yang sudah menampilkan info
+  // kategorinya sendiri di atas tiap tombol). Default false utk SEMUA
+  // halaman lain (perilaku lama, tidak berubah).
+  hideCategoryField = false,
+  // Opsional — override teks hint "Pilih kategori terlebih dahulu" di
+  // bawah field Team, dipakai kalau hideCategoryField=true (teks default
+  // jadi tidak relevan lagi krn tidak ada selector Kategori yang terlihat).
+  categoryRequiredMessage = "Pilih kategori terlebih dahulu.",
 }) {
   const selectedTeamData = teams.find((t) => t._id === selectedTeam);
   const showInvalidTeamWarning =
@@ -90,6 +101,7 @@ export default function JudgeCategoryTeamFields({
 
   return (
     <>
+      {!hideCategoryField && (
       <div>
         <label className="block text-gray-700 mb-2 font-medium">
           Kategori
@@ -135,6 +147,7 @@ export default function JudgeCategoryTeamFields({
           </p>
         )}
       </div>
+      )}
 
       {betweenCategoryAndTeam}
 
@@ -212,7 +225,7 @@ export default function JudgeCategoryTeamFields({
           )}
           {!selectedCategory && (
             <p className="mt-1.5 text-xs text-gray-500">
-              Pilih kategori terlebih dahulu.
+              {categoryRequiredMessage}
             </p>
           )}
           {showInvalidTeamWarning && (
