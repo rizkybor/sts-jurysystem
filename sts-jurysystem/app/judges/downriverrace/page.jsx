@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import useJudgeToasts from "@/hooks/judges/useJudgeToasts";
 import useJudgeSocket from "@/hooks/judges/useJudgeSocket";
@@ -77,7 +77,8 @@ const JudgesDRRPage = () => {
   const { user, assignments } = useJudgeAssignments();
   const { eventDetail, loadingEvent, combinedCategories } =
     useEventDetail(eventId);
-  const { settings: raceSettings } = useRaceSettings(eventId);
+  const { settings: raceSettings, refetch: refetchRaceSettings } =
+    useRaceSettings(eventId);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
@@ -90,6 +91,71 @@ const JudgesDRRPage = () => {
     () => getDRRPositionsFromAssignments(assignments, eventId),
     [assignments, eventId]
   );
+
+  // Relay broadcast "drr:team-finished" dari sts-timingsystem (dikirim
+  // saat satu tim genuinely selesai — Start & Finish Time terisi, lihat
+  // updateTime() di DownRiverRace.vue) ke /api/judges/drr/live-preview
+  // supaya Live Result publik bisa menampilkan hasil tim ini SEBELUM
+  // operator klik "Save Result" — pola sama persis dgn relay
+  // sprint:team-finished di app/judges/sprint/page.jsx. Tanpa toast, murni
+  // data utk halaman Live Result.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "drr:team-finished") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+
+      fetch("/api/judges/drr/live-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: msg.eventId,
+          initialId: msg.initialId,
+          divisionId: msg.divisionId,
+          raceId: msg.raceId,
+          teamId: msg.teamId,
+          bibTeam: msg.bibTeam,
+          nameTeam: msg.nameTeam,
+          startTime: msg.startTime,
+          finishTime: msg.finishTime,
+          raceTime: msg.raceTime,
+          startPenalty: msg.startPenalty,
+          finishPenalty: msg.finishPenalty,
+          sectionPenaltyTime: msg.sectionPenaltyTime,
+          penaltyTime: msg.penaltyTime,
+          totalTime: msg.totalTime,
+        }),
+      }).catch((err) => {
+        console.error("❌ Gagal relay drr:team-finished:", err);
+      });
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, [eventId, socketRef]);
+
+  // BUG FIX (2026-09-29): Pilihan Section & Nilai Penalty di sini dulu
+  // cuma dimuat SEKALI saat halaman dibuka (useRaceSettings fetch sekali
+  // di mount) — kalau operator ubah Race Settings DRR di sts-timingsystem
+  // SEMENTARA juri sudah buka halaman ini duluan, perubahannya tidak
+  // pernah kebaca sampai juri refresh manual. Sekarang refetch otomatis
+  // begitu broadcast "race-settings:updated" diterima (lihat
+  // notifyRaceSettingsUpdated() di socketBroadcast.js sts-timingsystem).
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "race-settings:updated") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+      refetchRaceSettings();
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, [eventId, socketRef, refetchRaceSettings]);
 
   // Pilihan nilai penalty Start/Finish/Section ikut kustomisasi Race
   // Settings event ini (kalau ada) — bukan daftar hardcode, supaya tidak

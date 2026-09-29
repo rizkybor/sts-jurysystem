@@ -12,6 +12,14 @@ import { useEffect, useState } from "react";
 export default function useRaceSettings(eventId) {
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  // BUG FIX (2026-09-29): dulu cuma fetch SEKALI saat mount (dependency
+  // array cuma [eventId]) — kalau operator ubah Race Settings di
+  // sts-timingsystem SEMENTARA juri sudah buka halamannya duluan,
+  // perubahan itu tidak pernah kebaca sampai juri refresh manual.
+  // `refreshTick` dipakai pemanggil (lihat listener socket
+  // "race-settings:updated" di app/judges/downriverrace/page.jsx) utk
+  // memicu refetch tanpa reload halaman.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     if (!eventId) return;
@@ -39,7 +47,9 @@ export default function useRaceSettings(eventId) {
     return () => {
       cancelled = true;
     };
-  }, [eventId]);
+  }, [eventId, refreshTick]);
 
-  return { settings, loadingSettings };
+  const refetch = () => setRefreshTick((t) => t + 1);
+
+  return { settings, loadingSettings, refetch };
 }

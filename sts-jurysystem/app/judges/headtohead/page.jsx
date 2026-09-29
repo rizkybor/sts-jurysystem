@@ -102,6 +102,48 @@ const JudgesHeadToHeadPage = () => {
     () => getH2HAssignedTypes(assignments, eventId),
     [assignments, eventId]
   );
+
+  // Relay broadcast "h2h:team-finished" dari sts-timingsystem (dikirim
+  // saat satu tim genuinely selesai — Start & Finish Time terisi di babak
+  // aktif, lihat updateTime() di HeadToHead.vue) ke
+  // /api/judges/h2h/live-preview supaya Live Result publik bisa
+  // menampilkan waktu tim ini SEBELUM operator klik "Save Round" — pola
+  // sama persis dgn relay sprint:team-finished di app/judges/sprint/page.jsx.
+  // Win/Lose & placement akhir TETAP dari mesin bracket, tidak disentuh di
+  // sini. Tanpa toast, murni data utk halaman Live Result.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "h2h:team-finished") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+
+      fetch("/api/judges/h2h/live-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: msg.eventId,
+          initialId: msg.initialId,
+          divisionId: msg.divisionId,
+          raceId: msg.raceId,
+          teamId: msg.teamId,
+          roundId: msg.roundId,
+          roundName: msg.roundName,
+          bibTeam: msg.bibTeam,
+          nameTeam: msg.nameTeam,
+          startTime: msg.startTime,
+          finishTime: msg.finishTime,
+          raceTime: msg.raceTime,
+        }),
+      }).catch((err) => {
+        console.error("❌ Gagal relay h2h:team-finished:", err);
+      });
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, [eventId, socketRef]);
   const isCornerType = CORNER_KEYS.includes(selectedType);
 
   // Pilihan nilai penalty Start/Cut Line/Finish ikut kustomisasi Race

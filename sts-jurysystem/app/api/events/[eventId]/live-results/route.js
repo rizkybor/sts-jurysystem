@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 import connectDB from "@/config/database";
 import SprintLivePreview from "@/models/SprintLivePreview";
+import DrrLivePreview from "@/models/DrrLivePreview";
+import SlalomLivePreview from "@/models/SlalomLivePreview";
+import H2HLivePreview from "@/models/H2HLivePreview";
 
 export const dynamic = "force-dynamic";
 
@@ -112,8 +115,12 @@ function mapSprint(doc, previewDocs) {
 // insertResultEventByCategories.js (startPenalty/sectionPenalty/
 // finishPenalty/totalPenalty/totalPenaltyTime/startTime/finishTime/
 // raceTime/totalTime/ranked/score), bukan cuma ringkasan totalTime/score.
-function mapDrrDetailed(doc) {
+// `previewDocs` = DrrLivePreview (lihat models/DrrLivePreview.js) — pola
+// sama persis dgn mapSprint()'s previewDocs (SprintLivePreview).
+function mapDrrDetailed(doc, previewDocs) {
   const rows = Array.isArray(doc?.result) ? doc.result : [];
+  const officialBibs = new Set(rows.map((t) => String(t?.bibTeam || "")));
+
   const teams = rows.map((t) => {
     const r = t?.result || {};
     return {
@@ -135,6 +142,28 @@ function mapDrrDetailed(doc) {
       flag: r.flag || null,
     };
   });
+
+  (previewDocs || []).forEach((p) => {
+    const bib = String(p?.bibTeam || "");
+    if (bib && officialBibs.has(bib)) return; // hasil resmi menang
+    teams.push({
+      name: p?.nameTeam || "-",
+      bib: p?.bibTeam || "-",
+      startPenalty: Number.isFinite(p?.startPenalty) ? p.startPenalty : null,
+      sectionPenalty: null,
+      finishPenalty: Number.isFinite(p?.finishPenalty) ? p.finishPenalty : null,
+      totalPenalty: null,
+      penaltyTime: p?.penaltyTime || null,
+      startTime: p?.startTime || null,
+      finishTime: p?.finishTime || null,
+      raceTime: p?.raceTime || null,
+      totalTime: p?.totalTime || null,
+      score: null,
+      rank: null, // belum resmi -> selalu fallback ke urutan waktu
+      isLivePreview: true,
+    });
+  });
+
   const hasRank = teams.some((t) => t.rank > 0);
   return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
 }
@@ -143,8 +172,14 @@ function mapDrrDetailed(doc) {
 // (result[] di insertResultEventByCategories.js normRun()), jadi tiap tim
 // bawa sub-array `runs` lengkap dengan rincian penalty per run; ranked/
 // score tetap level tim (dipakai buat urutan lewat sortAndNumber).
-function mapSlalomDetailed(doc) {
+// `previewDocs` = SlalomLivePreview (lihat models/SlalomLivePreview.js) —
+// pola sama dgn mapSprint(), TAPI cuma dipakai utk tim yang BELUM py baris
+// resmi SAMA SEKALI (bukan per-run) — begitu tim itu ke-Save (bahkan
+// Save Session 1 saja), baris resminya menang & preview run berikutnya
+// menunggu Save lagi, sama spt kategori lain.
+function mapSlalomDetailed(doc, previewDocs) {
   const rows = Array.isArray(doc?.teams) ? doc.teams : [];
+  const officialBibs = new Set(rows.map((t) => String(t?.bibTeam || "")));
   const teams = rows.map((t) => {
     const runsRaw = Array.isArray(t?.result) ? t.result : [];
     const runs = runsRaw.map((r, idx) => {
@@ -187,13 +222,70 @@ function mapSlalomDetailed(doc) {
       runs,
     };
   });
+
+  // Kelompokkan preview per tim (teamId) — satu tim bisa punya sampai 2
+  // baris preview (Run 1 & Run 2) yang perlu digabung jadi satu `runs[]`
+  // sebelum dipush sbg 1 baris tim, sama bentuk dgn baris resmi di atas.
+  const previewByTeam = new Map();
+  (previewDocs || []).forEach((p) => {
+    const bib = String(p?.bibTeam || "");
+    if (bib && officialBibs.has(bib)) return; // tim ini sudah py baris resmi, preview diabaikan
+    const key = String(p?.teamId || bib);
+    if (!previewByTeam.has(key)) {
+      previewByTeam.set(key, {
+        name: p?.nameTeam || "-",
+        bib: p?.bibTeam || "-",
+        runs: [],
+      });
+    }
+    previewByTeam.get(key).runs.push({
+      runNo: Number(p?.runNumber) || previewByTeam.get(key).runs.length + 1,
+      startPenalty: Number.isFinite(p?.startPenalty) ? p.startPenalty : 0,
+      finishPenalty: Number.isFinite(p?.finishPenalty) ? p.finishPenalty : 0,
+      gatePenalty: Array.isArray(p?.gatePenalties)
+        ? p.gatePenalties.reduce((s, g) => s + (Number(g) || 0), 0)
+        : 0,
+      gates: Array.isArray(p?.gatePenalties) ? p.gatePenalties : [],
+      totalPenalty: null,
+      penaltyTime: p?.penaltyTime || null,
+      startTime: p?.startTime || null,
+      finishTime: p?.finishTime || null,
+      raceTime: p?.raceTime || null,
+      totalTime: p?.totalTime || null,
+      flag: null,
+    });
+  });
+  previewByTeam.forEach((t) => {
+    t.runs.sort((a, b) => a.runNo - b.runNo);
+    const bestRun = t.runs
+      .filter((r) => r.totalTime)
+      .sort((a, b) => timeToMs(a.totalTime) - timeToMs(b.totalTime))[0];
+    teams.push({
+      name: t.name,
+      bib: t.bib,
+      totalTime: bestRun ? bestRun.totalTime : null,
+      score: null,
+      rank: null, // belum resmi -> selalu fallback ke urutan waktu
+      runs: t.runs,
+      isLivePreview: true,
+    });
+  });
+
   const hasRank = teams.some((t) => t.rank > 0);
   return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
 }
 
 // H2H & RX sama-sama disimpan lewat pola "overallRows" (h2h_overall / rx_overall)
-function mapOverallRows(doc) {
+// `previewDocs` = H2HLivePreview (lihat models/H2HLivePreview.js) — cuma
+// dipakai jalur H2H (RX belum py live-preview writer sendiri, jadi selalu
+// dilewatkan array kosong dari situ). Tim yang belum py placement resmi
+// sama sekali di overallRows (turnamen masih berjalan) tetap tampil
+// dgn waktu mentah babak berjalan, tanpa score/rank (belum final).
+function mapOverallRows(doc, previewDocs) {
   const rows = Array.isArray(doc?.overallRows) ? doc.overallRows : [];
+  const officialBibs = new Set(
+    rows.map((r) => String(r?.bib || r?.bibTeam || ""))
+  );
   const teams = rows.map((r) => ({
     name: r?.name || r?.nameTeam || r?.teamName || "-",
     bib: r?.bib || r?.bibTeam || "-",
@@ -202,6 +294,22 @@ function mapOverallRows(doc) {
     score: Number.isFinite(r?.score) ? r.score : null,
     rank: Number.isFinite(r?.ranked ?? r?.rank) ? r.ranked ?? r.rank : null,
   }));
+
+  (previewDocs || []).forEach((p) => {
+    const bib = String(p?.bibTeam || "");
+    if (bib && officialBibs.has(bib)) return; // sudah py placement resmi
+    teams.push({
+      name: p?.nameTeam || "-",
+      bib: p?.bibTeam || "-",
+      totalTime: p?.raceTime || null,
+      penaltyTime: null,
+      score: null,
+      rank: null, // belum resmi (turnamen masih berjalan) -> tanpa rank
+      roundName: p?.roundName || null,
+      isLivePreview: true,
+    });
+  });
+
   const hasRank = teams.some((t) => t.rank > 0);
   return sortAndNumber(teams, { by: hasRank ? "rank" : "score" });
 }
@@ -410,16 +518,62 @@ export const GET = async (req, { params }) => {
       doc = await db
         .collection("temporaryDrrResult")
         .findOne({ eventId, initialId, divisionId, raceId });
-      teams = mapDrrDetailed(doc);
+      // Gabungkan dgn pratinjau tim yang genuinely selesai tapi belum
+      // ter-Save Result (lihat models/DrrLivePreview.js) — pola sama
+      // persis dgn SPRINT di atas, supaya Live Result DRR jadi reaktif
+      // per-tim, bukan cuma saat bulk Save Result.
+      const drrPreviewDocs = await DrrLivePreview.find({
+        eventId,
+        initialId,
+        raceId,
+        divisionId,
+      }).lean();
+      teams = mapDrrDetailed(doc, drrPreviewDocs);
+      if (drrPreviewDocs.length) {
+        latestPreviewAt = drrPreviewDocs.reduce((max, p) => {
+          const t = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+          return t > max ? t : max;
+        }, 0);
+      }
     } else if (category === "SLALOM") {
       doc = await db
         .collection("temporarySlalomResult")
         .findOne({ eventId, initialId, divisionId, raceId });
-      teams = mapSlalomDetailed(doc);
+      // Gabungkan dgn pratinjau Run yang genuinely selesai tapi belum
+      // ter-Save Result (lihat models/SlalomLivePreview.js) — pola sama
+      // persis dgn SPRINT/DRR di atas.
+      const slalomPreviewDocs = await SlalomLivePreview.find({
+        eventId,
+        initialId,
+        raceId,
+        divisionId,
+      }).lean();
+      teams = mapSlalomDetailed(doc, slalomPreviewDocs);
+      if (slalomPreviewDocs.length) {
+        latestPreviewAt = slalomPreviewDocs.reduce((max, p) => {
+          const t = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+          return t > max ? t : max;
+        }, 0);
+      }
     } else if (category === "H2H") {
       const key = [eventId, initialId, raceId, divisionId].join("|");
       doc = await db.collection("h2h_overall").findOne({ key });
-      teams = mapOverallRows(doc);
+      // Gabungkan dgn pratinjau tim yang genuinely selesai di babak
+      // berjalan tapi belum ter-Save Round / belum py placement resmi
+      // (lihat models/H2HLivePreview.js) — pola sama dgn kategori lain.
+      const h2hPreviewDocs = await H2HLivePreview.find({
+        eventId,
+        initialId,
+        raceId,
+        divisionId,
+      }).lean();
+      teams = mapOverallRows(doc, h2hPreviewDocs);
+      if (h2hPreviewDocs.length) {
+        latestPreviewAt = h2hPreviewDocs.reduce((max, p) => {
+          const t = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+          return t > max ? t : max;
+        }, 0);
+      }
       bracket = await buildH2HBracket(db, key);
     } else if (category === "RX") {
       const key = [eventId, initialId, raceId, divisionId].join("|");
