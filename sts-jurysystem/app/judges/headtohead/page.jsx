@@ -605,6 +605,14 @@ const JudgesHeadToHeadPage = () => {
         divisionId,
         raceId,
         roundId: selectedHeatItem?.roundId || activeRound?.roundId || "",
+        // Dikirim (2026-09-30) supaya toast "Penalty Realtime Ditolak" di
+        // sts-timingsystem (applyPenaltyFromSocketH2H) bisa kasih tau
+        // operator PERSIS kategori & babak mana yg harus dibuka, kalau
+        // Heat yg dipilih juri kebetulan bukan yg sedang tampil di layar
+        // operator saat ini.
+        heat: selectedHeatItem?.heat || null,
+        categoryLabel: selectedHeatItem?.categoryLabel || "",
+        heatRoundName: selectedHeatItem?.roundName || "",
         ts: new Date().toISOString(),
       };
 
