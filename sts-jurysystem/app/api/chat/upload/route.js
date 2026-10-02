@@ -25,7 +25,7 @@ function assertCloudinaryConfigured() {
 }
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ["image", "audio"];
+const ALLOWED_TYPES = ["image"];
 
 export const POST = async (req) => {
   try {
@@ -41,7 +41,6 @@ export const POST = async (req) => {
     const formData = await req.formData();
     const file = formData.get("file");
     const type = (formData.get("type") || "").toString();
-    const durationRaw = formData.get("duration");
 
     if (!file || typeof file === "string") {
       return new Response(
@@ -53,7 +52,7 @@ export const POST = async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          message: "type harus 'image' atau 'audio'",
+          message: "type harus 'image'",
         }),
         { status: 400 }
       );
@@ -70,15 +69,13 @@ export const POST = async (req) => {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const base64 = buffer.toString("base64");
-    const mimeType = file.type || (type === "audio" ? "audio/webm" : "image/jpeg");
+    const mimeType = file.type || "image/jpeg";
     const dataUri = `data:${mimeType};base64,${base64}`;
 
     const uploadResult = await cloudinary.uploader.upload(dataUri, {
       folder: "sustainable-js/chat",
-      resource_type: type === "audio" ? "video" : "image",
+      resource_type: "image",
     });
-
-    const duration = durationRaw ? Number(durationRaw) : null;
 
     return new Response(
       JSON.stringify({
@@ -89,7 +86,6 @@ export const POST = async (req) => {
           publicId: uploadResult.public_id,
           format: uploadResult.format || "",
           bytes: uploadResult.bytes || file.size,
-          duration: Number.isFinite(duration) ? duration : null,
         },
       }),
       { status: 201 }

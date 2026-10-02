@@ -15,31 +15,7 @@ const CATEGORY_LABELS = {
 };
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
-const MAX_RECORD_SECONDS = 120; // jaring pengaman ukuran file
 const PAGE_SIZE = 25; // jumlah pesan per batch (initial load & load pesan lama)
-
-const AUDIO_MIME_CANDIDATES = [
-  "audio/webm;codecs=opus",
-  "audio/webm",
-  "audio/mp4",
-  "audio/ogg;codecs=opus",
-];
-
-function pickSupportedAudioMime() {
-  if (typeof MediaRecorder === "undefined") return null;
-  return (
-    AUDIO_MIME_CANDIDATES.find(
-      (m) => typeof MediaRecorder.isTypeSupported === "function" && MediaRecorder.isTypeSupported(m)
-    ) || null
-  );
-}
-
-function formatDuration(totalSeconds) {
-  const safe = Number.isFinite(totalSeconds) ? Math.max(0, Math.round(totalSeconds)) : 0;
-  const m = Math.floor(safe / 60);
-  const s = safe % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 // Selalu tampilkan Waktu Indonesia Barat (WIB), lepas dari timezone
 // perangkat/browser yang dipakai membuka halaman ini.
@@ -85,99 +61,6 @@ function avatarColor(name) {
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
-// Player pesan suara custom (pengganti <audio controls> bawaan browser yang
-// tampilannya tidak konsisten antar platform).
-function VoiceMessage({ url, duration, isSelf }) {
-  const audioElRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [totalDuration, setTotalDuration] = useState(duration || 0);
-
-  useEffect(() => {
-    const el = audioElRef.current;
-    if (!el) return;
-    const onTime = () => setCurrentTime(el.currentTime);
-    const onLoaded = () => {
-      if (Number.isFinite(el.duration) && el.duration > 0) {
-        setTotalDuration(el.duration);
-      }
-    };
-    const onEnded = () => {
-      setPlaying(false);
-      setCurrentTime(0);
-    };
-    el.addEventListener("timeupdate", onTime);
-    el.addEventListener("loadedmetadata", onLoaded);
-    el.addEventListener("ended", onEnded);
-    return () => {
-      el.removeEventListener("timeupdate", onTime);
-      el.removeEventListener("loadedmetadata", onLoaded);
-      el.removeEventListener("ended", onEnded);
-    };
-  }, []);
-
-  const togglePlay = () => {
-    const el = audioElRef.current;
-    if (!el) return;
-    if (playing) {
-      el.pause();
-      setPlaying(false);
-    } else {
-      el.play().catch(() => {});
-      setPlaying(true);
-    }
-  };
-
-  const progress = totalDuration > 0 ? Math.min(1, currentTime / totalDuration) : 0;
-  const label = currentTime > 0 ? currentTime : totalDuration;
-
-  return (
-    <div
-      className={`flex items-center gap-2 rounded-full pl-1 pr-3 py-1 mb-1 min-w-[190px] ${
-        isSelf ? "bg-white/15" : "bg-gray-100"
-      }`}
-    >
-      <audio ref={audioElRef} src={url} preload="metadata" className="hidden" />
-      <button
-        type="button"
-        onClick={togglePlay}
-        className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center transition ${
-          isSelf ? "bg-white text-blue-600" : "bg-blue-500 text-white"
-        }`}
-        aria-label={playing ? "Jeda" : "Putar"}
-      >
-        {playing ? (
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-            <rect x="6" y="5" width="4" height="14" rx="1" />
-            <rect x="14" y="5" width="4" height="14" rx="1" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 ml-0.5">
-            <path d="M8 5v14l11-7L8 5Z" />
-          </svg>
-        )}
-      </button>
-      <div
-        className={`flex-1 h-1 rounded-full overflow-hidden ${
-          isSelf ? "bg-white/30" : "bg-gray-300"
-        }`}
-      >
-        <div
-          className={`h-full rounded-full ${isSelf ? "bg-white" : "bg-blue-500"}`}
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
-      <span
-        className={`text-[10px] tabular-nums flex-shrink-0 ${
-          isSelf ? "text-white/80" : "text-gray-500"
-        }`}
-      >
-        {formatDuration(label)}
-      </span>
-    </div>
-  );
-}
-
 const JudgeChatWidget = ({ eventId, category }) => {
   const { unreadCount, setUnreadCount } = useGlobalContext();
 
@@ -188,8 +71,6 @@ const JudgeChatWidget = ({ eventId, category }) => {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
-  const [recording, setRecording] = useState(false);
-  const [recordSeconds, setRecordSeconds] = useState(0);
   const [selfEmail, setSelfEmail] = useState(null);
   const [selfUsername, setSelfUsername] = useState(null);
   const [hasMentionUnread, setHasMentionUnread] = useState(false);
@@ -208,18 +89,6 @@ const JudgeChatWidget = ({ eventId, category }) => {
   const audioRef = useRef(null);
   const audioUnlockedRef = useRef(false);
   const fileInputRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const recordedChunksRef = useRef([]);
-  const recordTimerRef = useRef(null);
-  const mediaStreamRef = useRef(null);
-  // Sumber kebenaran durasi rekaman yang selalu fresh — `recordSeconds`
-  // (state) tidak cukup karena interval auto-stop di startRecording()
-  // meng-capture closure `stopRecording` dari render saat rekaman DIMULAI;
-  // closure itu membaca `recordSeconds` basi (selalu 0, nilai saat
-  // interval dibuat), bukan nilai terkini saat batas MAX_RECORD_SECONDS
-  // tercapai — akibatnya rekaman yang kena auto-stop tersimpan dgn durasi
-  // 0 walau file audionya beneran ~120 detik.
-  const recordSecondsRef = useRef(0);
   const messageRefs = useRef({});
   const isPrependingRef = useRef(false);
   const pendingScrollAdjustRef = useRef(null);
@@ -515,14 +384,6 @@ const JudgeChatWidget = ({ eventId, category }) => {
     if (e.currentTarget.scrollTop < 60) loadOlderMessages();
   };
 
-  // Lepas mic/timer kalau widget di-unmount saat masih merekam
-  useEffect(() => {
-    return () => {
-      clearInterval(recordTimerRef.current);
-      mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
   const sendChatMessage = async ({ text: msgText = "", attachment = null }) => {
     const replyTo = replyingTo
       ? {
@@ -615,13 +476,10 @@ const JudgeChatWidget = ({ eventId, category }) => {
     }
   };
 
-  const uploadAttachment = async (fileOrBlob, type, extra = {}) => {
+  const uploadAttachment = async (fileOrBlob, type) => {
     const form = new FormData();
-    const filename =
-      type === "audio" ? `voice-note.${extra.ext || "webm"}` : fileOrBlob.name;
-    form.append("file", fileOrBlob, filename);
+    form.append("file", fileOrBlob, fileOrBlob.name);
     form.append("type", type);
-    if (extra.duration != null) form.append("duration", String(extra.duration));
 
     const res = await fetch("/api/chat/upload", { method: "POST", body: form });
     const data = await res.json();
@@ -651,117 +509,6 @@ const JudgeChatWidget = ({ eventId, category }) => {
     } finally {
       setUploading(false);
     }
-  };
-
-  const startRecording = async () => {
-    if (recording || uploading) return;
-
-    // Cek dukungan browser secara eksplisit dulu — di HP, getUserMedia/
-    // MediaRecorder bisa saja tidak ada sama sekali (browser lama) atau
-    // ditolak diam-diam kalau halaman tidak diakses lewat HTTPS.
-    if (typeof window !== "undefined" && window.isSecureContext === false) {
-      showUploadError("Rekam suara butuh koneksi HTTPS. Buka halaman ini lewat https://");
-      return;
-    }
-    if (!navigator.mediaDevices?.getUserMedia) {
-      showUploadError("Perekaman suara tidak didukung di browser ini");
-      return;
-    }
-    if (typeof MediaRecorder === "undefined") {
-      showUploadError("Perekaman suara tidak didukung di browser ini");
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-
-      const mimeType = pickSupportedAudioMime();
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
-
-      recordedChunksRef.current = [];
-      recorder.ondataavailable = (ev) => {
-        if (ev.data && ev.data.size > 0) recordedChunksRef.current.push(ev.data);
-      };
-      recorder.onstop = () => {
-        mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
-        mediaStreamRef.current = null;
-      };
-
-      mediaRecorderRef.current = recorder;
-      recorder.start();
-      setRecording(true);
-      setRecordSeconds(0);
-      recordSecondsRef.current = 0;
-
-      recordTimerRef.current = setInterval(() => {
-        setRecordSeconds((s) => {
-          const next = s + 1;
-          recordSecondsRef.current = next;
-          if (next >= MAX_RECORD_SECONDS) stopRecording();
-          return next;
-        });
-      }, 1000);
-    } catch (err) {
-      const reason =
-        err?.name === "NotAllowedError" || err?.name === "SecurityError"
-          ? "Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser ini di pengaturan HP."
-          : err?.name === "NotFoundError"
-          ? "Mikrofon tidak ditemukan di perangkat ini."
-          : err?.name === "NotReadableError"
-          ? "Mikrofon sedang dipakai aplikasi lain."
-          : err?.message
-          ? `Tidak bisa mengakses mikrofon: ${err.message}`
-          : "Tidak bisa mengakses mikrofon";
-      showUploadError(reason);
-    }
-  };
-
-  const stopRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder || recorder.state === "inactive") return;
-
-    clearInterval(recordTimerRef.current);
-    const durationSec = recordSecondsRef.current;
-
-    recorder.addEventListener(
-      "stop",
-      async () => {
-        setRecording(false);
-
-        const blob = new Blob(recordedChunksRef.current, {
-          type: recorder.mimeType || "audio/webm",
-        });
-        recordedChunksRef.current = [];
-
-        if (!blob.size) return;
-        if (blob.size > MAX_BYTES) {
-          showUploadError("Rekaman terlalu besar (maks 5MB), coba lebih pendek");
-          return;
-        }
-
-        setUploading(true);
-        try {
-          const ext = (recorder.mimeType || "").includes("mp4") ? "mp4" : "webm";
-          const attachment = await uploadAttachment(blob, "audio", {
-            ext,
-            duration: durationSec,
-          });
-          if (attachment) await sendChatMessage({ attachment });
-        } catch (err) {
-          showUploadError(
-            err?.message ? `Gagal upload suara: ${err.message}` : "Gagal upload suara"
-          );
-        } finally {
-          setUploading(false);
-        }
-      },
-      { once: true }
-    );
-
-    recorder.stop();
   };
 
   if (!enabled) return null;
@@ -1023,13 +770,6 @@ const JudgeChatWidget = ({ eventId, category }) => {
                                   />
                                 </button>
                               )}
-                              {m.attachment?.type === "audio" && (
-                                <VoiceMessage
-                                  url={m.attachment.url}
-                                  duration={m.attachment.duration}
-                                  isSelf={isSelf}
-                                />
-                              )}
                               {m.text && (
                                 <p className="whitespace-pre-wrap break-words">
                                   {m.text}
@@ -1132,14 +872,6 @@ const JudgeChatWidget = ({ eventId, category }) => {
               )}
             </AnimatePresence>
 
-            {/* Indikator rekam */}
-            {recording && (
-              <div className="px-3 py-1.5 bg-red-50 border-t border-red-100 text-red-600 text-xs font-medium flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                Merekam… {formatDuration(recordSeconds)}
-              </div>
-            )}
-
             {/* Preview balasan (Quote Message) */}
             {replyingTo && (
               <div className="px-3 pt-2 pb-1.5 bg-blue-50 border-t border-blue-100 flex items-start gap-2">
@@ -1187,7 +919,7 @@ const JudgeChatWidget = ({ eventId, category }) => {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={sending || uploading || recording}
+                disabled={sending || uploading}
                 className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 rounded-full bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-blue-600 disabled:opacity-40 flex items-center justify-center transition"
                 aria-label="Kirim gambar"
               >
@@ -1201,50 +933,17 @@ const JudgeChatWidget = ({ eventId, category }) => {
                 </svg>
               </button>
 
-              <button
-                type="button"
-                onClick={recording ? stopRecording : startRecording}
-                disabled={sending || uploading}
-                className={`w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 rounded-full flex items-center justify-center transition disabled:opacity-40 ${
-                  recording
-                    ? "bg-red-500 text-white hover:bg-red-600"
-                    : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-blue-600"
-                }`}
-                aria-label={recording ? "Berhenti rekam" : "Rekam pesan suara"}
-              >
-                {recording ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="w-3.5 h-3.5 sm:w-4 sm:h-4"
-                  >
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                  >
-                    <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" />
-                    <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.93V20H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A7 7 0 0 0 19 11Z" />
-                  </svg>
-                )}
-              </button>
-
               <input
                 type="text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={uploading ? "Mengunggah…" : "Tulis pesan…"}
                 className="flex-1 min-w-0 px-3 py-2 border rounded-full text-base focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100"
-                disabled={sending || uploading || recording}
+                disabled={sending || uploading}
               />
               <button
                 type="submit"
-                disabled={sending || uploading || recording || !text.trim()}
+                disabled={sending || uploading || !text.trim()}
                 className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 rounded-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white flex items-center justify-center transition"
                 aria-label="Kirim"
               >
