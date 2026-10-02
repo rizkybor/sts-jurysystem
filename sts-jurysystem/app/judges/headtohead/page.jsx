@@ -84,7 +84,6 @@ const JudgesHeadToHeadPage = () => {
   const { settings: raceSettings } = useRaceSettings(eventId);
 
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedHeat, setSelectedHeat] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [selectedPenalty, setSelectedPenalty] = useState(null);
@@ -98,10 +97,119 @@ const JudgesHeadToHeadPage = () => {
   // pengganti sinyal "tim mana yang sekarang boleh dinilai juri".
   const [activeRound, setActiveRound] = useState(null); // {roundName, teams: [{teamId,...}]}
 
+  // FITUR (2026-09-29, atas permintaan user): juri TIDAK perlu lagi pilih
+  // Kategori dulu — langsung dapat SEMUA Heat yang sudah di-assign
+  // operator lintas SELURUH kategori H2H event ini sekaligus (bukan cuma
+  // babak yang kebetulan sedang "aktif" di timing system), dgn info
+  // kategori tetap ditampilkan per Heat. Heat yang match-nya sudah py
+  // pemenang (`completed`) otomatis disabled — tidak perlu/tidak bisa lagi
+  // diberi penalty. `selectedHeatItem` = data lengkap Heat yang diklik
+  // (kategori+babak+team1/team2), MENGGANTIKAN ketergantungan pada
+  // activeRound utk resolve 2 tim di heat itu.
+  const [allHeats, setAllHeats] = useState([]);
+  const [loadingAllHeats, setLoadingAllHeats] = useState(true);
+  const [selectedHeatItem, setSelectedHeatItem] = useState(null);
+
   const assignedTypes = useMemo(
     () => getH2HAssignedTypes(assignments, eventId),
     [assignments, eventId]
   );
+
+  // Relay broadcast "h2h:team-finished" dari sts-timingsystem (dikirim
+  // saat satu tim genuinely selesai — Start & Finish Time terisi di babak
+  // aktif, lihat updateTime() di HeadToHead.vue) ke
+  // /api/judges/h2h/live-preview supaya Live Result publik bisa
+  // menampilkan waktu tim ini SEBELUM operator klik "Save Round" — pola
+  // sama persis dgn relay sprint:team-finished di app/judges/sprint/page.jsx.
+  // Win/Lose & placement akhir TETAP dari mesin bracket, tidak disentuh di
+  // sini. Tanpa toast, murni data utk halaman Live Result.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "h2h:team-finished") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+
+      fetch("/api/judges/h2h/live-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: msg.eventId,
+          initialId: msg.initialId,
+          divisionId: msg.divisionId,
+          raceId: msg.raceId,
+          teamId: msg.teamId,
+          roundId: msg.roundId,
+          roundName: msg.roundName,
+          bibTeam: msg.bibTeam,
+          nameTeam: msg.nameTeam,
+          startTime: msg.startTime,
+          finishTime: msg.finishTime,
+          raceTime: msg.raceTime,
+        }),
+      }).catch((err) => {
+        console.error("❌ Gagal relay h2h:team-finished:", err);
+      });
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, [eventId, socketRef]);
+
+  // FITUR (2026-09-29): ambil SEMUA Heat yang sudah di-assign lintas
+  // kategori dari /api/judges/h2h/all-heats, lalu refresh otomatis begitu
+  // broadcast "h2h:bracket-updated" diterima (dikirim sts-timingsystem
+  // setiap bracket manapun disimpan — Heat baru, match selesai, dll — lihat
+  // notifyH2HBracketUpdated() di socketBroadcast.js). Ini yang membuat
+  // daftar Heat di halaman ini selalu real-time TANPA operator perlu
+  // menjadikan babak itu "aktif" dulu.
+  const fetchAllHeats = () => {
+    if (!eventId) return;
+    setLoadingAllHeats(true);
+    fetch(`/api/judges/h2h/all-heats?eventId=${eventId}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success) setAllHeats(data.heats || []);
+      })
+      .catch((err) => console.error("❌ Gagal memuat daftar Heat:", err))
+      .finally(() => setLoadingAllHeats(false));
+  };
+
+  useEffect(() => {
+    fetchAllHeats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "h2h:bracket-updated") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+      fetchAllHeats();
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, socketRef]);
+
+  // Klik tombol Heat (lintas kategori) — derive Kategori dari Heat yang
+  // dipilih (initialId|divisionId|raceId, format sama dgn value di
+  // combinedCategories), lalu reuse handleCategoryChange() apa adanya
+  // supaya semua efek samping (reset field, refetch teams via
+  // useJudgeTeams, dll) tetap konsisten dgn alur pilih-kategori-manual yg
+  // lama.
+  const handleHeatButtonClick = (item) => {
+    const categoryKey = `${item.initialId}|${item.divisionId}|${item.raceId}`;
+    if (selectedCategory !== categoryKey) {
+      handleCategoryChange(categoryKey);
+    }
+    setSelectedHeatItem(item);
+  };
+
   const isCornerType = CORNER_KEYS.includes(selectedType);
 
   // Pilihan nilai penalty Start/Cut Line/Finish ikut kustomisasi Race
@@ -148,19 +256,14 @@ const JudgesHeadToHeadPage = () => {
 
   const handleCategoryChange = (value) => {
     setSelectedCategory(value);
-    setSelectedHeat("");
     setSelectedTeam("");
     setSelectedType("");
     setSelectedPenalty(null);
     setOtherValue("");
     setCornerTouched(null);
     setActiveRound(null);
+    setSelectedHeatItem(null);
     resetTeams();
-  };
-
-  const handleHeatChange = (value) => {
-    setSelectedHeat(value);
-    setSelectedTeam("");
   };
 
   // Muat babak aktif tersimpan (kalau ada) begitu kategori dipilih — supaya
@@ -278,71 +381,32 @@ const JudgesHeadToHeadPage = () => {
     return () => socket.off("custom:event", handler);
   }, [eventId, socketRef, pushToast, selectedCategory]);
 
-  // Daftar Heat yang sudah ditentukan operator (openHeatEditor) utk babak
-  // aktif ini — dipakai dropdown Heat. Match tanpa heat (belum
-  // ditentukan operator) tidak muncul di daftar.
-  const availableHeats = useMemo(() => {
-    if (!activeRound?.matches?.length) return [];
-    const heats = activeRound.matches
-      .filter((m) => m?.heat !== null && m?.heat !== undefined)
-      .map((m) => Number(m.heat));
-    return Array.from(new Set(heats)).sort((a, b) => a - b);
-  }, [activeRound]);
-
-  // Match yang sesuai Heat terpilih — dipakai narrow-kan activeTeamIds ke
-  // 2 tim di heat itu SAJA (lebih presisi drpd "semua tim di babak").
-  const selectedHeatMatch = useMemo(() => {
-    if (!selectedHeat || !activeRound?.matches?.length) return null;
-    return (
-      activeRound.matches.find((m) => String(m?.heat) === String(selectedHeat)) ||
-      null
-    );
-  }, [selectedHeat, activeRound]);
-
-  // Set teamId dari activeRound (kalau ada babak aktif tersimpan) — dipakai
-  // JudgeCategoryTeamFields utk disable tim yang tidak ada di babak itu.
-  // Kalau Heat dipilih, di-narrow lagi ke 2 tim di heat itu saja. undefined
-  // (bukan Set kosong) kalau belum ada info sama sekali, supaya tidak
-  // salah menganggap "semua tim tidak aktif" sebelum data termuat.
-  const activeTeamIds = useMemo(() => {
-    if (selectedHeatMatch) {
-      return new Set(
-        [selectedHeatMatch.team1?.teamId, selectedHeatMatch.team2?.teamId]
-          .map((id) => String(id || ""))
-          .filter(Boolean)
-      );
-    }
-    if (!activeRound?.teams?.length) return undefined;
-    return new Set(
-      activeRound.teams.map((t) => String(t.teamId || "")).filter(Boolean)
-    );
-  }, [activeRound, selectedHeatMatch]);
-
-  // 2 tombol Team 1 vs Team 2 begitu Heat dipilih — menggantikan dropdown
-  // Team (lihat `teamFieldOverride` di JudgeCategoryTeamFields). Setiap
-  // Heat yang sudah ditentukan operator PASTI cuma py 2 team (team1/team2
-  // di H2HActiveRound.matches), jadi dropdown jadi langkah ekstra yang
-  // tidak perlu. `_id` dicari dari `teams` (daftar dari useJudgeTeams,
-  // sumber `hasValidTeamId` & yang dipakai `selectedTeam` state) via
-  // `teamId` yang sama supaya tetap konsisten dgn alur submit yang ada.
+  // 2 tombol Team 1 vs Team 2 begitu tombol Heat diklik — menggantikan
+  // dropdown Team (lihat `teamFieldOverride` di JudgeCategoryTeamFields).
+  // BEDA dgn versi lama: `selectedHeatItem` datang dari data bracket
+  // (h2h_brackets, lihat all-heats/route.js) yang TIDAK menyimpan teamId
+  // sama sekali (`assignTeamToMatchSlot()` di HeadToHead.vue cuma simpan
+  // {name, bibTeam}) — jadi resolve ke `teams` (dari useJudgeTeams, sumber
+  // `_id`/`hasValidTeamId`) HARUS lewat `bibTeam`, bukan `teamId` lagi.
   const heatTeamButtons = useMemo(() => {
-    if (!selectedHeatMatch) return null;
+    if (!selectedHeatItem) return null;
     const resolve = (slot) => {
-      const tid = slot?.teamId ? String(slot.teamId) : "";
-      if (!tid) return null;
-      const matched = teams.find((t) => String(t.teamId) === tid);
+      const bib = slot?.bibTeam ? String(slot.bibTeam) : "";
+      const matched = bib
+        ? teams.find((t) => String(t.bibTeam || "") === bib)
+        : null;
       return {
         _id: matched?._id || "",
-        nameTeam: matched?.nameTeam || slot.nameTeam || "-",
-        bibTeam: matched?.bibTeam || slot.bibTeam || "",
+        nameTeam: matched?.nameTeam || slot?.nameTeam || "-",
+        bibTeam: matched?.bibTeam || slot?.bibTeam || "",
         hasValidTeamId: matched ? matched.hasValidTeamId : false,
       };
     };
-    const t1 = resolve(selectedHeatMatch.team1);
-    const t2 = resolve(selectedHeatMatch.team2);
+    const t1 = resolve(selectedHeatItem.team1);
+    const t2 = resolve(selectedHeatItem.team2);
     if (!t1 && !t2) return null;
     return [t1, t2].filter(Boolean);
-  }, [selectedHeatMatch, teams]);
+  }, [selectedHeatItem, teams]);
 
   const handleTypeChange = (key) => {
     setSelectedType(key);
@@ -353,21 +417,45 @@ const JudgesHeadToHeadPage = () => {
 
   const selectedTeamData = getSelectedTeamData(teams, selectedTeam);
 
+  // Tombol "Kirim ke Operator" — sebelumnya HANYA disable saat `submitting`,
+  // semua validasi lain (kategori/heat/tim/tipe/nilai belum lengkap) baru
+  // ketahuan SETELAH diklik lewat toast di handleSubmit(). Disamakan dgn
+  // pola isSubmitDisabled Sprint (app/judges/sprint/page.jsx) supaya juri
+  // langsung lihat tombolnya nonaktif kalau ada yg belum diisi — DITAMBAH
+  // `!selectedHeatItem` krn alur H2H (2026-09-29) sekarang WAJIB pilih Heat
+  // dulu (bukan lagi kategori manual) sebelum tim & tipe penalty bisa
+  // diisi. Cek `hasValidTeamId` sengaja TETAP di luar (spt Sprint) supaya
+  // juri dapat toast spesifik "Team Tidak Valid" di handleSubmit(), bukan
+  // cuma tombol mati tanpa penjelasan.
+  const isSubmitDisabled =
+    submitting ||
+    !eventId ||
+    !selectedHeatItem ||
+    !selectedCategory ||
+    !selectedTeam ||
+    !selectedType ||
+    (isCornerType
+      ? cornerTouched === null
+      : selectedType === "other"
+      ? otherValue === "" || Number.isNaN(Number(otherValue))
+      : selectedPenalty === null);
+
   // "Unfouls Team" utk modal Fouls Report — otomatis diambil dari lawan
-  // team terpilih di match aktif (activeRound.matches), TIDAK dipilih
-  // manual oleh juri. null kalau team terpilih belum ada di match manapun
-  // (mis. masih di pool, belum dipasangkan).
+  // team terpilih di Heat yang diklik (selectedHeatItem), TIDAK dipilih
+  // manual oleh juri. Match by `bibTeam` (bracket tidak simpan teamId,
+  // lihat catatan di heatTeamButtons di atas). null kalau team terpilih
+  // bukan salah satu dari 2 tim di heat itu.
   const unfoulTeamData = useMemo(() => {
-    if (!selectedTeamData?.teamId || !activeRound?.matches?.length) {
-      return null;
+    const bib = selectedTeamData?.bibTeam ? String(selectedTeamData.bibTeam) : "";
+    if (!bib || !selectedHeatItem) return null;
+    if (String(selectedHeatItem.team1?.bibTeam || "") === bib) {
+      return selectedHeatItem.team2 || null;
     }
-    const tid = String(selectedTeamData.teamId);
-    for (const m of activeRound.matches) {
-      if (String(m?.team1?.teamId || "") === tid) return m.team2 || null;
-      if (String(m?.team2?.teamId || "") === tid) return m.team1 || null;
+    if (String(selectedHeatItem.team2?.bibTeam || "") === bib) {
+      return selectedHeatItem.team1 || null;
     }
     return null;
-  }, [selectedTeamData, activeRound]);
+  }, [selectedTeamData, selectedHeatItem]);
 
   // Cegah juri submit Fouls Report yang PERSIS SAMA (tim+babak+posisi+
   // detail) 2x — cek sesi lokal (ref, bukan state, supaya tidak trigger
@@ -397,7 +485,7 @@ const JudgesHeadToHeadPage = () => {
 
       const foulsKey = [
         selectedTeamData.teamId,
-        activeRound?.roundId || "",
+        selectedHeatItem?.roundId || activeRound?.roundId || "",
         payload.position,
         payload.detail,
       ].join("|");
@@ -425,8 +513,8 @@ const JudgesHeadToHeadPage = () => {
         initialId,
         divisionId,
         raceId,
-        roundId: activeRound?.roundId || "",
-        roundName: activeRound?.roundName || "",
+        roundId: selectedHeatItem?.roundId || activeRound?.roundId || "",
+        roundName: selectedHeatItem?.roundName || activeRound?.roundName || "",
         foulTeam: {
           teamId: selectedTeamData.teamId,
           bibTeam: selectedTeamData.bibTeam || "",
@@ -516,7 +604,15 @@ const JudgesHeadToHeadPage = () => {
         initialId,
         divisionId,
         raceId,
-        roundId: activeRound?.roundId || "",
+        roundId: selectedHeatItem?.roundId || activeRound?.roundId || "",
+        // Dikirim (2026-09-30) supaya toast "Penalty Realtime Ditolak" di
+        // sts-timingsystem (applyPenaltyFromSocketH2H) bisa kasih tau
+        // operator PERSIS kategori & babak mana yg harus dibuka, kalau
+        // Heat yg dipilih juri kebetulan bukan yg sedang tampil di layar
+        // operator saat ini.
+        heat: selectedHeatItem?.heat || null,
+        categoryLabel: selectedHeatItem?.categoryLabel || "",
+        heatRoundName: selectedHeatItem?.roundName || "",
         ts: new Date().toISOString(),
       };
 
@@ -568,10 +664,33 @@ const JudgesHeadToHeadPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedCategory || !selectedTeam || !selectedType) {
+    // BUG FIX (2026-09-29): pesan lama selalu bilang "pilih kategori, tim,
+    // dan tipe penalty" sekaligus — membingungkan krn sejak redesign, juri
+    // TIDAK PERNAH memilih Kategori secara manual lagi (`selectedCategory`
+    // otomatis ke-derive dari tombol Heat yang diklik, lihat
+    // handleHeatButtonClick()). Jadi `!selectedCategory` di sini artinya
+    // "belum klik Heat manapun", bukan "belum pilih kategori" — pesannya
+    // dipecah per kondisi supaya sesuai apa yg benar2 juri lihat di layar.
+    if (!selectedHeatItem || !selectedCategory) {
       pushToast({
         title: "Data Belum Lengkap",
-        text: "Harap pilih kategori, tim, dan tipe penalty sebelum submit",
+        text: "Harap pilih salah satu Heat terlebih dahulu",
+        type: "error",
+      });
+      return;
+    }
+    if (!selectedTeam) {
+      pushToast({
+        title: "Data Belum Lengkap",
+        text: "Harap pilih Team terlebih dahulu",
+        type: "error",
+      });
+      return;
+    }
+    if (!selectedType) {
+      pushToast({
+        title: "Data Belum Lengkap",
+        text: "Harap pilih tipe penalty terlebih dahulu",
         type: "error",
       });
       return;
@@ -631,7 +750,7 @@ const JudgesHeadToHeadPage = () => {
       initialId,
       divisionId,
       raceId,
-      roundId: activeRound?.roundId || "",
+      roundId: selectedHeatItem?.roundId || activeRound?.roundId || "",
       position: selectedType,
       remarks: isCornerType
         ? cornerTouched
@@ -724,19 +843,11 @@ const JudgesHeadToHeadPage = () => {
           className="max-w-2xl mx-auto px-4 pb-6 pt-4 space-y-5"
         >
           <fieldset disabled={submitting} className="space-y-4">
-            <JudgeSectionCard step={1} title="Kategori & Team">
-              {selectedCategory && (
-                <div
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium ${
-                    activeRound?.roundName
-                      ? "bg-sts/10 text-sts"
-                      : "bg-gray-100 text-gray-500"
-                  }`}
-                >
+            <JudgeSectionCard step={1} title="Pilih Heat & Team">
+              {selectedHeatItem && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-sts/10 text-sts">
                   <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
-                  {activeRound?.roundName
-                    ? `Babak Aktif: ${activeRound.roundName}`
-                    : "Babak aktif belum diketahui — menunggu update dari timing system."}
+                  {`Heat ${selectedHeatItem.heat} — ${selectedHeatItem.categoryLabel} · ${selectedHeatItem.roundName}`}
                 </div>
               )}
 
@@ -749,31 +860,58 @@ const JudgesHeadToHeadPage = () => {
                 teams={teams}
                 selectedTeam={selectedTeam}
                 onTeamChange={setSelectedTeam}
-                activeTeamIds={activeTeamIds}
+                hideCategoryField
+                categoryRequiredMessage="Pilih salah satu Heat di atas terlebih dahulu."
                 betweenCategoryAndTeam={
-                  selectedCategory && availableHeats.length > 0 ? (
-                    <div>
-                      <label className="block text-gray-700 mb-2 font-medium">
-                        Heat
-                      </label>
-                      <select
-                        value={selectedHeat}
-                        onChange={(e) => handleHeatChange(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base bg-white focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
-                      >
-                        <option value="">Semua Team di Babak Ini</option>
-                        {availableHeats.map((h) => (
-                          <option key={h} value={h}>
-                            Heat {h}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1.5 text-xs text-gray-500">
-                        Pilih Heat utk mempersempit pilihan Team ke 2 tim
-                        yang ditugaskan admin timing di heat tsb.
+                  <div>
+                    <label className="block text-gray-700 mb-2 font-medium">
+                      Heat
+                    </label>
+                    {loadingAllHeats ? (
+                      <p className="text-xs text-gray-500">Loading heat...</p>
+                    ) : allHeats.length === 0 ? (
+                      <p className="text-xs text-gray-500">
+                        Belum ada Heat yang di-assign operator timing system.
                       </p>
-                    </div>
-                  ) : null
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        {allHeats.map((item) => {
+                          const key = `${item.initialId}|${item.divisionId}|${item.raceId}|${item.roundId}|${item.heat}`;
+                          const selected =
+                            selectedHeatItem &&
+                            String(selectedHeatItem.heat) === String(item.heat) &&
+                            selectedHeatItem.roundId === item.roundId;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              disabled={item.completed}
+                              onClick={() => handleHeatButtonClick(item)}
+                              className={`px-3 py-2.5 rounded-xl border text-left transition ${
+                                item.completed
+                                  ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
+                                  : selected
+                                  ? "bg-sts text-white border-sts shadow-md"
+                                  : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+                              }`}
+                            >
+                              <span className="block text-[11px] opacity-80 truncate">
+                                {item.categoryLabel} · {item.roundName}
+                              </span>
+                              <span className="block text-sm font-bold">
+                                Heat {item.heat}
+                                {item.completed ? " (Selesai)" : ""}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      Heat yang sudah selesai dipertandingkan (sudah py
+                      pemenang) otomatis dinonaktifkan.
+                    </p>
+                  </div>
                 }
                 teamFieldOverride={
                   heatTeamButtons ? (
@@ -937,7 +1075,7 @@ const JudgesHeadToHeadPage = () => {
             onHistory={history.open}
             historyDisabled={submitting}
             submitting={submitting}
-            submitDisabled={submitting}
+            submitDisabled={isSubmitDisabled}
           />
         </form>
 
@@ -971,7 +1109,7 @@ const JudgesHeadToHeadPage = () => {
         <FoulsReportModal
           open={foulsModalOpen}
           onClose={() => setFoulsModalOpen(false)}
-          roundName={activeRound?.roundName}
+          roundName={selectedHeatItem?.roundName || activeRound?.roundName}
           foulTeam={selectedTeamData}
           unfoulTeam={unfoulTeamData}
           foulDetails={foulDetails}

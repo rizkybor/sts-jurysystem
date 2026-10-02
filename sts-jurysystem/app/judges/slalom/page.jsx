@@ -97,6 +97,51 @@ const JudgesSlalomPage = () => {
     [assignments, eventId]
   );
 
+  // Relay broadcast "slalom:team-finished" dari sts-timingsystem (dikirim
+  // saat satu Run tim genuinely selesai — Start & Finish Time terisi,
+  // lihat updateTime() di SlalomRace.vue) ke
+  // /api/judges/slalom/live-preview supaya Live Result publik bisa
+  // menampilkan hasil run ini SEBELUM operator klik "Save Result" — pola
+  // sama persis dgn relay sprint:team-finished di app/judges/sprint/page.jsx.
+  // Tanpa toast, murni data utk halaman Live Result.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !eventId) return;
+
+    const handler = (msg) => {
+      if (msg?.type !== "slalom:team-finished") return;
+      if (String(msg?.eventId) !== String(eventId)) return;
+
+      fetch("/api/judges/slalom/live-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: msg.eventId,
+          initialId: msg.initialId,
+          divisionId: msg.divisionId,
+          raceId: msg.raceId,
+          teamId: msg.teamId,
+          runNumber: msg.runNumber,
+          bibTeam: msg.bibTeam,
+          nameTeam: msg.nameTeam,
+          startTime: msg.startTime,
+          finishTime: msg.finishTime,
+          raceTime: msg.raceTime,
+          startPenalty: msg.startPenalty,
+          finishPenalty: msg.finishPenalty,
+          gatePenalties: msg.gatePenalties,
+          penaltyTime: msg.penaltyTime,
+          totalTime: msg.totalTime,
+        }),
+      }).catch((err) => {
+        console.error("❌ Gagal relay slalom:team-finished:", err);
+      });
+    };
+
+    socket.on("custom:event", handler);
+    return () => socket.off("custom:event", handler);
+  }, [eventId, socketRef]);
+
   // Pilihan nilai penalty Start/Finish/Gate ikut kustomisasi Race Settings
   // event ini (kalau ada) — bukan daftar hardcode, supaya tidak ada nilai
   // yang diam-diam ditolak timing system karena tidak termasuk daftar yang
