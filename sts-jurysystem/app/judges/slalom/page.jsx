@@ -173,6 +173,29 @@ const JudgesSlalomPage = () => {
     pushToast,
   });
 
+  // Sama persis definisinya dgn `hasAnyRun1Finished` di SlalomRace.vue
+  // (sts-timingsystem) — minimal SATU tim di kategori ini sudah
+  // menyelesaikan Run 1 (Start & Finish keduanya terisi), bukan harus
+  // SEMUA tim. `teams[].results` datang dari
+  // /api/events/[eventId]/judge-tasks (lihat useJudgeTeams), isinya
+  // array `TeamsRegistered.teams[].result` apa adanya — index 0 = Run 1.
+  const hasAnyRun1Finished = useMemo(() => {
+    return (teams || []).some((t) => {
+      const r0 = Array.isArray(t?.results) ? t.results[0] : null;
+      return !!(r0 && r0.startTime && r0.finishTime);
+    });
+  }, [teams]);
+
+  // Jaga-jaga: kalau juri sudah di Run 2 lalu pindah kategori ke yang
+  // Run 1-nya belum selesai, jangan biarkan `runNumber` diam-diam tetap
+  // 2 (tombolnya sendiri sudah ter-disable & tampak tidak terpilih,
+  // tapi tanpa ini payload submit masih bisa salah terkirim sbg Run 2).
+  useEffect(() => {
+    if (runNumber === 2 && !hasAnyRun1Finished) {
+      setRunNumber(1);
+    }
+  }, [runNumber, hasAnyRun1Finished]);
+
   // Relay broadcast "slalom:team-started" dari sts-timingsystem (dikirim
   // saat operator mengisi Start Time satu baris utk run tertentu, lihat
   // updateTime() di SlalomRace.vue) ke /api/judges/slalom/team-started
@@ -494,24 +517,44 @@ const JudgesSlalomPage = () => {
                   Run
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {RUNS.map((r) => (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => setRunNumber(r.value)}
-                      aria-pressed={runNumber === r.value}
-                      className={`min-h-[48px] rounded-xl border-2 text-sm font-semibold transition ${
-                        runNumber === r.value
-                          ? r.value === 2
-                            ? "border-orange-500 text-orange-600 bg-orange-50"
-                            : "border-sts text-sts bg-sts/5"
-                          : "border-gray-300 bg-white text-gray-700 hover:border-sts/50"
-                      }`}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
+                  {RUNS.map((r) => {
+                    // Sama pola dgn tab "Run Session #2" di SlalomRace.vue
+                    // (sts-timingsystem) — Run 2 di-disable sampai minimal
+                    // satu tim di kategori ini menyelesaikan Run 1.
+                    const isLockedRun2 = r.value === 2 && !hasAnyRun1Finished;
+                    return (
+                      <button
+                        key={r.value}
+                        type="button"
+                        disabled={isLockedRun2}
+                        onClick={() => setRunNumber(r.value)}
+                        aria-pressed={runNumber === r.value}
+                        title={
+                          isLockedRun2
+                            ? "Belum ada tim yang menyelesaikan Run 1 (Start & Finish) di kategori ini"
+                            : undefined
+                        }
+                        className={`min-h-[48px] rounded-xl border-2 text-sm font-semibold transition ${
+                          isLockedRun2
+                            ? "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+                            : runNumber === r.value
+                            ? r.value === 2
+                              ? "border-orange-500 text-orange-600 bg-orange-50"
+                              : "border-sts text-sts bg-sts/5"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-sts/50"
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    );
+                  })}
                 </div>
+                {!selectedCategory && (
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    Pilih kategori dulu utk tahu status Run 1 — Run 2 akan
+                    terbuka otomatis begitu ada tim yang selesai Run 1.
+                  </p>
+                )}
               </div>
 
               <JudgeCategoryTeamFields

@@ -864,9 +864,16 @@ const JudgesHeadToHeadPage = () => {
                 categoryRequiredMessage="Pilih salah satu Heat di atas terlebih dahulu."
                 betweenCategoryAndTeam={
                   <div>
-                    <label className="block text-gray-700 mb-2 font-medium">
-                      Heat
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-gray-700 font-medium">
+                        Heat
+                      </label>
+                      {!loadingAllHeats && allHeats.length > 0 && (
+                        <span className="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+                          {allHeats.length} Heat
+                        </span>
+                      )}
+                    </div>
                     {loadingAllHeats ? (
                       <p className="text-xs text-gray-500">Loading heat...</p>
                     ) : allHeats.length === 0 ? (
@@ -874,7 +881,13 @@ const JudgesHeadToHeadPage = () => {
                         Belum ada Heat yang di-assign operator timing system.
                       </p>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div
+                        className={`grid grid-cols-2 gap-2 ${
+                          allHeats.length > 8
+                            ? "max-h-72 overflow-y-auto pr-1 -mr-1"
+                            : ""
+                        }`}
+                      >
                         {allHeats.map((item) => {
                           const key = `${item.initialId}|${item.divisionId}|${item.raceId}|${item.roundId}|${item.heat}`;
                           const selected =
