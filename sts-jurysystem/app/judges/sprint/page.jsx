@@ -462,6 +462,8 @@ const JudgesSprintPage = () => {
                 teams={teams}
                 selectedTeam={selectedTeam}
                 onTeamChange={setSelectedTeam}
+                categoryAsButtons
+                teamAsButtons
               />
             </JudgeSectionCard>
 
