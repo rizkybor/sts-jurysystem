@@ -341,9 +341,9 @@ const JudgesPage = () => {
 
             <div className="min-w-0 flex-1">
               <p className="text-xs sm:text-sm text-white/70 font-medium uppercase tracking-wider">
-                Judge Dashboard
+                Judge Task
               </p>
-              <h1 className="text-xl sm:text-3xl font-bold font-title leading-tight truncate">
+              <h1 className="text-xl sm:text-3xl font-bold font-title leading-tight truncate text-white">
                 {loading ? "Memuat…" : `Halo, ${user?.username || "Juri"}`}
               </h1>
               <p className="text-sm text-white/70 truncate">{user?.email || " "}</p>
@@ -351,9 +351,12 @@ const JudgesPage = () => {
 
             <Link
               href="/profile"
-              className="hidden sm:inline-flex shrink-0 items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 ring-1 ring-white/20 text-sm font-medium hover:bg-white/20 transition"
+              className="inline-flex shrink-0 items-center gap-1.5 h-10 px-3 sm:px-4 rounded-xl bg-white text-stsDark text-sm font-semibold shadow-sm hover:bg-slate-100 transition"
             >
-              Lihat Profil
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0" aria-hidden="true">
+                <path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 0 0-13.074.003Z" />
+              </svg>
+              <span className="whitespace-nowrap">Go to Profile</span>
             </Link>
           </div>
 
@@ -602,12 +605,6 @@ const JudgesPage = () => {
             })}
         </div>
 
-        <Link
-          href="/profile"
-          className="sm:hidden mt-6 flex items-center justify-center px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700"
-        >
-          Lihat Profil
-        </Link>
       </main>
     </div>
   );

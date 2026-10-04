@@ -1,10 +1,8 @@
 "use client";
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import Image from "next/image";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import profileDefault from "@/assets/images/profile.png";
-import Spinner from "@/components/Spinner";
 
 const DEFAULT_IMG = "/images/logo-dummy.png";
 
@@ -39,29 +37,6 @@ const ProfileUser = () => {
   const [userDetail, setUserDetail] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const scrollRef = useRef(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const updateScrollButtons = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  }, []);
-
-  const scrollByCard = (direction) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const card = el.querySelector("[data-event-card]");
-    const step = card ? card.getBoundingClientRect().width + 20 : el.clientWidth * 0.8;
-    el.scrollBy({ left: direction * step, behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    updateScrollButtons();
-  }, [events, updateScrollButtons]);
 
   // Fetch user detail
   useEffect(() => {
@@ -144,14 +119,14 @@ const ProfileUser = () => {
 
   if (!session) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-800">
+      <div className="min-h-[60vh] flex items-center justify-center bg-slate-50 px-4">
+        <div className="text-center bg-white border border-slate-200 rounded-2xl shadow-sm px-8 py-10 max-w-sm w-full">
+          <h1 className="text-xl font-semibold text-slate-900">
             Please sign in to view your profile
           </h1>
           <Link
             href="/auth"
-            className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-sts text-white hover:bg-stsHighlight transition-colors"
+            className="inline-flex mt-5 px-5 py-2.5 rounded-xl bg-sts text-white text-sm font-semibold hover:bg-stsDark transition-colors"
           >
             Go to Login
           </Link>
@@ -160,282 +135,189 @@ const ProfileUser = () => {
     );
   }
 
+  const joinedAt = userDetail?.createdAt ? fmtDate(userDetail.createdAt) : null;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* HEADER */}
-      <div className="bg-gradient-to-br from-[#1874A5] via-[#4690B7] to-[#1558B0] text-white">
-        <div className="container m-auto px-4 py-10">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <div className="relative h-24 w-24 md:h-28 md:w-28 rounded-full ring-4 ring-white/30 overflow-hidden shadow-lg">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={profileImage}
-                alt={profileName}
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            <div className="flex-1">
-              <h3 className="text-2xl md:text-3xl font-bold">{profileName}</h3>
-              <h6 className="text-white/90">{profileEmail}</h6>
-              <small className="text-white/90">Judges - Level ...</small>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href="/judges"
-                  className="px-4 py-2 rounded-lg bg-white text-sts font-semibold hover:bg-sts/10 hover:text-white ring-1 ring-white/50 transition-all"
-                >
-                  Judges Dashboard
-                </Link>
-                {/* <Link
-                  href="/profile/edit"
-                  className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/30 transition-all"
-                >
-                  Profile Settings
-                </Link> */}
-                <Link
-                  href="/histories"
-                  className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/30 transition-all"
-                >
-                  History
-                </Link>
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-10 md:grid md:grid-cols-[280px_minmax(0,1fr)] lg:grid-cols-[320px_minmax(0,1fr)] md:gap-6 md:items-start space-y-5 md:space-y-0">
+        {/* PROFILE CARD */}
+        <aside className="md:sticky md:top-24 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="h-1 bg-sts" />
+            <div className="p-5 flex md:flex-col items-center md:items-start gap-4">
+              <div className="h-20 w-20 md:h-24 md:w-24 rounded-2xl overflow-hidden ring-1 ring-slate-200 bg-slate-100 shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={profileImage}
+                  alt={profileName}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 md:gap-4">
-              <div className="rounded-xl bg-white/10 px-4 py-3 text-center ring-1 ring-white/20">
-                <p className="text-2xl font-bold">{stats.myEvents}</p>
-                <p className="text-sm text-white/90">My Events</p>
-              </div>
-              {/* <div className="rounded-xl bg-white/10 px-4 py-3 text-center ring-1 ring-white/20">
-                <p className="text-2xl font-bold">{stats.bookmarks}</p>
-                <p className="text-sm text-white/90">Bookmarks</p>
-              </div> */}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* CONTENT */}
-      <div className="container m-auto px-4 py-8">
-        {userDetail?.mainEvents?.length ? (
-          <div className="mb-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-2">
-              Pinned Events
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {userDetail.mainEvents.slice(0, 3).map((id) => {
-                const ev = events.find((e) => String(e.id) === String(id));
-                return (
-                  <Link
-                    key={id}
-                    href={`/matches/${id}`}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
-                  >
-                    #{String(id).slice(0, 6)} {ev ? ev.name : ""}
-                  </Link>
-                );
-              })}
-
-              {userDetail.mainEvents.length > 3 && (
-                <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
-                  ...
+              <div className="min-w-0">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 leading-tight truncate">
+                  {profileName}
+                </h1>
+                <p className="text-sm text-slate-500 truncate">{profileEmail}</p>
+                <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sts/10 text-stsDark text-xs font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sts" />
+                  Judge
                 </span>
-              )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 border-t border-slate-100 divide-x divide-slate-100">
+              <div className="px-5 py-3">
+                <p className="text-xl font-bold text-slate-900 tabular-nums">{stats.myEvents}</p>
+                <p className="text-xs text-slate-500">My Events</p>
+              </div>
+              <div className="px-5 py-3">
+                <p className="text-sm font-semibold text-slate-900 mt-1">{joinedAt || "-"}</p>
+                <p className="text-xs text-slate-500">Bergabung</p>
+              </div>
             </div>
           </div>
-        ) : null}
+
+          <nav className="bg-white rounded-2xl border border-slate-200 shadow-sm p-2 grid grid-cols-2 md:grid-cols-1 gap-1">
+            <Link
+              href="/judges"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white bg-sts hover:bg-stsDark transition-colors"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0">
+                <path d="M3 4.75A1.75 1.75 0 0 1 4.75 3h3.5A1.75 1.75 0 0 1 10 4.75v3.5A1.75 1.75 0 0 1 8.25 10h-3.5A1.75 1.75 0 0 1 3 8.25v-3.5Zm7 7A1.75 1.75 0 0 1 11.75 10h3.5A1.75 1.75 0 0 1 17 11.75v3.5A1.75 1.75 0 0 1 15.25 17h-3.5A1.75 1.75 0 0 1 10 15.25v-3.5ZM11.75 3A1.75 1.75 0 0 0 10 4.75v.5c0 .966.784 1.75 1.75 1.75h3.5A1.75 1.75 0 0 0 17 5.25v-.5A1.75 1.75 0 0 0 15.25 3h-3.5ZM3 14.75c0-.966.784-1.75 1.75-1.75h3.5c.966 0 1.75.784 1.75 1.75v.5A1.75 1.75 0 0 1 8.25 17h-3.5A1.75 1.75 0 0 1 3 15.25v-.5Z" />
+              </svg>
+              <span className="truncate">Judge Task</span>
+            </Link>
+            <Link
+              href="/histories"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0 text-slate-400">
+                <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .27.144.518.378.651l3.5 2a.75.75 0 0 0 .744-1.302L10.75 9.567V5Z" clipRule="evenodd" />
+              </svg>
+              <span className="truncate">History</span>
+            </Link>
+          </nav>
+        </aside>
 
         {/* MY EVENTS */}
-        <div className="rounded-2xl bg-white ring-1 ring-gray-200 shadow-md overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">My Events</h3>
-              {events.length > 3 && (
-                <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                    <path d="M3 10a.75.75 0 0 1 .75-.75h10.638L11.29 6.16a.75.75 0 1 1 1.08-1.04l4.5 4.75a.75.75 0 0 1 0 1.04l-4.5 4.75a.75.75 0 1 1-1.08-1.04l3.098-3.09H3.75A.75.75 0 0 1 3 10Z" />
-                  </svg>
-                  Geser untuk melihat event lainnya
-                </p>
-              )}
+        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-4 border-b border-slate-100">
+            <div className="min-w-0">
+              <h2 className="text-base md:text-lg font-bold text-slate-900">My Events</h2>
+              <p className="text-xs text-slate-500">
+                Event tempat Anda ditugaskan sebagai juri
+              </p>
             </div>
             <Link
               href="/matches"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sts text-white hover:bg-stsHighlight transition-colors"
+              className="shrink-0 inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-slate-200 text-sm font-semibold text-stsDark hover:bg-sts/5 hover:border-sts/30 transition-colors"
             >
               Browse Events
             </Link>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 md:p-5">
             {loading ? (
-              <div className="py-10">
-                <Spinner loading={loading} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-slate-200 overflow-hidden animate-pulse">
+                    <div className="aspect-[4/3] bg-slate-100" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-4 bg-slate-100 rounded w-3/4" />
+                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : events.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center py-16">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    className="text-gray-400"
-                  >
+              <div className="flex flex-col items-center justify-center text-center py-14">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4 text-slate-400">
+                  <svg width="24" height="24" viewBox="0 0 24 24">
                     <path
                       fill="currentColor"
                       d="M12 3l9 6v12H3V9l9-6m0 2.2L5 10v9h14v-9l-7-4.8Z"
                     />
                   </svg>
                 </div>
-                <h4 className="text-lg font-semibold text-gray-700">
-                  No events pinned
-                </h4>
-                <p className="text-gray-500 mt-1">
-                  Pin your favorite events so they appear here.
+                <h3 className="text-base font-semibold text-slate-800">
+                  Belum ada event
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Event tempat Anda ditugaskan akan tampil di sini.
                 </p>
                 <Link
                   href="/matches"
-                  className="mt-4 px-5 py-2.5 rounded-lg bg-sts text-white hover:bg-stsHighlight transition-colors"
+                  className="mt-5 px-5 py-2.5 rounded-xl bg-sts text-white text-sm font-semibold hover:bg-stsDark transition-colors"
                 >
                   Explore Events
                 </Link>
               </div>
-            ) : events.length <= 3 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {events.map((ev) => (
                   <EventCard key={ev.id} ev={ev} />
                 ))}
               </div>
-            ) : (
-              <div className="relative group/scroll">
-                <div
-                  className={`pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent z-10 transition-opacity ${
-                    canScrollLeft ? "opacity-100" : "opacity-0"
-                  }`}
-                />
-                <div
-                  className={`pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent z-10 transition-opacity ${
-                    canScrollRight ? "opacity-100" : "opacity-0"
-                  }`}
-                />
-
-                {/* Tombol panah navigasi */}
-                <button
-                  type="button"
-                  onClick={() => scrollByCard(-1)}
-                  aria-label="Geser ke kiri"
-                  className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white shadow-md ring-1 ring-gray-200 flex items-center justify-center text-gray-600 hover:bg-sts hover:text-white transition-all ${
-                    canScrollLeft
-                      ? "opacity-100"
-                      : "opacity-0 pointer-events-none"
-                  }`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 0 1 0 1.06L9.06 10l3.73 3.71a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollByCard(1)}
-                  aria-label="Geser ke kanan"
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white shadow-md ring-1 ring-gray-200 flex items-center justify-center text-gray-600 hover:bg-sts hover:text-white transition-all ${
-                    canScrollRight
-                      ? "opacity-100"
-                      : "opacity-0 pointer-events-none"
-                  }`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 0-1.06L10.94 10 7.21 6.29a.75.75 0 1 1 1.06-1.06l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
-                  </svg>
-                </button>
-
-                <div
-                  ref={scrollRef}
-                  onScroll={updateScrollButtons}
-                  className="events-scroll flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-3 pr-2"
-                  aria-label="My events horizontal list"
-                >
-                  {events.map((ev) => (
-                    <div
-                      key={ev.id}
-                      data-event-card
-                      className="snap-start flex-shrink-0 w-[85%] sm:w-[70%] md:w-[32%] lg:w-[32%]"
-                    >
-                      <EventCard ev={ev} />
-                    </div>
-                  ))}
-                </div>
-
-                <style jsx>{`
-                  .events-scroll {
-                    scrollbar-width: thin;
-                    scrollbar-color: #cbd5e1 transparent;
-                  }
-                  .events-scroll::-webkit-scrollbar {
-                    height: 6px;
-                  }
-                  .events-scroll::-webkit-scrollbar-track {
-                    background: transparent;
-                  }
-                  .events-scroll::-webkit-scrollbar-thumb {
-                    background-color: #cbd5e1;
-                    border-radius: 9999px;
-                  }
-                `}</style>
-              </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
 };
 
-// ✨ Card dengan hover glow biru dan shadow halus
 const EventCard = ({ ev }) => (
-  <div className="group rounded-xl overflow-hidden ring-1 ring-gray-200 bg-white shadow-sm hover:shadow-xl hover:ring-sts/50 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 relative">
-    {/* Glow overlay */}
-    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-sts/10 to-blue-200/20 blur-md pointer-events-none"></div>
+  <Link
+    href={`/matches/${ev.id}`}
+    className="group flex flex-col rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-sts/40 hover:shadow-md transition"
+  >
+    <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={ev.posterUrl || DEFAULT_IMG}
+        alt={ev.name}
+        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+        loading="lazy"
+        onError={(e) => {
+          if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) {
+            e.currentTarget.src = DEFAULT_IMG;
+          }
+        }}
+      />
+      {ev.levelName && (
+        <span className="absolute top-3 left-3 text-[11px] font-semibold px-2 py-1 rounded-md bg-white/95 text-slate-800 border border-slate-200">
+          {ev.levelName}
+        </span>
+      )}
+    </div>
 
-    <Link href={`/matches/${ev.id}`}>
-      <div className="relative h-80 w-full bg-gray-100 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={ev.posterUrl || DEFAULT_IMG}
-          alt={ev.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
-        />
-        {ev.levelName && (
-          <span className="absolute top-3 left-3 text-xs font-semibold px-2 py-1 rounded-full bg-white/90 text-gray-800 ring-1 ring-gray-200">
-            {ev.levelName}
-          </span>
-        )}
-      </div>
-    </Link>
-
-    <div className="p-4 relative z-10">
-      <Link href={`/matches/${ev.id}`}>
-        <h4 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-stsHighlight transition-colors">
-          {ev.name}
-        </h4>
-      </Link>
+    <div className="p-4 flex-1 flex flex-col gap-1.5">
+      <h3 className="font-semibold text-slate-900 leading-snug line-clamp-2 group-hover:text-stsDark transition-colors">
+        {ev.name}
+      </h3>
       {(ev.city || ev.province) && (
-        <p className="text-sm text-gray-600 mt-1">
-          {ev.city}
-          {ev.city && ev.province ? ", " : ""}
-          {ev.province}
+        <p className="flex items-center gap-1.5 text-xs text-slate-500">
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-slate-400 shrink-0">
+            <path fillRule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clipRule="evenodd" />
+          </svg>
+          <span className="truncate">
+            {ev.city}
+            {ev.city && ev.province ? ", " : ""}
+            {ev.province}
+          </span>
         </p>
       )}
       {(ev.start || ev.end) && (
-        <p className="text-sm text-gray-600 mt-1">
-          <span className="font-medium">Date:</span> {fmtDate(ev.start)} —{" "}
-          {fmtDate(ev.end)}
+        <p className="flex items-center gap-1.5 text-xs text-slate-500">
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-slate-400 shrink-0">
+            <path fillRule="evenodd" d="M5.75 2a.75.75 0 0 1 .75.75V4h7V2.75a.75.75 0 0 1 1.5 0V4h.25A2.75 2.75 0 0 1 18 6.75v8.5A2.75 2.75 0 0 1 15.25 18H4.75A2.75 2.75 0 0 1 2 15.25v-8.5A2.75 2.75 0 0 1 4.75 4H5V2.75A.75.75 0 0 1 5.75 2Zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75Z" clipRule="evenodd" />
+          </svg>
+          {fmtDate(ev.start)} — {fmtDate(ev.end)}
         </p>
       )}
     </div>
-  </div>
+  </Link>
 );
 
 export default ProfileUser;

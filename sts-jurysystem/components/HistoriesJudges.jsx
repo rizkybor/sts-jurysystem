@@ -14,25 +14,64 @@ function fmtDate(iso) {
   })
 }
 
-// Badge jumlah aktivitas — "Belum Ada" abu-abu kalau juri belum pernah
-// mencatat penalty/fouls apa pun di event ini, biru kalau sudah ada.
-function ActivityPill({ total }) {
-  if (!total) {
-    return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 ring-1 ring-gray-200">
-        Belum Ada Aktivitas
-      </span>
-    )
-  }
+// Blok tanggal ringkas (hari besar + bulan/tahun) utk kolom kiri baris.
+function DateBlock({ iso }) {
+  const d = iso ? new Date(iso) : null
+  const valid = d && !isNaN(d.getTime())
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sts/10 text-stsDark ring-1 ring-sts/20">
-      <svg width="12" height="12" viewBox="0 0 24 24" className="mr-1.5">
-        <path fill="currentColor" d="M12 22a10 10 0 1 1 10-10a10 10 0 0 1-10 10m-.5-16h2v6h-2zm0 8h2v2h-2z" />
-      </svg>
-      {total} Tindakan
-    </span>
+    <div className="w-14 shrink-0 rounded-xl border border-slate-200 bg-slate-50 text-center py-1.5">
+      <div className="text-lg font-bold text-slate-900 leading-tight tabular-nums">
+        {valid ? d.toLocaleDateString('id-ID', { day: '2-digit' }) : '–'}
+      </div>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        {valid ? d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }) : ''}
+      </div>
+    </div>
   )
 }
+
+// Lokasi event — field `location` tidak ada di model Event, yang ada
+// riverName/addressCity (sama pola dgn halaman /judges).
+function eventLocation(ev) {
+  return (
+    [ev?.riverName, ev?.addressCity].filter(Boolean).join(', ') ||
+    ev?.location ||
+    ''
+  )
+}
+
+function Metric({ value, label, tone }) {
+  const tones = {
+    sts: 'text-stsDark',
+    amber: 'text-amber-600',
+    muted: 'text-slate-300',
+  }
+  return (
+    <div className="text-center min-w-[64px]">
+      <div className={`text-lg font-bold tabular-nums leading-tight ${tones[tone] || tones.sts}`}>
+        {value}
+      </div>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </div>
+    </div>
+  )
+}
+
+function StatTile({ value, label }) {
+  return (
+    <div className="rounded-2xl bg-white border border-slate-200 shadow-sm px-4 py-3">
+      <div className="text-2xl font-bold text-slate-900 tabular-nums">{value}</div>
+      <div className="text-xs text-slate-500 font-medium">{label}</div>
+    </div>
+  )
+}
+
+const FILTERS = [
+  { key: 'All', label: 'Semua' },
+  { key: 'hasActivity', label: 'Ada Aktivitas' },
+  { key: 'noActivity', label: 'Belum Ada' },
+]
 
 export default function HistoriesJudges() {
   const [user, setUser] = useState(null)
@@ -121,137 +160,174 @@ export default function HistoriesJudges() {
     return list.filter(
       (r) =>
         (r.event?.eventName || '').toLowerCase().includes(k) ||
-        (r.event?.location || '').toLowerCase().includes(k)
+        eventLocation(r.event).toLowerCase().includes(k)
     )
   }, [q, activityFilter, sorted])
 
+  const totals = useMemo(
+    () =>
+      rows.reduce(
+        (acc, r) => {
+          acc.penalty += r.totalPenalty
+          acc.fouls += r.totalFouls
+          if (r.totalPenalty + r.totalFouls > 0) acc.active += 1
+          return acc
+        },
+        { penalty: 0, fouls: 0, active: 0 }
+      ),
+    [rows]
+  )
+
   return (
-    <section className="px-6 py-10">
-      <div className="container m-auto max-w-6xl">
-        <div className="mb-6 flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Judges Activities History</h2>
-            <p className="text-sm text-gray-500">
-              Ringkasan penalty &amp; Fouls Report yang sudah Anda catat, per event
-            </p>
+    <section className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/profile"
+              aria-label="Kembali ke Profile"
+              title="Kembali ke Profile"
+              className="shrink-0 inline-flex items-center justify-center h-10 w-10 md:h-11 md:w-11 rounded-xl border border-slate-200 text-stsDark hover:bg-sts/10 hover:border-sts/30 transition"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
+              </svg>
+            </Link>
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 truncate">
+                Judges Activities History
+              </h1>
+              <p className="text-sm text-slate-500">
+                Ringkasan penalty &amp; Fouls Report yang sudah Anda catat, per event
+              </p>
+            </div>
           </div>
 
-          {/* Toolbar */}
-          <div className="flex w-full md:w-auto items-center gap-2">
-            <div className="relative flex-1 md:flex-none">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Cari nama event atau lokasi..."
-                className="w-full md:w-72 pl-9 pr-3 py-2 rounded-lg ring-1 ring-gray-300 focus:ring-2 focus:ring-stsHighlight outline-none bg-white"
-              />
-              <svg width="18" height="18" viewBox="0 0 24 24" className="absolute left-3 top-2.5 text-gray-400">
-                <path fill="currentColor" d="m21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16a8 8 0 0 1 0 16m0-2a6 6 0 1 0 0-12a6 6 0 0 0 0 12" />
-              </svg>
-            </div>
+          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatTile value={loading ? '–' : rows.length} label="Event Ditugaskan" />
+            <StatTile value={loading ? '–' : totals.active} label="Event dgn Aktivitas" />
+            <StatTile value={loading ? '–' : totals.penalty} label="Total Penalty" />
+            <StatTile value={loading ? '–' : totals.fouls} label="Total Fouls" />
+          </div>
+        </div>
+      </div>
 
-            <select
-              value={activityFilter}
-              onChange={(e) => setActivityFilter(e.target.value)}
-              className="px-3 py-2 rounded-lg ring-1 ring-gray-300 bg-white text-gray-700 focus:ring-2 focus:ring-stsHighlight outline-none cursor-pointer"
-            >
-              <option value="All">Semua</option>
-              <option value="hasActivity">Sudah Ada Aktivitas</option>
-              <option value="noActivity">Belum Ada Aktivitas</option>
-            </select>
+      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-5 md:py-6 space-y-4">
+        {/* Toolbar */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <div className="relative flex-1">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Cari nama event atau lokasi..."
+              className="w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sts/30 focus:border-sts transition"
+            />
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+            </svg>
+          </div>
+
+          <div role="tablist" className="inline-flex p-1 rounded-xl bg-slate-200/60 self-start md:self-auto">
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                role="tab"
+                aria-selected={activityFilter === f.key}
+                onClick={() => setActivityFilter(f.key)}
+                className={`px-3.5 h-9 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                  activityFilter === f.key
+                    ? 'bg-white text-stsDark shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
         </div>
 
+        {/* List */}
         {loading ? (
-          <div className="rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm px-6 py-12 text-center text-gray-500">
-            Memuat riwayat…
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-[76px] rounded-2xl bg-white border border-slate-200 animate-pulse" />
+            ))}
           </div>
         ) : error ? (
-          <div className="rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm px-6 py-12 text-center text-red-600">
+          <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-10 text-center text-red-700">
             {error}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm px-6 py-12 text-center">
-            <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 24 24" className="text-gray-400">
+          <div className="rounded-2xl bg-white border border-dashed border-slate-300 px-6 py-12 text-center">
+            <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+              <svg width="22" height="22" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M21 21H3V3h9v2H5v14h14v-7h2zM14 3h7v7h-7z" />
               </svg>
             </div>
-            <p className="text-gray-700 font-semibold">Tidak ada data yang cocok</p>
-            <p className="text-gray-500 text-sm">Coba ganti kata kunci atau filter.</p>
+            <p className="text-slate-800 font-semibold">Tidak ada data yang cocok</p>
+            <p className="text-slate-500 text-sm">Coba ganti kata kunci atau filter.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl ring-1 ring-gray-200 shadow-sm bg-white">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm text-gray-800">
-                <thead className="bg-gray-50 text-gray-600 uppercase text-xs font-semibold sticky top-0 z-10">
-                  <tr className="border-b border-gray-200">
-                    <th className="px-6 py-3 text-left">Tanggal</th>
-                    <th className="px-6 py-3 text-left">Event</th>
-                    <th className="px-6 py-3 text-left hidden md:table-cell">Lokasi</th>
-                    <th className="px-6 py-3 text-left">Aktivitas Saya</th>
-                    <th className="px-6 py-3 text-left">&nbsp;</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filtered.map(({ event, totalPenalty, totalFouls }, idx) => (
-                    <tr
-                      key={event._id}
-                      className={`
-                        group transition-colors
-                        ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}
-                        hover:bg-sts/5
-                      `}
-                    >
-                      <td className="px-6 py-3 font-medium text-gray-900 whitespace-nowrap">
-                        {fmtDate(event.startDateEvent)}
-                      </td>
-                      <td className="px-6 py-3">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 h-2 w-2 rounded-full bg-sts/70 group-hover:scale-110 transition-transform" />
-                          <div>
-                            <div className="font-semibold text-gray-900 leading-tight">
-                              {event.eventName}
-                            </div>
-                            <div className="text-xs text-gray-500 md:hidden">
-                              {event.location}
-                            </div>
-                          </div>
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="hidden md:grid grid-cols-[minmax(0,1fr)_auto_140px] gap-4 px-5 py-2.5 border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <span>Event</span>
+              <span className="w-[144px] text-center">Aktivitas Saya</span>
+              <span />
+            </div>
+            <ul className="divide-y divide-slate-100">
+              {filtered.map(({ event, totalPenalty, totalFouls }) => {
+                const total = totalPenalty + totalFouls
+                const location = eventLocation(event)
+                return (
+                  <li
+                    key={event._id}
+                    className="px-4 md:px-5 py-4 flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_140px] md:items-center gap-3 md:gap-4 hover:bg-slate-50/70 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <DateBlock iso={event.startDateEvent} />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-900 leading-snug line-clamp-2">
+                          {event.eventName}
                         </div>
-                      </td>
-                      <td className="px-6 py-3 hidden md:table-cell">{event.location || '-'}</td>
-                      <td className="px-6 py-3">
-                        <ActivityPill total={totalPenalty + totalFouls} />
-                      </td>
-                      <td className="px-6 py-3 text-right">
-                        <Link
-                          href={`/judges/history?eventId=${event._id}${
-                            user?._id ? `&userId=${user._id}` : ''
-                          }`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-stsDark bg-sts/10 hover:bg-sts/20 transition"
-                        >
-                          Lihat Detail
-                          <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 0-1.06L11.94 8l-4.73-4.71a.75.75 0 1 1 1.06-1.06l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
-                          </svg>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-white">
-                  <tr>
-                    <td colSpan={5} className="px-6 py-4">
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Total: {filtered.length} event</span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="h-2 w-2 rounded-full bg-sts/70" /> terbaru dulu
-                        </span>
+                        <div className="mt-0.5 text-xs text-slate-500 truncate">
+                          {fmtDate(event.startDateEvent)}
+                          {location ? ` · ${location}` : ''}
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                    </div>
+
+                    <div className="flex items-center justify-between md:justify-center gap-3">
+                      {total ? (
+                        <div className="flex items-center divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white py-1.5">
+                          <Metric value={totalPenalty} label="Penalty" tone="sts" />
+                          <Metric value={totalFouls} label="Fouls" tone={totalFouls ? 'amber' : 'muted'} />
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
+                          Belum Ada Aktivitas
+                        </span>
+                      )}
+                    </div>
+
+                    <Link
+                      href={`/judges/history?eventId=${event._id}${
+                        user?._id ? `&userId=${user._id}` : ''
+                      }`}
+                      className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-xl border border-slate-200 text-sm font-semibold text-stsDark hover:bg-sts/5 hover:border-sts/30 transition"
+                    >
+                      Lihat Detail
+                      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 0 1 0-1.06L11.94 8l-4.73-4.71a.75.75 0 1 1 1.06-1.06l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
+                      </svg>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50 text-xs text-slate-500">
+              <span>Total: {filtered.length} event</span>
+              <span>Terbaru lebih dulu</span>
             </div>
           </div>
         )}
