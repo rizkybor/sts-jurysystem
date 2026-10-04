@@ -14,12 +14,12 @@ const ACTIVE_COLOR_CLASSES = {
   orange: "bg-orange-500 text-white border-orange-500 shadow-sm",
 };
 const optionButtonClass = (selected, disabled, activeColor = "sts") =>
-  `min-h-[48px] px-3 rounded-xl border text-sm font-semibold transition text-left ${
+  `min-h-[48px] px-3 py-2 rounded-xl border text-sm font-semibold transition text-left ${
     disabled
       ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
       : selected
       ? ACTIVE_COLOR_CLASSES[activeColor] || ACTIVE_COLOR_CLASSES.sts
-      : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+      : "bg-white border-gray-300 text-gray-700 hover:border-sts/50 hover:bg-sts/5"
   }`;
 
 function WarningIcon({ className = "w-4 h-4" }) {
@@ -107,7 +107,7 @@ export default function JudgeCategoryTeamFields({
           Kategori
         </label>
         {categoryAsButtons ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 gap-2">
             {combinedCategories.map((opt) => (
               <button
                 key={opt.value}
@@ -155,7 +155,7 @@ export default function JudgeCategoryTeamFields({
         <div>
           <label className="block text-gray-700 mb-2 font-medium">Team</label>
           {teamAsButtons ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 gap-2">
               {teams.map((t) => {
                 const disabled = !t.hasValidTeamId || isTeamInactive(t);
                 return (
@@ -167,12 +167,19 @@ export default function JudgeCategoryTeamFields({
                     aria-pressed={selectedTeam === t._id}
                     className={optionButtonClass(selectedTeam === t._id, disabled, activeColor)}
                   >
-                    {t.nameTeam} {t.bibTeam ? `(BIB ${t.bibTeam})` : ""}
-                    {!t.hasValidTeamId
-                      ? " — Tidak bisa submit"
-                      : isTeamInactive(t)
-                      ? " — Belum di babak aktif"
-                      : ""}
+                    <span className="block leading-snug">{t.nameTeam}</span>
+                    {(t.bibTeam ||
+                      !t.hasValidTeamId ||
+                      isTeamInactive(t)) && (
+                      <span className="block text-xs font-medium opacity-75 mt-0.5">
+                        {t.bibTeam ? `BIB ${t.bibTeam}` : ""}
+                        {!t.hasValidTeamId
+                          ? `${t.bibTeam ? " — " : ""}Tidak bisa submit`
+                          : isTeamInactive(t)
+                          ? `${t.bibTeam ? " — " : ""}Belum di babak aktif`
+                          : ""}
+                      </span>
+                    )}
                   </button>
                 );
               })}

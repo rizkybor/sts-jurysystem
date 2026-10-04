@@ -13,6 +13,12 @@ import useRaceSettings from "@/hooks/judges/useRaceSettings";
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
+import {
+  JudgePageContainer,
+  JudgeForm,
+  JudgeFormAside,
+  JudgeSideAction,
+} from "@/components/judges/JudgeFormLayout";
 import JudgeRoleBadges from "@/components/judges/JudgeRoleBadges";
 import JudgeCategoryTeamFields, {
   getSelectedTeamData,
@@ -851,7 +857,7 @@ const JudgesHeadToHeadPage = () => {
     <>
       <JudgeToastStack toasts={toasts} onDismiss={removeToast} />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <JudgeTopBar
           backHref={backHref}
           raceLabel="Head to Head"
@@ -859,291 +865,289 @@ const JudgesHeadToHeadPage = () => {
           loadingEvent={loadingEvent}
         />
 
-        <JudgeRoleBadges
-          items={assignedTypes}
-          emptyHint="Posisi belum ter-assign untuk event ini. Hubungi admin assignment."
-        />
+        <JudgePageContainer>
+          <JudgeRoleBadges
+            items={assignedTypes}
+            emptyHint="Posisi belum ter-assign untuk event ini. Hubungi admin assignment."
+          />
 
-        <form
-          onSubmit={handleSubmit}
-          className="max-w-2xl mx-auto px-4 pb-6 pt-4 space-y-5"
-        >
-          <fieldset disabled={submitting} className="space-y-4">
-            <JudgeSectionCard step={1} title="Pilih Heat & Team">
-              {selectedHeatItem && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-sts/10 text-sts">
-                  <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
-                  {`Heat ${selectedHeatItem.heat} — ${selectedHeatItem.categoryLabel} · ${selectedHeatItem.roundName}`}
-                </div>
-              )}
-
-              <JudgeCategoryTeamFields
-                loadingEvent={loadingEvent}
-                combinedCategories={combinedCategories}
-                selectedCategory={selectedCategory}
-                onCategoryChange={handleCategoryChange}
-                loadingTeams={loadingTeams}
-                teams={teams}
-                selectedTeam={selectedTeam}
-                onTeamChange={setSelectedTeam}
-                hideCategoryField
-                categoryRequiredMessage="Pilih salah satu Heat di atas terlebih dahulu."
-                betweenCategoryAndTeam={
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-gray-700 font-medium">
-                        Heat
-                      </label>
-                      {!loadingAllHeats && allHeats.length > 0 && (
-                        <span className="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
-                          {allHeats.length} Heat
-                        </span>
-                      )}
-                    </div>
-                    {loadingAllHeats ? (
-                      <p className="text-xs text-gray-500">Loading heat...</p>
-                    ) : allHeats.length === 0 ? (
-                      <p className="text-xs text-gray-500">
-                        Belum ada Heat yang di-assign operator timing system.
-                      </p>
-                    ) : (
-                      <div
-                        className={`grid grid-cols-2 gap-2 ${
-                          allHeats.length > 8
-                            ? "max-h-72 overflow-y-auto pr-1 -mr-1"
-                            : ""
-                        }`}
-                      >
-                        {allHeats.map((item) => {
-                          const key = `${item.initialId}|${item.divisionId}|${item.raceId}|${item.roundId}|${item.heat}`;
-                          const selected =
-                            selectedHeatItem &&
-                            String(selectedHeatItem.heat) === String(item.heat) &&
-                            selectedHeatItem.roundId === item.roundId;
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              disabled={item.completed}
-                              onClick={() => handleHeatButtonClick(item)}
-                              className={`px-3 py-2.5 rounded-xl border text-left transition ${
-                                item.completed
-                                  ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
-                                  : selected
-                                  ? "bg-sts text-white border-sts shadow-md"
-                                  : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
-                              }`}
-                            >
-                              <span className="block text-[11px] opacity-80 truncate">
-                                {item.categoryLabel} · {item.roundName}
-                              </span>
-                              <span className="block text-sm font-bold">
-                                Heat {item.heat}
-                                {item.completed ? " (Selesai)" : ""}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <p className="mt-1.5 text-xs text-gray-500">
-                      Heat yang sudah selesai dipertandingkan (sudah py
-                      pemenang) otomatis dinonaktifkan.
-                    </p>
+          <JudgeForm onSubmit={handleSubmit}>
+            <fieldset disabled={submitting} className="min-w-0 space-y-4">
+              <JudgeSectionCard step={1} title="Pilih Heat & Team">
+                {selectedHeatItem && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-sts/10 text-sts">
+                    <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                    {`Heat ${selectedHeatItem.heat} — ${selectedHeatItem.categoryLabel} · ${selectedHeatItem.roundName}`}
                   </div>
-                }
-                teamFieldOverride={
-                  heatTeamButtons ? (
+                )}
+
+                <JudgeCategoryTeamFields
+                  loadingEvent={loadingEvent}
+                  combinedCategories={combinedCategories}
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={handleCategoryChange}
+                  loadingTeams={loadingTeams}
+                  teams={teams}
+                  selectedTeam={selectedTeam}
+                  onTeamChange={setSelectedTeam}
+                  hideCategoryField
+                  categoryRequiredMessage="Pilih salah satu Heat di atas terlebih dahulu."
+                  betweenCategoryAndTeam={
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-gray-700 font-medium">
+                          Heat
+                        </label>
+                        {!loadingAllHeats && allHeats.length > 0 && (
+                          <span className="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+                            {allHeats.length} Heat
+                          </span>
+                        )}
+                      </div>
+                      {loadingAllHeats ? (
+                        <p className="text-xs text-gray-500">Loading heat...</p>
+                      ) : allHeats.length === 0 ? (
+                        <p className="text-xs text-gray-500">
+                          Belum ada Heat yang di-assign operator timing system.
+                        </p>
+                      ) : (
+                        <div
+                          className={`grid grid-cols-2 lg:grid-cols-3 gap-2 ${
+                            allHeats.length > 8
+                              ? "max-h-72 md:max-h-[28rem] overflow-y-auto pr-1 -mr-1"
+                              : ""
+                          }`}
+                        >
+                          {allHeats.map((item) => {
+                            const key = `${item.initialId}|${item.divisionId}|${item.raceId}|${item.roundId}|${item.heat}`;
+                            const selected =
+                              selectedHeatItem &&
+                              String(selectedHeatItem.heat) === String(item.heat) &&
+                              selectedHeatItem.roundId === item.roundId;
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                disabled={item.completed}
+                                onClick={() => handleHeatButtonClick(item)}
+                                className={`px-3 py-2.5 rounded-xl border text-left transition ${
+                                  item.completed
+                                    ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
+                                    : selected
+                                    ? "bg-sts text-white border-sts shadow-md"
+                                    : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+                                }`}
+                              >
+                                <span className="block text-[11px] opacity-80 truncate">
+                                  {item.categoryLabel} · {item.roundName}
+                                </span>
+                                <span className="block text-sm font-bold">
+                                  Heat {item.heat}
+                                  {item.completed ? " (Selesai)" : ""}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        Heat yang sudah selesai dipertandingkan (sudah py
+                        pemenang) otomatis dinonaktifkan.
+                      </p>
+                    </div>
+                  }
+                  teamFieldOverride={
+                    heatTeamButtons ? (
+                      <div>
+                        <label className="block text-gray-700 mb-2 font-medium">
+                          Team
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {heatTeamButtons.map((t, idx) => {
+                            const selected =
+                              !!t._id && selectedTeam === t._id;
+                            const disabled = !t._id || !t.hasValidTeamId;
+                            return (
+                              <button
+                                key={t._id || idx}
+                                type="button"
+                                disabled={disabled}
+                                onClick={() => setSelectedTeam(t._id)}
+                                className={`px-3 py-3 rounded-xl text-sm font-semibold border transition text-center ${
+                                  selected
+                                    ? "bg-sts text-white border-sts shadow-md"
+                                    : disabled
+                                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                    : "bg-white text-gray-800 border-gray-300 hover:border-sts hover:text-sts"
+                                }`}
+                              >
+                                {t.nameTeam}
+                                {t.bibTeam ? ` - ${t.bibTeam}` : ""}
+                                {disabled && !t._id
+                                  ? " (tidak ditemukan)"
+                                  : disabled
+                                  ? " (ID tidak valid)"
+                                  : ""}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null
+                  }
+                />
+              </JudgeSectionCard>
+            </fieldset>
+
+            <JudgeFormAside>
+              <fieldset disabled={submitting} className="min-w-0 space-y-4">
+                <JudgeSectionCard step={2} title="Tipe & Nilai Penalty">
+                  <div>
+                    <label className="block text-gray-700 mb-2 font-medium">
+                      Tipe Penalty
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {assignedTypes.map((t) => (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => handleTypeChange(t.key)}
+                          aria-pressed={selectedType === t.key}
+                          className={`min-h-[48px] py-2 px-3 rounded-xl border text-sm font-semibold transition ${
+                            selectedType === t.key
+                              ? "bg-sts text-white border-sts shadow-sm"
+                              : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    {!assignedTypes.length && (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        Tidak ada tipe penalty ter-assign.
+                      </p>
+                    )}
+                  </div>
+
+                  {isCornerType && (
                     <div>
                       <label className="block text-gray-700 mb-2 font-medium">
-                        Team
+                        {selectedType.toUpperCase()}
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {heatTeamButtons.map((t, idx) => {
-                          const selected =
-                            !!t._id && selectedTeam === t._id;
-                          const disabled = !t._id || !t.hasValidTeamId;
-                          return (
-                            <button
-                              key={t._id || idx}
-                              type="button"
-                              disabled={disabled}
-                              onClick={() => setSelectedTeam(t._id)}
-                              className={`px-3 py-3 rounded-xl text-sm font-semibold border transition text-center ${
-                                selected
-                                  ? "bg-sts text-white border-sts shadow-md"
-                                  : disabled
-                                  ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                  : "bg-white text-gray-800 border-gray-300 hover:border-sts hover:text-sts"
-                              }`}
-                            >
-                              {t.nameTeam}
-                              {t.bibTeam ? ` - ${t.bibTeam}` : ""}
-                              {disabled && !t._id
-                                ? " (tidak ditemukan)"
-                                : disabled
-                                ? " (ID tidak valid)"
-                                : ""}
-                            </button>
-                          );
-                        })}
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setCornerTouched(true)}
+                          aria-pressed={cornerTouched === true}
+                          className={`min-h-[52px] px-2 text-sm sm:text-base rounded-xl font-semibold border transition ${
+                            cornerTouched === true
+                              ? "bg-emerald-500 text-white border-emerald-600 "
+                              : "bg-white border-gray-300 text-gray-700"
+                          }`}
+                        >
+                          Passed Booyan (Y)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCornerTouched(false)}
+                          aria-pressed={cornerTouched === false}
+                          className={`min-h-[52px] px-2 text-sm sm:text-base rounded-xl font-semibold border transition ${
+                            cornerTouched === false
+                              ? "bg-red-500 text-white border-red-600"
+                              : "bg-white border-gray-300 text-gray-700"
+                          }`}
+                        >
+                          Not Passed Booyan (N)
+                        </button>
                       </div>
                     </div>
-                  ) : null
+                  )}
+
+                  {selectedType === "other" && (
+                    <div>
+                      <label className="block text-gray-700 mb-2 font-medium">
+                        Nilai Penalty Others (detik)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={otherValue}
+                        onChange={(e) => setOtherValue(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
+                        placeholder="0"
+                      />
+                    </div>
+                  )}
+
+                  {selectedType && !isCornerType && selectedType !== "other" && (
+                    <JudgePenaltyGrid
+                      values={activePenaltyChoices}
+                      selected={selectedPenalty}
+                      onChange={setSelectedPenalty}
+                    />
+                  )}
+                </JudgeSectionCard>
+              </fieldset>
+
+              {/* Fouls Report — fitur terpisah dari alur penalty resmi, murni
+                  informasi ke operator (lihat MEMORY-H2H.md). Sengaja di luar
+                  fieldset[disabled] supaya tidak ikut ter-disable saat submit
+                  penalty biasa berjalan. type="button" → tidak men-submit form. */}
+              <JudgeSideAction
+                tone="amber"
+                disabled={!selectedCategory || !selectedTeam}
+                onClick={() => setFoulsModalOpen(true)}
+                hint="Pilih kategori & team terlebih dahulu utk melaporkan fouls."
+                icon={
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path
+                      fillRule="evenodd"
+                      d="M8.485 2.495c.673-1.165 2.357-1.165 3.03 0l6.28 10.875c.673 1.167-.17 2.63-1.516 2.63H3.72c-1.346 0-2.189-1.463-1.515-2.63L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
                 }
+              >
+                Laporkan Fouls (Pelanggaran)
+              </JudgeSideAction>
+
+              <JudgeSummaryBar
+                parts={[
+                  { label: "team", value: selectedTeamData?.nameTeam },
+                  {
+                    label: "type",
+                    value: assignedTypes.find((t) => t.key === selectedType)
+                      ?.label,
+                  },
+                  {
+                    label: "value",
+                    value: isCornerType
+                      ? cornerTouched === null
+                        ? ""
+                        : cornerTouched
+                        ? "Passed Booyan (Y)"
+                        : "Not Passed Booyan (N)"
+                      : selectedType === "other"
+                      ? otherValue !== ""
+                        ? `Penalty ${otherValue}`
+                        : ""
+                      : selectedPenalty !== null
+                      ? `Penalty ${selectedPenalty}`
+                      : "",
+                  },
+                ]}
               />
-            </JudgeSectionCard>
 
-            <JudgeSectionCard step={2} title="Tipe & Nilai Penalty">
-              <div>
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Tipe Penalty
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {assignedTypes.map((t) => (
-                    <button
-                      key={t.key}
-                      type="button"
-                      onClick={() => handleTypeChange(t.key)}
-                      aria-pressed={selectedType === t.key}
-                      className={`min-h-[48px] py-2 px-3 rounded-xl border text-sm font-semibold transition ${
-                        selectedType === t.key
-                          ? "bg-sts text-white border-sts shadow-sm"
-                          : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                {!assignedTypes.length && (
-                  <p className="mt-1.5 text-xs text-gray-500">
-                    Tidak ada tipe penalty ter-assign.
-                  </p>
-                )}
-              </div>
-
-              {isCornerType && (
-                <div>
-                  <label className="block text-gray-700 mb-2 font-medium">
-                    {selectedType.toUpperCase()}
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setCornerTouched(true)}
-                      aria-pressed={cornerTouched === true}
-                      className={`min-h-[52px] px-2 text-sm sm:text-base rounded-xl font-semibold border transition ${
-                        cornerTouched === true
-                          ? "bg-emerald-500 text-white border-emerald-600 "
-                          : "bg-white border-gray-300 text-gray-700"
-                      }`}
-                    >
-                      Passed Booyan (Y)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCornerTouched(false)}
-                      aria-pressed={cornerTouched === false}
-                      className={`min-h-[52px] px-2 text-sm sm:text-base rounded-xl font-semibold border transition ${
-                        cornerTouched === false
-                          ? "bg-red-500 text-white border-red-600"
-                          : "bg-white border-gray-300 text-gray-700"
-                      }`}
-                    >
-                      Not Passed Booyan (N)
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {selectedType === "other" && (
-                <div>
-                  <label className="block text-gray-700 mb-2 font-medium">
-                    Nilai Penalty Others (detik)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={otherValue}
-                    onChange={(e) => setOtherValue(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-sts/40 focus:border-sts transition"
-                    placeholder="0"
-                  />
-                </div>
-              )}
-
-              {selectedType && !isCornerType && selectedType !== "other" && (
-                <JudgePenaltyGrid
-                  values={activePenaltyChoices}
-                  selected={selectedPenalty}
-                  onChange={setSelectedPenalty}
-                />
-              )}
-            </JudgeSectionCard>
-          </fieldset>
-
-          <JudgeSummaryBar
-            parts={[
-              { label: "team", value: selectedTeamData?.nameTeam },
-              {
-                label: "type",
-                value: assignedTypes.find((t) => t.key === selectedType)
-                  ?.label,
-              },
-              {
-                label: "value",
-                value: isCornerType
-                  ? cornerTouched === null
-                    ? ""
-                    : cornerTouched
-                    ? "Passed Booyan (Y)"
-                    : "Not Passed Booyan (N)"
-                  : selectedType === "other"
-                  ? otherValue !== ""
-                    ? `Penalty ${otherValue}`
-                    : ""
-                  : selectedPenalty !== null
-                  ? `Penalty ${selectedPenalty}`
-                  : "",
-              },
-            ]}
-          />
-
-          <JudgeStickyActions
-            onHistory={history.open}
-            historyDisabled={submitting}
-            submitting={submitting}
-            submitDisabled={isSubmitDisabled}
-          />
-        </form>
-
-        {/* Fouls Report — fitur terpisah dari alur penalty resmi di atas,
-            murni informasi ke operator (lihat MEMORY-H2H.md). Sengaja
-            di luar <form> supaya tidak ikut ter-disable oleh
-            fieldset[disabled] saat submit penalty biasa berjalan. */}
-        <div className="max-w-2xl mx-auto px-4 pb-6">
-          <button
-            type="button"
-            disabled={!selectedCategory || !selectedTeam}
-            onClick={() => setFoulsModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 text-amber-700 font-semibold text-sm hover:bg-amber-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path
-                fillRule="evenodd"
-                d="M8.485 2.495c.673-1.165 2.357-1.165 3.03 0l6.28 10.875c.673 1.167-.17 2.63-1.516 2.63H3.72c-1.346 0-2.189-1.463-1.515-2.63L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z"
-                clipRule="evenodd"
+              <JudgeStickyActions
+                onHistory={history.open}
+                historyDisabled={submitting}
+                submitting={submitting}
+                submitDisabled={isSubmitDisabled}
               />
-            </svg>
-            Laporkan Fouls (Pelanggaran)
-          </button>
-          {(!selectedCategory || !selectedTeam) && (
-            <p className="mt-1.5 text-xs text-gray-500 text-center">
-              Pilih kategori & team terlebih dahulu utk melaporkan fouls.
-            </p>
-          )}
-        </div>
+            </JudgeFormAside>
+          </JudgeForm>
+        </JudgePageContainer>
 
         <FoulsReportModal
           open={foulsModalOpen}

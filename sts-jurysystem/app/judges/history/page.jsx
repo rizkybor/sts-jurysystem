@@ -141,8 +141,15 @@ const JudgeActivityHistoryPage = () => {
     return Object.keys(CATEGORY_LABEL).filter((k) => set.has(k));
   }, [items]);
 
+  const filterButtonClass = (active) =>
+    `px-3.5 py-2 rounded-xl text-sm font-semibold transition md:w-full md:text-left ${
+      active
+        ? "bg-sts text-white shadow-sm"
+        : "bg-white border border-gray-200 text-gray-600 hover:border-sts/40 hover:text-stsDark"
+    }`;
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-10">
+    <div className="min-h-screen bg-slate-50 pb-10">
       <JudgeTopBar
         backHref={backHref}
         raceLabel="Riwayat Aktivitas Saya"
@@ -150,165 +157,191 @@ const JudgeActivityHistoryPage = () => {
         loadingEvent={loadingEvent}
       />
 
-      <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
-        {/* Ringkasan */}
-        {meta && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
-              <div className="text-2xl font-extrabold text-gray-900">
-                {meta.totalPenalty}
+      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pt-4 md:pt-6 md:grid md:grid-cols-[260px_minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)] md:gap-6 md:items-start space-y-4 md:space-y-0">
+        {/* Sidebar: ringkasan + filter (sticky di tablet/desktop) */}
+        <aside className="space-y-4 md:sticky md:top-[84px]">
+          {meta && (
+            <div className="grid grid-cols-2 md:grid-cols-1 gap-3">
+              <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+                <div className="hidden sm:grid place-items-center h-11 w-11 rounded-xl bg-sts/10 text-sts shrink-0">
+                  <ActivityIcon isFouls={false} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-2xl font-extrabold text-gray-900 tabular-nums">
+                    {meta.totalPenalty}
+                  </div>
+                  <div className="text-xs text-gray-500">Penalty Diberikan</div>
+                </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">Penalty Diberikan</div>
-            </div>
-            <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
-              <div className="text-2xl font-extrabold text-gray-900">
-                {meta.totalFouls}
+              <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+                <div className="hidden sm:grid place-items-center h-11 w-11 rounded-xl bg-amber-50 text-amber-600 shrink-0">
+                  <ActivityIcon isFouls />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-2xl font-extrabold text-gray-900 tabular-nums">
+                    {meta.totalFouls}
+                  </div>
+                  <div className="text-xs text-gray-500">Fouls Dilaporkan</div>
+                </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">Fouls Dilaporkan</div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Filter kategori */}
-        {availableCategories.length > 1 && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setCategoryFilter("ALL")}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                categoryFilter === "ALL"
-                  ? "bg-sts text-white"
-                  : "bg-white border border-gray-200 text-gray-600"
-              }`}
-            >
-              Semua
-            </button>
-            {availableCategories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategoryFilter(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                  categoryFilter === cat
-                    ? "bg-sts text-white"
-                    : "bg-white border border-gray-200 text-gray-600"
-                }`}
-              >
-                {CATEGORY_LABEL[cat] || cat}
-              </button>
-            ))}
-          </div>
-        )}
+          {/* Filter kategori */}
+          {availableCategories.length > 1 && (
+            <div className="md:bg-white md:rounded-2xl md:border md:border-gray-200 md:shadow-sm md:p-3">
+              <p className="hidden md:block text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">
+                Kategori
+              </p>
+              <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 md:mx-0 md:px-0 md:pb-0 md:flex-col md:overflow-visible">
+                <button
+                  onClick={() => setCategoryFilter("ALL")}
+                  className={`shrink-0 ${filterButtonClass(categoryFilter === "ALL")}`}
+                >
+                  Semua
+                </button>
+                {availableCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`shrink-0 ${filterButtonClass(categoryFilter === cat)}`}
+                  >
+                    {CATEGORY_LABEL[cat] || cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
 
-        {/* Daftar aktivitas */}
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
-          {loading ? (
-            <p className="text-center text-gray-500 py-10">Memuat riwayat…</p>
-          ) : error ? (
-            <p className="text-center text-red-600 py-10">{error}</p>
-          ) : !filteredItems.length ? (
-            <p className="text-center text-gray-500 py-10">
-              Belum ada aktivitas (penalty/fouls) yang Anda catat di event ini.
-            </p>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {filteredItems.map((item) => {
-                const isFouls = item.activityType === "fouls";
-                const penaltyVal = isFouls
-                  ? item.penaltySecondsLabel
-                  : item.penalty;
-                const isDQ =
-                  typeof penaltyVal === "string" &&
-                  penaltyVal.toUpperCase() === "DQ";
-                return (
-                  <li key={item._id} className="flex items-start gap-3 p-4">
-                    <div
-                      className={`grid place-items-center h-11 w-11 rounded-xl ring shrink-0 ${
-                        isFouls
-                          ? "bg-amber-50 text-amber-600 ring-amber-200"
-                          : penaltyBadgeColor(isDQ ? 999 : penaltyVal)
-                      }`}
+        <section className="space-y-4">
+          {/* Daftar aktivitas */}
+          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-4 md:px-5 py-3 border-b border-gray-100 bg-gray-50/70 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
+                Aktivitas
+              </h2>
+              {!loading && !error && (
+                <span className="text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+                  {filteredItems.length}
+                </span>
+              )}
+            </div>
+            {loading ? (
+              <p className="text-center text-gray-500 py-12">Memuat riwayat…</p>
+            ) : error ? (
+              <p className="text-center text-red-600 py-12">{error}</p>
+            ) : !filteredItems.length ? (
+              <p className="text-center text-gray-500 py-12 px-6">
+                Belum ada aktivitas (penalty/fouls) yang Anda catat di event ini.
+              </p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {filteredItems.map((item) => {
+                  const isFouls = item.activityType === "fouls";
+                  const penaltyVal = isFouls
+                    ? item.penaltySecondsLabel
+                    : item.penalty;
+                  const isDQ =
+                    typeof penaltyVal === "string" &&
+                    penaltyVal.toUpperCase() === "DQ";
+                  return (
+                    <li
+                      key={item._id}
+                      className="flex items-start gap-3 md:gap-4 p-4 md:px-5 hover:bg-gray-50/60 transition"
                     >
-                      <ActivityIcon isFouls={isFouls} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ring-1 ${
-                            CATEGORY_BADGE_COLOR[item.eventType] ||
-                            "bg-gray-100 text-gray-600 ring-gray-200"
-                          }`}
-                        >
-                          {CATEGORY_LABEL[item.eventType] || item.eventType}
-                        </span>
-                        <span className="font-semibold text-gray-900">
-                          {actionLabel(item)}
-                        </span>
+                      <div
+                        className={`grid place-items-center h-11 w-11 rounded-xl ring shrink-0 ${
+                          isFouls
+                            ? "bg-amber-50 text-amber-600 ring-amber-200"
+                            : penaltyBadgeColor(isDQ ? 999 : penaltyVal)
+                        }`}
+                      >
+                        <ActivityIcon isFouls={isFouls} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ring-1 ${
+                              CATEGORY_BADGE_COLOR[item.eventType] ||
+                              "bg-gray-100 text-gray-600 ring-gray-200"
+                            }`}
+                          >
+                            {CATEGORY_LABEL[item.eventType] || item.eventType}
+                          </span>
+                          <span className="font-semibold text-gray-900">
+                            {actionLabel(item)}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600 mt-0.5">
+                          {item.teamInfo?.nameTeam || "Team"}
+                          {item.teamInfo?.bibTeam
+                            ? ` (BIB ${item.teamInfo.bibTeam})`
+                            : ""}
+                          {isFouls && item.unfoulTeamInfo?.nameTeam
+                            ? ` vs ${item.unfoulTeamInfo.nameTeam}`
+                            : ""}
+                        </div>
+                        {(item.roundName || item.runNumber) && (
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {item.roundName
+                              ? `Babak: ${item.roundName}`
+                              : item.runNumber
+                              ? `Run ${item.runNumber}`
+                              : ""}
+                          </div>
+                        )}
+                        {item.remarks && (
+                          <div className="text-xs text-gray-500 mt-1.5 italic bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1.5">
+                            "{item.remarks}"
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
                         {!isFouls && (
-                          <span className="text-xs font-bold text-gray-500">
+                          <span className="text-sm font-bold text-gray-800 tabular-nums">
                             {Number(penaltyVal ?? 0)} pts
                           </span>
                         )}
                         {isFouls && penaltyVal !== null && penaltyVal !== undefined && (
-                          <span className="text-xs font-bold text-gray-500">
+                          <span className="text-sm font-bold text-gray-800 tabular-nums">
                             {isDQ ? "DQ" : `${penaltyVal}s`}
                           </span>
                         )}
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                          {formatTime(item.createdAt)}
+                        </span>
                       </div>
-                      <div className="text-sm text-gray-600 mt-0.5">
-                        {item.teamInfo?.nameTeam || "Team"}
-                        {item.teamInfo?.bibTeam
-                          ? ` (BIB ${item.teamInfo.bibTeam})`
-                          : ""}
-                        {isFouls && item.unfoulTeamInfo?.nameTeam
-                          ? ` vs ${item.unfoulTeamInfo.nameTeam}`
-                          : ""}
-                      </div>
-                      {(item.roundName || item.runNumber) && (
-                        <div className="text-xs text-gray-400 mt-0.5">
-                          {item.roundName
-                            ? `Babak: ${item.roundName}`
-                            : item.runNumber
-                            ? `Run ${item.runNumber}`
-                            : ""}
-                        </div>
-                      )}
-                      {item.remarks && (
-                        <div className="text-xs text-gray-500 mt-1 italic">
-                          "{item.remarks}"
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-400 whitespace-nowrap shrink-0">
-                      {formatTime(item.createdAt)}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        {/* Pagination sederhana */}
-        {meta && meta.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 disabled:opacity-40"
-            >
-              Sebelumnya
-            </button>
-            <span className="text-xs text-gray-500">
-              Halaman {meta.page} / {meta.totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={page >= meta.totalPages}
-              className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 disabled:opacity-40"
-            >
-              Berikutnya
-            </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
-        )}
+
+          {/* Pagination sederhana */}
+          {meta && meta.totalPages > 1 && (
+            <div className="flex items-center justify-between sm:justify-center gap-3">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="min-h-[44px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:border-sts/40 disabled:opacity-40"
+              >
+                Sebelumnya
+              </button>
+              <span className="text-xs text-gray-500">
+                Halaman {meta.page} / {meta.totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+                disabled={page >= meta.totalPages}
+                className="min-h-[44px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:border-sts/40 disabled:opacity-40"
+              >
+                Berikutnya
+              </button>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

@@ -8,9 +8,9 @@
  */
 export default function JudgeSectionCard({ step, title, children }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 md:p-5">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       {(step || title) && (
-        <div className="flex items-center gap-2.5 mb-4">
+        <div className="flex items-center gap-2.5 px-4 md:px-5 py-3 border-b border-gray-100 bg-gray-50/70">
           {step && (
             <span className="flex items-center justify-center h-6 w-6 rounded-full bg-sts text-white text-xs font-bold shrink-0">
               {step}
@@ -23,7 +23,7 @@ export default function JudgeSectionCard({ step, title, children }) {
           )}
         </div>
       )}
-      <div className="space-y-5">{children}</div>
+      <div className="p-4 md:p-5 space-y-5">{children}</div>
     </div>
   );
 }

@@ -21,6 +21,13 @@ import {
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
+import {
+  JudgePageContainer,
+  JudgeForm,
+  JudgeFormAside,
+  JudgeSideAction,
+  FieldNotesIcon,
+} from "@/components/judges/JudgeFormLayout";
 import JudgeRoleBadges from "@/components/judges/JudgeRoleBadges";
 import JudgeCategoryTeamFields, {
   getSelectedTeamData,
@@ -518,7 +525,7 @@ const JudgesSlalomPage = () => {
     <>
       <JudgeToastStack toasts={toasts} onDismiss={removeToast} />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <JudgeTopBar
           backHref={backHref}
           raceLabel="Slalom Race"
@@ -526,160 +533,152 @@ const JudgesSlalomPage = () => {
           loadingEvent={loadingEvent}
         />
 
-        <JudgeRoleBadges
-          items={gateOptions}
-          emptyHint="Posisi/gate belum ter-assign untuk event ini. Hubungi admin assignment."
-        />
-
-        <form
-          onSubmit={handleSubmit}
-          className="max-w-2xl mx-auto px-4 pb-6 pt-4 space-y-5"
-        >
-          <fieldset disabled={submitting} className="space-y-4">
-            <JudgeSectionCard step={1} title="Kategori & Team">
-              <div>
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Run
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {RUNS.map((r) => {
-                    // Sama pola dgn tab "Run Session #2" di SlalomRace.vue
-                    // (sts-timingsystem) — Run 2 di-disable sampai minimal
-                    // satu tim di kategori ini menyelesaikan Run 1.
-                    const isLockedRun2 = r.value === 2 && !hasAnyRun1Finished;
-                    return (
-                      <button
-                        key={r.value}
-                        type="button"
-                        disabled={isLockedRun2}
-                        onClick={() => setRunNumber(r.value)}
-                        aria-pressed={runNumber === r.value}
-                        title={
-                          isLockedRun2
-                            ? "Belum ada tim yang menyelesaikan Run 1 (Start & Finish) di kategori ini"
-                            : undefined
-                        }
-                        className={`min-h-[48px] rounded-xl border-2 text-sm font-semibold transition ${
-                          isLockedRun2
-                            ? "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
-                            : runNumber === r.value
-                            ? r.value === 2
-                              ? "border-orange-500 text-orange-600 bg-orange-50"
-                              : "border-sts text-sts bg-sts/5"
-                            : "border-gray-300 bg-white text-gray-700 hover:border-sts/50"
-                        }`}
-                      >
-                        {r.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {!selectedCategory && (
-                  <p className="mt-1.5 text-xs text-gray-500">
-                    Pilih kategori dulu utk tahu status Run 1 — Run 2 akan
-                    terbuka otomatis begitu ada tim yang selesai Run 1.
-                  </p>
-                )}
-              </div>
-
-              <JudgeCategoryTeamFields
-                loadingEvent={loadingEvent}
-                combinedCategories={combinedCategories}
-                selectedCategory={selectedCategory}
-                onCategoryChange={handleCategoryChange}
-                loadingTeams={loadingTeams}
-                teams={teams}
-                selectedTeam={selectedTeam}
-                onTeamChange={setSelectedTeam}
-                categoryAsButtons
-                teamAsButtons
-                activeColor={runActiveColor}
-              />
-            </JudgeSectionCard>
-
-            <JudgeSectionCard step={2} title="Gate & Nilai Penalty">
-              <div>
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Gate
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {gateOptions.map((gate) => (
-                    <button
-                      key={gate}
-                      type="button"
-                      onClick={() => handleGateChange(gate)}
-                      aria-pressed={selectedGate === gate}
-                      className={`min-h-[48px] rounded-xl border text-sm font-semibold transition ${
-                        selectedGate === gate
-                          ? runActiveColor === "orange"
-                            ? "bg-orange-500 text-white border-orange-500 shadow-sm"
-                            : "bg-sts text-white border-sts shadow-sm"
-                          : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
-                      }`}
-                    >
-                      {gate}
-                    </button>
-                  ))}
-                </div>
-                {!gateOptions.length && (
-                  <p className="mt-1.5 text-xs text-gray-500">
-                    Tidak ada gate/posisi ter-assign.
-                  </p>
-                )}
-              </div>
-
-              <JudgePenaltyGrid
-                values={penalties}
-                selected={selectedPenalty}
-                onChange={setSelectedPenalty}
-                columns={3}
-                activeColor={runActiveColor}
-              />
-            </JudgeSectionCard>
-          </fieldset>
-
-          <JudgeSummaryBar
-            parts={[
-              { label: "team", value: selectedTeamData?.nameTeam },
-              { label: "gate", value: selectedGate },
-              {
-                label: "penalty",
-                value:
-                  selectedPenalty !== null ? `Penalty ${selectedPenalty}` : "",
-              },
-            ]}
+        <JudgePageContainer>
+          <JudgeRoleBadges
+            items={gateOptions}
+            emptyHint="Posisi/gate belum ter-assign untuk event ini. Hubungi admin assignment."
           />
 
-          <JudgeStickyActions
-            onHistory={history.open}
-            historyDisabled={submitting}
-            submitting={submitting}
-            submitDisabled={submitting}
-          />
-        </form>
+          <JudgeForm onSubmit={handleSubmit}>
+            <fieldset disabled={submitting} className="min-w-0 space-y-4">
+              <JudgeSectionCard step={1} title="Kategori & Team">
+                <div>
+                  <label className="block text-gray-700 mb-2 font-medium">
+                    Run
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {RUNS.map((r) => {
+                      // Sama pola dgn tab "Run Session #2" di SlalomRace.vue
+                      // (sts-timingsystem) — Run 2 di-disable sampai minimal
+                      // satu tim di kategori ini menyelesaikan Run 1.
+                      const isLockedRun2 = r.value === 2 && !hasAnyRun1Finished;
+                      return (
+                        <button
+                          key={r.value}
+                          type="button"
+                          disabled={isLockedRun2}
+                          onClick={() => setRunNumber(r.value)}
+                          aria-pressed={runNumber === r.value}
+                          title={
+                            isLockedRun2
+                              ? "Belum ada tim yang menyelesaikan Run 1 (Start & Finish) di kategori ini"
+                              : undefined
+                          }
+                          className={`min-h-[48px] rounded-xl border-2 text-sm font-semibold transition ${
+                            isLockedRun2
+                              ? "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+                              : runNumber === r.value
+                              ? r.value === 2
+                                ? "border-orange-500 text-orange-600 bg-orange-50"
+                                : "border-sts text-sts bg-sts/5"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-sts/50"
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!selectedCategory && (
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      Pilih kategori dulu utk tahu status Run 1 — Run 2 akan
+                      terbuka otomatis begitu ada tim yang selesai Run 1.
+                    </p>
+                  )}
+                </div>
 
-        {/* Field Notes — di luar <form> spy tidak ikut ke-disable oleh
-            fieldset[disabled] submit penalty (sama pola dgn Fouls
-            Report H2H). */}
-        <div className="max-w-2xl mx-auto px-4 pb-6 mt-4">
-          <button
-            type="button"
-            onClick={() => setFieldNotesModalOpen(true)}
-            disabled={!selectedCategory || !selectedTeam}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-sts/30 text-sts font-semibold text-sm hover:bg-sts/5 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path d="M10 2 3 6v5c0 4 3 6.5 7 7 4-.5 7-3 7-7V6l-7-4Z" />
-            </svg>
-            Laporkan Field Notes
-          </button>
-          {(!selectedCategory || !selectedTeam) && (
-            <p className="mt-1.5 text-xs text-gray-500 text-center">
-              Pilih kategori & team terlebih dahulu utk melaporkan field
-              notes.
-            </p>
-          )}
-        </div>
+                <JudgeCategoryTeamFields
+                  loadingEvent={loadingEvent}
+                  combinedCategories={combinedCategories}
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={handleCategoryChange}
+                  loadingTeams={loadingTeams}
+                  teams={teams}
+                  selectedTeam={selectedTeam}
+                  onTeamChange={setSelectedTeam}
+                  categoryAsButtons
+                  teamAsButtons
+                  activeColor={runActiveColor}
+                />
+              </JudgeSectionCard>
+            </fieldset>
+
+            <JudgeFormAside>
+              <fieldset disabled={submitting} className="min-w-0 space-y-4">
+                <JudgeSectionCard step={2} title="Gate & Nilai Penalty">
+                  <div>
+                    <label className="block text-gray-700 mb-2 font-medium">
+                      Gate
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {gateOptions.map((gate) => (
+                        <button
+                          key={gate}
+                          type="button"
+                          onClick={() => handleGateChange(gate)}
+                          aria-pressed={selectedGate === gate}
+                          className={`min-h-[48px] rounded-xl border text-sm font-semibold transition ${
+                            selectedGate === gate
+                              ? runActiveColor === "orange"
+                                ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                                : "bg-sts text-white border-sts shadow-sm"
+                              : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+                          }`}
+                        >
+                          {gate}
+                        </button>
+                      ))}
+                    </div>
+                    {!gateOptions.length && (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        Tidak ada gate/posisi ter-assign.
+                      </p>
+                    )}
+                  </div>
+
+                  <JudgePenaltyGrid
+                    values={penalties}
+                    selected={selectedPenalty}
+                    onChange={setSelectedPenalty}
+                    columns={3}
+                    activeColor={runActiveColor}
+                  />
+                </JudgeSectionCard>
+              </fieldset>
+
+              {/* Field Notes — di luar fieldset[disabled] spy tidak ikut
+                  ke-disable saat submit penalty berjalan (sama pola dgn Fouls
+                  Report H2H). type="button" → tidak men-submit form. */}
+              <JudgeSideAction
+                onClick={() => setFieldNotesModalOpen(true)}
+                disabled={!selectedCategory || !selectedTeam}
+                hint="Pilih kategori & team terlebih dahulu utk melaporkan field notes."
+                icon={<FieldNotesIcon />}
+              >
+                Laporkan Field Notes
+              </JudgeSideAction>
+
+              <JudgeSummaryBar
+                parts={[
+                  { label: "team", value: selectedTeamData?.nameTeam },
+                  { label: "gate", value: selectedGate },
+                  {
+                    label: "penalty",
+                    value:
+                      selectedPenalty !== null ? `Penalty ${selectedPenalty}` : "",
+                  },
+                ]}
+              />
+
+              <JudgeStickyActions
+                onHistory={history.open}
+                historyDisabled={submitting}
+                submitting={submitting}
+                submitDisabled={submitting}
+              />
+            </JudgeFormAside>
+          </JudgeForm>
+        </JudgePageContainer>
 
         <FieldNotesModal
           open={fieldNotesModalOpen}

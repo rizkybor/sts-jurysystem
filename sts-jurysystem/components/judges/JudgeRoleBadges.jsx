@@ -21,40 +21,42 @@ function WarningIcon({ className = "w-4 h-4" }) {
 }
 
 /**
- * Assigned-role/gate/section pill row shown under the top bar, styled as
- * a compact bordered card (brand blue accents) instead of pills floating
- * on the bare background.
+ * Assigned-role/gate/section strip shown under the top bar. Lebar/padding
+ * diatur oleh container halaman (lihat JudgePageContainer), komponen ini
+ * cuma kartunya.
  */
 export default function JudgeRoleBadges({ items, emptyHint }) {
   const list = items || [];
   return (
-    <div className="px-4 pt-3">
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">
-          <GavelIcon className="w-3.5 h-3.5 text-sts" />
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-sts/10 text-sts">
+          <GavelIcon className="w-4 h-4" />
+        </span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           Judge Task
-        </div>
-
-        {list.length ? (
-          <div className="flex flex-wrap gap-2">
-            {list.map((item) => (
-              <span
-                key={item.key ?? item}
-                className="inline-flex items-center px-3 py-1 bg-sts/5 border border-sts/25 text-stsDark rounded-full text-sm font-medium"
-              >
-                {item.label ?? item}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <div className="flex items-start gap-2 text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-            <WarningIcon className="w-4 h-4 mt-0.5 text-orange-500 shrink-0" />
-            <p className="text-xs font-medium leading-relaxed">
-              {emptyHint || "Belum ada tugas ter-assign untuk event ini."}
-            </p>
-          </div>
-        )}
+        </span>
       </div>
+
+      {list.length ? (
+        <div className="flex flex-wrap gap-2 sm:border-l sm:border-gray-200 sm:pl-4">
+          {list.map((item) => (
+            <span
+              key={item.key ?? item}
+              className="inline-flex items-center px-3 py-1 bg-sts/5 border border-sts/25 text-stsDark rounded-full text-sm font-semibold"
+            >
+              {item.label ?? item}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="flex-1 flex items-start gap-2 text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+          <WarningIcon className="w-4 h-4 mt-0.5 text-orange-500 shrink-0" />
+          <p className="text-xs font-medium leading-relaxed">
+            {emptyHint || "Belum ada tugas ter-assign untuk event ini."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
