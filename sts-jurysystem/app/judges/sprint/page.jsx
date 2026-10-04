@@ -14,6 +14,10 @@ import {
   fetchWithTimeout,
   TIMEOUT_RETRY_MESSAGE,
 } from "@/utils/fetchWithTimeout";
+import {
+  reportSubmitFailure,
+  isConnectionFailureStatus,
+} from "@/utils/judgeChatSuggestions";
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
@@ -380,6 +384,20 @@ const JudgesSprintPage = () => {
       raceId,
     };
 
+    // Data utk saran pesan Live Chat kalau submit gagal krn koneksi
+    // (lihat utils/judgeChatSuggestions.js).
+    const failureInfo = {
+      eventId,
+      category: "sprint",
+      task: assignedPosition,
+      categoryLabel:
+        (combinedCategories.find((c) => c.value === selectedCategory) || {})
+          .label || "",
+      team: selectedTeamData?.nameTeam || "",
+      bib: selectedTeamData?.bibTeam || "",
+      penalty: selectedPenalty,
+    };
+
     setSubmitting(true);
     try {
       const res = await fetchWithTimeout(`/api/judges/judge-reports/detail`, {
@@ -406,6 +424,9 @@ const JudgesSprintPage = () => {
         setSelectedTeam("");
         setSelectedPenalty(null);
       } else {
+        if (isConnectionFailureStatus(res.status)) {
+          reportSubmitFailure({ ...failureInfo, reason: "server" });
+        }
         pushToast({
           title: "Error Submit",
           text: data?.message || `HTTP ${res.status}`,
@@ -415,12 +436,16 @@ const JudgesSprintPage = () => {
     } catch (err) {
       console.error("Submit error:", err);
       const timedOut = err?.name === "AbortError";
+      reportSubmitFailure({
+        ...failureInfo,
+        reason: timedOut ? "timeout" : "network",
+      });
       pushToast(
         {
           title: timedOut ? "Timeout" : "Network Error",
           text: timedOut
             ? TIMEOUT_RETRY_MESSAGE
-            : "Gagal mengirim data! Coba lagi.",
+            : "Gagal mengirim data! Coba lagi, atau laporkan lewat Live Chat (saran pesan sudah disiapkan).",
           type: "error",
         },
         timedOut ? 8000 : undefined

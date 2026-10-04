@@ -5,6 +5,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import getSocket from "@/utils/socket";
 import { useGlobalContext } from "@/context/GlobalContext";
 import liveChatIcon from "@/assets/icon/live-chat.svg";
+import useJudgeAssignments from "@/hooks/judges/useJudgeAssignments";
+import {
+  SUBMIT_FAILED_EVENT,
+  GENERAL_SUGGESTIONS,
+  getJudgeTasks,
+  readLastSubmitFailure,
+  clearLastSubmitFailure,
+  buildFailureMessage,
+  buildTaskTemplate,
+} from "@/utils/judgeChatSuggestions";
 
 const CATEGORY_LABELS = {
   sprint: "Sprint",
@@ -82,6 +92,12 @@ const JudgeChatWidget = ({ eventId, category }) => {
   const [highlightId, setHighlightId] = useState(null);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  // Saran pesan (lihat utils/judgeChatSuggestions.js): laporan submit
+  // "Kirim ke Operator" yang gagal + template per task juri.
+  const { assignments } = useJudgeAssignments();
+  const [failedSubmit, setFailedSubmit] = useState(null);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
+  const usingFailureRef = useRef(false);
 
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
@@ -89,6 +105,37 @@ const JudgeChatWidget = ({ eventId, category }) => {
   const audioRef = useRef(null);
   const audioUnlockedRef = useRef(false);
   const fileInputRef = useRef(null);
+  const composerRef = useRef(null);
+
+  const judgeTasks = getJudgeTasks(assignments, eventId, category);
+
+  // Ambil laporan gagal yg tersimpan (submit gagal sebelum chat dibuka) +
+  // dengarkan kegagalan baru dari halaman juri.
+  useEffect(() => {
+    setFailedSubmit(readLastSubmitFailure(eventId, category));
+    const onFailed = (e) => {
+      const f = e.detail;
+      if (!f || String(f.eventId) !== String(eventId) || f.category !== category) {
+        return;
+      }
+      setFailedSubmit(f);
+      setSuggestionsOpen(true);
+    };
+    window.addEventListener(SUBMIT_FAILED_EVENT, onFailed);
+    return () => window.removeEventListener(SUBMIT_FAILED_EVENT, onFailed);
+  }, [eventId, category]);
+
+  // Isi composer dgn saran (TIDAK langsung terkirim — juri bisa edit dulu).
+  const applySuggestion = (value, isFailure = false) => {
+    usingFailureRef.current = isFailure;
+    setText(value);
+    setTimeout(() => {
+      const el = composerRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }, 0);
+  };
   const messageRefs = useRef({});
   const isPrependingRef = useRef(false);
   const pendingScrollAdjustRef = useRef(null);
@@ -460,6 +507,22 @@ const JudgeChatWidget = ({ eventId, category }) => {
     }
   };
 
+  // Tinggi textarea composer mengikuti isi (maks diatur max-h di className).
+  useLayoutEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [text]);
+
+  // Enter / Shift+Enter = baris baru (default textarea). Ctrl/⌘ + Enter =
+  // kirim — di HP cukup pakai tombol kirim.
+  const handleComposerKeyDown = (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      handleSend(e);
+    }
+  };
+
   const handleSend = async (e) => {
     e.preventDefault();
     const trimmed = text.trim();
@@ -468,7 +531,15 @@ const JudgeChatWidget = ({ eventId, category }) => {
     setSending(true);
     try {
       const ok = await sendChatMessage({ text: trimmed });
-      if (ok) setText("");
+      if (ok) {
+        setText("");
+        // Laporan submit gagal sudah terkirim -> jangan ditawarkan lagi.
+        if (usingFailureRef.current) {
+          clearLastSubmitFailure();
+          setFailedSubmit(null);
+          usingFailureRef.current = false;
+        }
+      }
     } catch {
       showUploadError("Gagal mengirim pesan");
     } finally {
@@ -534,6 +605,14 @@ const JudgeChatWidget = ({ eventId, category }) => {
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
             {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+        {failedSubmit && !isOpen && (
+          <span
+            className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-amber-500 text-white text-[11px] font-bold flex items-center justify-center shadow-sm animate-pulse"
+            title="Ada Kirim ke Operator yang gagal — laporkan lewat chat"
+          >
+            !
           </span>
         )}
         {hasMentionUnread && (
@@ -904,10 +983,80 @@ const JudgeChatWidget = ({ eventId, category }) => {
               </div>
             )}
 
+            {/* Saran pesan */}
+            {suggestionsOpen ? (
+              <div className="px-2 sm:px-3 pt-2 border-t bg-gray-50">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    Saran pesan
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSuggestionsOpen(false)}
+                    className="text-[11px] text-gray-400 hover:text-gray-600"
+                  >
+                    Sembunyikan
+                  </button>
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-2">
+                  {failedSubmit && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        applySuggestion(buildFailureMessage(failedSubmit), true)
+                      }
+                      className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition"
+                      title="Isi pesan dengan data submit yang gagal"
+                    >
+                      ⚠️ Laporkan submit gagal
+                      {failedSubmit.task ? ` · ${failedSubmit.task}` : ""}
+                      {failedSubmit.bib ? ` · BIB ${failedSubmit.bib}` : ""}
+                    </button>
+                  )}
+                  {judgeTasks.map((task) => (
+                    <button
+                      key={task}
+                      type="button"
+                      onClick={() =>
+                        applySuggestion(buildTaskTemplate(category, task))
+                      }
+                      className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition"
+                      title={`Template laporan manual ${task}`}
+                    >
+                      📋 Laporan {task}
+                    </button>
+                  ))}
+                  {GENERAL_SUGGESTIONS.map((sg) => (
+                    <button
+                      key={sg.label}
+                      type="button"
+                      onClick={() => applySuggestion(sg.text)}
+                      className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-100 transition"
+                      title={sg.text}
+                    >
+                      {sg.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="px-3 pt-1.5 border-t bg-gray-50 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSuggestionsOpen(true)}
+                  className={`text-[11px] font-semibold ${
+                    failedSubmit ? "text-red-600" : "text-blue-600"
+                  } hover:underline pb-1`}
+                >
+                  {failedSubmit ? "⚠️ " : ""}Tampilkan saran pesan
+                </button>
+              </div>
+            )}
+
             {/* Composer */}
             <form
               onSubmit={handleSend}
-              className="p-2 sm:p-3 border-t flex items-center gap-1 sm:gap-1.5 bg-white"
+              className="p-2 sm:p-3 flex items-end gap-1 sm:gap-1.5 bg-white"
             >
               <input
                 ref={fileInputRef}
@@ -933,17 +1082,22 @@ const JudgeChatWidget = ({ eventId, category }) => {
                 </svg>
               </button>
 
-              <input
-                type="text"
+              {/* textarea (bukan input) supaya Enter = baris baru; kirim
+                  lewat tombol atau Ctrl/⌘ + Enter. */}
+              <textarea
+                ref={composerRef}
+                rows={1}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onKeyDown={handleComposerKeyDown}
                 placeholder={uploading ? "Mengunggah…" : "Tulis pesan…"}
-                className="flex-1 min-w-0 px-3 py-2 border rounded-full text-base focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100"
+                className="flex-1 min-w-0 px-3 py-2 border rounded-2xl text-base leading-snug resize-none max-h-[110px] overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100"
                 disabled={sending || uploading}
               />
               <button
                 type="submit"
                 disabled={sending || uploading || !text.trim()}
+                title="Kirim (Ctrl/⌘ + Enter)"
                 className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 rounded-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white flex items-center justify-center transition"
                 aria-label="Kirim"
               >
