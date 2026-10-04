@@ -43,7 +43,9 @@ export default function JudgePenaltyGrid({
   if (!values.length) return null;
 
   const gridColsClass =
-    columns === 3
+    columns === 5
+      ? "grid-cols-3 sm:grid-cols-5 md:grid-cols-3 lg:grid-cols-5"
+      : columns === 3
       ? "grid-cols-3"
       : columns === 2
       ? "grid-cols-2"
@@ -60,10 +62,10 @@ export default function JudgePenaltyGrid({
             disabled={disabled}
             onClick={() => onChange(v)}
             aria-pressed={selected === v}
-            className={`min-h-[48px] py-2 px-2 rounded-xl border text-sm font-semibold transition disabled:opacity-50 ${
+            className={`min-h-[52px] py-2 px-2 rounded-xl border text-base font-bold tabular-nums transition disabled:opacity-50 ${
               selected === v
                 ? ACTIVE_COLOR_CLASSES[activeColor] || ACTIVE_COLOR_CLASSES.sts
-                : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+                : "bg-white border-gray-300 text-gray-700 hover:border-sts/50 hover:bg-sts/5"
             }`}
           >
             {v}

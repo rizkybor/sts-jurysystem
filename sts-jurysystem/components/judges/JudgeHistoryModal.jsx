@@ -4,6 +4,7 @@
  * Shared history modal shell (fetch state handling, empty/loading state,
  * header/footer) used by Sprint/Slalom/DRR. Each page supplies its own
  * `renderItem` so item-specific fields (run/gate/section) stay per page.
+ * Mobile: bottom sheet. Tablet/desktop: dialog di tengah.
  */
 export default function JudgeHistoryModal({
   open,
@@ -15,13 +16,18 @@ export default function JudgeHistoryModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Riwayat</h2>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:px-4">
+      <div className="w-full sm:max-w-2xl bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+        <div className="px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Riwayat</h2>
+            {!loading && data.length > 0 && (
+              <p className="text-xs text-gray-500">{data.length} entri</p>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
+            className="h-10 w-10 inline-flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500"
             aria-label="Close"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -30,7 +36,7 @@ export default function JudgeHistoryModal({
           </button>
         </div>
 
-        <div className="p-4 max-h-[70vh] overflow-y-auto">
+        <div className="p-4 overflow-y-auto flex-1 bg-gray-50/60">
           {loading ? (
             <p className="text-center text-gray-500 py-10">
               Memuat riwayat…
@@ -40,11 +46,11 @@ export default function JudgeHistoryModal({
               Belum ada riwayat.
             </p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-2.5">
               {data.map((item, idx) => (
                 <li
                   key={item._id || idx}
-                  className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow transition"
+                  className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
                 >
                   {renderItem(item)}
                 </li>
@@ -53,10 +59,12 @@ export default function JudgeHistoryModal({
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+        <div
+          className="px-5 sm:px-6 pt-3 border-t border-gray-100 flex justify-end shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4"
+        >
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+            className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
           >
             Tutup
           </button>

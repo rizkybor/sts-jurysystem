@@ -3,9 +3,10 @@
 import Link from "next/link";
 
 /**
- * Sticky compact top bar: back button + event name/date, so the bulk of
- * a small screen stays dedicated to the form instead of a large static
- * event-detail card.
+ * Sticky compact top bar: back button + race label + event name/date, so
+ * the bulk of the screen stays dedicated to the form instead of a large
+ * static event-detail card. Lebar mengikuti container halaman judge
+ * (max-w-6xl) supaya sejajar dgn layout 2 kolom di tablet/desktop.
  */
 export default function JudgeTopBar({ backHref, raceLabel, eventDetail, loadingEvent }) {
   const dateRange =
@@ -20,12 +21,12 @@ export default function JudgeTopBar({ backHref, raceLabel, eventDetail, loadingE
       : null;
 
   return (
-    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
-      <div className="h-0.5 bg-sts" />
-      <div className="max-w-2xl mx-auto px-4 py-2 flex items-center gap-3">
+    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200">
+      <div className="h-1 bg-gradient-to-r from-sts to-stsDark" />
+      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 h-14 md:h-16 flex items-center gap-3">
         <Link
           href={backHref}
-          className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full text-stsDark hover:bg-sts/10 transition"
+          className="shrink-0 inline-flex items-center justify-center h-10 w-10 md:h-11 md:w-11 rounded-xl border border-gray-200 text-stsDark hover:bg-sts/10 hover:border-sts/30 transition"
           aria-label="Back to Judge Dashboard"
         >
           <svg
@@ -42,10 +43,10 @@ export default function JudgeTopBar({ backHref, raceLabel, eventDetail, loadingE
           </svg>
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-gray-900 truncate">
+          <div className="text-sm md:text-base font-bold text-gray-900 truncate">
             {raceLabel}
           </div>
-          <div className="text-xs text-gray-500 truncate">
+          <div className="text-xs md:text-sm text-gray-500 truncate">
             {loadingEvent
               ? "Loading event..."
               : eventDetail

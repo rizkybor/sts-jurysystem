@@ -12,6 +12,13 @@ import useJudgeHistory from "@/hooks/judges/useJudgeHistory";
 
 import JudgeToastStack from "@/components/judges/JudgeToastStack";
 import JudgeTopBar from "@/components/judges/JudgeTopBar";
+import {
+  JudgePageContainer,
+  JudgeForm,
+  JudgeFormAside,
+  JudgeSideAction,
+  FieldNotesIcon,
+} from "@/components/judges/JudgeFormLayout";
 import JudgeRoleBadges from "@/components/judges/JudgeRoleBadges";
 import JudgeCategoryTeamFields, {
   getSelectedTeamData,
@@ -302,7 +309,7 @@ const JudgesRaftingCrossPage = () => {
     <>
       <JudgeToastStack toasts={toasts} onDismiss={removeToast} />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <JudgeTopBar
           backHref={backHref}
           raceLabel="Rafting Cross"
@@ -310,109 +317,101 @@ const JudgesRaftingCrossPage = () => {
           loadingEvent={loadingEvent}
         />
 
-        <JudgeRoleBadges
-          items={assignedPositions}
-          emptyHint="Gate belum ter-assign untuk event ini. Hubungi admin assignment."
-        />
-
-        <form
-          onSubmit={handleSubmit}
-          className="max-w-2xl mx-auto px-4 pb-6 pt-4 space-y-5"
-        >
-          <fieldset disabled={submitting} className="space-y-4">
-            <JudgeSectionCard step={1} title="Kategori & Team">
-              <JudgeCategoryTeamFields
-                loadingEvent={loadingEvent}
-                combinedCategories={combinedCategories}
-                selectedCategory={selectedCategory}
-                onCategoryChange={handleCategoryChange}
-                loadingTeams={loadingTeams}
-                teams={teams}
-                selectedTeam={selectedTeam}
-                onTeamChange={setSelectedTeam}
-              />
-            </JudgeSectionCard>
-
-            <JudgeSectionCard step={2} title="Gate & Nilai Penalty">
-              <div>
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Gate
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {assignedPositions.map((position) => (
-                    <button
-                      key={position}
-                      type="button"
-                      onClick={() => setSelectedGate(position)}
-                      aria-pressed={selectedGate === position}
-                      className={`min-h-[48px] rounded-xl border text-sm font-semibold transition ${
-                        selectedGate === position
-                          ? "bg-sts text-white border-sts shadow-sm"
-                          : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
-                      }`}
-                    >
-                      {position}
-                    </button>
-                  ))}
-                </div>
-                {!assignedPositions.length && (
-                  <p className="mt-1.5 text-xs text-gray-500">
-                    Tidak ada gate ter-assign.
-                  </p>
-                )}
-              </div>
-
-              <JudgePenaltyGrid
-                values={GATE_PENALTIES}
-                selected={selectedPenalty}
-                onChange={setSelectedPenalty}
-                columns={3}
-              />
-            </JudgeSectionCard>
-          </fieldset>
-
-          <JudgeSummaryBar
-            parts={[
-              { label: "team", value: selectedTeamData?.nameTeam },
-              { label: "gate", value: selectedGate },
-              {
-                label: "penalty",
-                value:
-                  selectedPenalty !== null ? `Penalty ${selectedPenalty}` : "",
-              },
-            ]}
+        <JudgePageContainer>
+          <JudgeRoleBadges
+            items={assignedPositions}
+            emptyHint="Gate belum ter-assign untuk event ini. Hubungi admin assignment."
           />
 
-          <JudgeStickyActions
-            onHistory={history.open}
-            historyDisabled={submitting}
-            submitting={submitting}
-            submitDisabled={submitting}
-          />
-        </form>
+          <JudgeForm onSubmit={handleSubmit}>
+            <fieldset disabled={submitting} className="min-w-0 space-y-4">
+              <JudgeSectionCard step={1} title="Kategori & Team">
+                <JudgeCategoryTeamFields
+                  loadingEvent={loadingEvent}
+                  combinedCategories={combinedCategories}
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={handleCategoryChange}
+                  loadingTeams={loadingTeams}
+                  teams={teams}
+                  selectedTeam={selectedTeam}
+                  onTeamChange={setSelectedTeam}
+                />
+              </JudgeSectionCard>
+            </fieldset>
 
-        {/* Field Notes — di luar <form> spy tidak ikut ke-disable oleh
-            fieldset[disabled] submit penalty (sama pola dgn Fouls
-            Report H2H). */}
-        <div className="max-w-2xl mx-auto px-4 pb-6 mt-4">
-          <button
-            type="button"
-            onClick={() => setFieldNotesModalOpen(true)}
-            disabled={!selectedCategory || !selectedTeam}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-sts/30 text-sts font-semibold text-sm hover:bg-sts/5 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path d="M10 2 3 6v5c0 4 3 6.5 7 7 4-.5 7-3 7-7V6l-7-4Z" />
-            </svg>
-            Laporkan Field Notes
-          </button>
-          {(!selectedCategory || !selectedTeam) && (
-            <p className="mt-1.5 text-xs text-gray-500 text-center">
-              Pilih kategori & team terlebih dahulu utk melaporkan field
-              notes.
-            </p>
-          )}
-        </div>
+            <JudgeFormAside>
+              <fieldset disabled={submitting} className="min-w-0 space-y-4">
+                <JudgeSectionCard step={2} title="Gate & Nilai Penalty">
+                  <div>
+                    <label className="block text-gray-700 mb-2 font-medium">
+                      Gate
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {assignedPositions.map((position) => (
+                        <button
+                          key={position}
+                          type="button"
+                          onClick={() => setSelectedGate(position)}
+                          aria-pressed={selectedGate === position}
+                          className={`min-h-[48px] rounded-xl border text-sm font-semibold transition ${
+                            selectedGate === position
+                              ? "bg-sts text-white border-sts shadow-sm"
+                              : "bg-white border-gray-300 text-gray-700 hover:border-sts/50"
+                          }`}
+                        >
+                          {position}
+                        </button>
+                      ))}
+                    </div>
+                    {!assignedPositions.length && (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        Tidak ada gate ter-assign.
+                      </p>
+                    )}
+                  </div>
+
+                  <JudgePenaltyGrid
+                    values={GATE_PENALTIES}
+                    selected={selectedPenalty}
+                    onChange={setSelectedPenalty}
+                    columns={3}
+                  />
+                </JudgeSectionCard>
+              </fieldset>
+
+              {/* Field Notes — di luar fieldset[disabled] spy tidak ikut
+                  ke-disable saat submit penalty berjalan (sama pola dgn Fouls
+                  Report H2H). type="button" → tidak men-submit form. */}
+              <JudgeSideAction
+                onClick={() => setFieldNotesModalOpen(true)}
+                disabled={!selectedCategory || !selectedTeam}
+                hint="Pilih kategori & team terlebih dahulu utk melaporkan field notes."
+                icon={<FieldNotesIcon />}
+              >
+                Laporkan Field Notes
+              </JudgeSideAction>
+
+              <JudgeSummaryBar
+                parts={[
+                  { label: "team", value: selectedTeamData?.nameTeam },
+                  { label: "gate", value: selectedGate },
+                  {
+                    label: "penalty",
+                    value:
+                      selectedPenalty !== null ? `Penalty ${selectedPenalty}` : "",
+                  },
+                ]}
+              />
+
+              <JudgeStickyActions
+                onHistory={history.open}
+                historyDisabled={submitting}
+                submitting={submitting}
+                submitDisabled={submitting}
+              />
+            </JudgeFormAside>
+          </JudgeForm>
+        </JudgePageContainer>
 
         <FieldNotesModal
           open={fieldNotesModalOpen}

@@ -132,9 +132,9 @@ function LiveClock() {
 // sudah dipakai di timingsystem sendiri (merah=DNF, abu=DNS, gelap=DSQ).
 const FLAG_LABELS = { DNF: "DNF", DNS: "DNS", DSQ: "DSQ" };
 const FLAG_STYLES = {
-  DNF: "bg-red-500/15 text-red-300 border-red-400/30",
-  DNS: "bg-slate-500/15 text-slate-300 border-slate-400/30",
-  DSQ: "bg-zinc-700/40 text-zinc-200 border-zinc-500/40",
+  DNF: "bg-red-50 text-red-700 border-red-200",
+  DNS: "bg-slate-100 text-slate-600 border-slate-300",
+  DSQ: "bg-slate-800 text-white border-slate-800",
 };
 function FlagBadge({ flag }) {
   if (!flag || !FLAG_LABELS[flag]) return null;
@@ -739,15 +739,8 @@ export default function LiveEventDetail() {
       // browser masih bisa scroll vertikal — Fullscreen API bawaan browser
       // memaksa elemen ini persis setinggi viewport, jadi overflow-y perlu
       // tetap "auto" kalau hasil race lebih panjang dari layar.
-      className="min-h-screen bg-[#050b16] text-white relative overflow-x-hidden overflow-y-auto"
+      className="min-h-screen bg-slate-100 text-slate-900 relative overflow-x-hidden overflow-y-auto"
     >
-      {/* Ambient glow background */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-[32rem] h-[32rem] rounded-full bg-sts/25 blur-[120px]" />
-        <div className="absolute top-1/3 -right-40 w-[28rem] h-[28rem] rounded-full bg-blue-600/20 blur-[120px]" />
-        <div className="absolute bottom-0 left-1/4 w-[24rem] h-[24rem] rounded-full bg-cyan-500/10 blur-[110px]" />
-      </div>
-
       {/* Toasts */}
       <div className="fixed top-6 right-6 z-50 flex flex-col gap-3">
         {toasts.map((toast) => (
@@ -756,7 +749,7 @@ export default function LiveEventDetail() {
             initial={{ x: 200, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 200, opacity: 0 }}
-            className="p-3 rounded-xl border border-emerald-400/30 bg-emerald-950/80 backdrop-blur-xl text-emerald-300 shadow-lg"
+            className="p-3 rounded-xl border border-emerald-200 bg-white text-emerald-700 shadow-lg"
           >
             <p className="font-semibold text-sm">{toast.title}</p>
             <p className="text-xs opacity-90">{toast.text}</p>
@@ -772,13 +765,13 @@ export default function LiveEventDetail() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
             </span>
-            <span className="uppercase tracking-[0.25em] text-[11px] sm:text-xs font-bold text-red-400">
+            <span className="uppercase tracking-[0.25em] text-[11px] sm:text-xs font-bold text-red-600">
               Live
             </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden sm:block text-xs text-white/50 font-medium">
+            <span className="hidden sm:block text-xs text-slate-500 font-medium tabular-nums">
               <LiveClock />
             </span>
 
@@ -787,7 +780,7 @@ export default function LiveEventDetail() {
               <button
                 type="button"
                 onClick={handleNativeShare}
-                className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
                   <path d="M18 16.08a2.92 2.92 0 0 0-1.95.75L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a3 3 0 1 0-.9-1.72L8 9.58a3 3 0 1 0 0 4.84l7.13 4.16a3 3 0 1 0 2.87-2.5Z" />
@@ -802,14 +795,14 @@ export default function LiveEventDetail() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.97 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-52 rounded-xl border border-white/10 bg-[#0c1a2e] shadow-2xl shadow-black/50 overflow-hidden z-20"
+                    className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden z-20"
                   >
                     <button
                       type="button"
                       onClick={handleShareWhatsApp}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                     >
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-400 flex-shrink-0">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-500 flex-shrink-0">
                         <path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.14-1.35A10 10 0 1 0 12 2Zm0 18.2a8.17 8.17 0 0 1-4.17-1.14l-.3-.18-3.05.8.81-2.97-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.45-.72-1.68-.8-.22-.08-.39-.12-.55.12-.16.25-.63.8-.78.96-.14.16-.28.18-.53.06-.25-.12-1.06-.39-2.01-1.24-.75-.66-1.25-1.48-1.4-1.73-.14-.25-.02-.38.11-.5.11-.11.25-.28.37-.42.12-.14.16-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.32-.75-1.81-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.04 0 1.2.88 2.36 1 2.53.12.16 1.73 2.64 4.2 3.7.59.25 1.05.4 1.4.51.59.19 1.13.16 1.55.1.47-.07 1.45-.59 1.66-1.16.2-.57.2-1.06.14-1.16-.06-.11-.22-.17-.47-.29Z" />
                       </svg>
                       WhatsApp
@@ -817,7 +810,7 @@ export default function LiveEventDetail() {
                     <button
                       type="button"
                       onClick={handleCopyLink}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors border-t border-white/5"
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
                     >
                       <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-sts flex-shrink-0">
                         {copied ? (
@@ -840,7 +833,7 @@ export default function LiveEventDetail() {
               type="button"
               onClick={toggleFullscreen}
               title={isFullscreen ? "Keluar Fullscreen" : "Fullscreen"}
-              className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+              className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
             >
               {isFullscreen ? (
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
@@ -858,7 +851,7 @@ export default function LiveEventDetail() {
 
             <Link
               href="/live"
-              className="text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+              className="text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
             >
               ← Kembali
             </Link>
@@ -867,12 +860,12 @@ export default function LiveEventDetail() {
 
         {/* Loading / Error */}
         {loading && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-8 mb-6 text-center text-white/60">
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 mb-6 text-center text-slate-500">
             Memuat data event…
           </div>
         )}
         {errMsg && (
-          <div className="rounded-2xl border border-red-500/30 bg-red-950/40 text-red-300 p-4 mb-6">
+          <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 p-4 mb-6">
             {errMsg}
           </div>
         )}
@@ -884,26 +877,26 @@ export default function LiveEventDetail() {
               <img
                 src={event.logoUrl}
                 alt={`${event.name} logo`}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain border border-white/15 shadow-lg flex-shrink-0 bg-white p-1.5"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain border border-slate-200 shadow-sm flex-shrink-0 bg-white p-1.5"
                 onError={(e) => {
                   if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) {
                     e.currentTarget.src = DEFAULT_IMG;
                     e.currentTarget.className =
-                      "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-white/15 shadow-lg flex-shrink-0 bg-white/5";
+                      "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-slate-200 shadow-sm flex-shrink-0 bg-white";
                   }
                 }}
               />
             ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border border-white/15 bg-gradient-to-br from-sts/40 to-blue-900/40 shadow-lg flex-shrink-0 flex items-center justify-center text-2xl sm:text-3xl font-extrabold text-white/80">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border border-slate-200 bg-white shadow-sm flex-shrink-0 flex items-center justify-center text-2xl sm:text-3xl font-extrabold text-sts">
                 {event.name?.charAt(0)?.toUpperCase() || "E"}
               </div>
             )}
 
             <div className="min-w-0">
-              <h1 className="text-2xl sm:text-5xl font-extrabold tracking-tight leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/70">
+              <h1 className="text-2xl sm:text-5xl font-extrabold tracking-tight leading-tight text-slate-900">
                 {event.name}
               </h1>
-              <div className="mt-2 sm:mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-white/60">
+              <div className="mt-2 sm:mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-slate-500">
                 <span className="inline-flex items-center gap-1.5">
                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-sts">
                     <path d="M12 2 1 21h22L12 2Z" />
@@ -951,15 +944,15 @@ export default function LiveEventDetail() {
                     }}
                     className={`relative px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-sm sm:text-base font-semibold transition-all ${
                       activeCategory === tab.code
-                        ? "bg-gradient-to-r from-sts to-blue-500 text-white shadow-[0_0_20px_rgba(24,116,165,0.5)]"
-                        : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
+                        ? "bg-sts text-white border border-sts shadow-sm"
+                        : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200"
                     }`}
                   >
                     {tab.label}
                   </button>
                 ))}
                 {availableTabs.length === 0 && (
-                  <p className="text-white/50 text-sm">
+                  <p className="text-slate-500 text-sm">
                     Belum ada kategori yang dikonfigurasi untuk event ini.
                   </p>
                 )}
@@ -967,14 +960,14 @@ export default function LiveEventDetail() {
 
               {/* Auto-play */}
               {rotationSlides.length > 1 && (
-                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] pl-1.5 pr-3 py-1.5">
+                <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white shadow-sm pl-1.5 pr-3 py-1.5">
                   <button
                     type="button"
                     onClick={toggleAutoPlay}
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
                       autoPlay
                         ? "bg-red-500 text-white hover:bg-red-600"
-                        : "bg-gradient-to-r from-sts to-blue-500 text-white hover:opacity-90"
+                        : "bg-sts text-white hover:bg-stsDark"
                     }`}
                     aria-label={autoPlay ? "Hentikan auto-play" : "Mulai auto-play"}
                     title={autoPlay ? "Stop" : "Play"}
@@ -994,23 +987,23 @@ export default function LiveEventDetail() {
                   <select
                     value={rotateSeconds}
                     onChange={(e) => setRotateSeconds(Number(e.target.value))}
-                    className="bg-transparent text-white/70 text-xs sm:text-sm font-medium border-none outline-none focus:ring-0 [color-scheme:dark]"
+                    className="bg-transparent text-slate-700 text-xs sm:text-sm font-medium border-none outline-none focus:ring-0"
                   >
                     {ROTATE_DURATION_OPTIONS.map((s) => (
-                      <option key={s} value={s} className="bg-[#0a1628] text-white">
+                      <option key={s} value={s}>
                         {s}s
                       </option>
                     ))}
                   </select>
 
                   {autoPlay && (
-                    <span className="relative flex h-1.5 w-10 rounded-full bg-white/10 overflow-hidden">
+                    <span className="relative flex h-1.5 w-10 rounded-full bg-slate-200 overflow-hidden">
                       <motion.span
                         key={slideKey}
                         initial={{ width: "0%" }}
                         animate={{ width: "100%" }}
                         transition={{ duration: rotateSeconds, ease: "linear" }}
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-sts to-blue-400 rounded-full"
+                        className="absolute inset-y-0 left-0 bg-sts rounded-full"
                       />
                     </span>
                   )}
@@ -1020,8 +1013,8 @@ export default function LiveEventDetail() {
 
             {/* Bucket selector */}
             {bucketOptions.length > 0 && (
-              <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <label className="text-[11px] uppercase tracking-wider text-white/40 font-semibold sm:whitespace-nowrap">
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-xl border border-slate-200 bg-white shadow-sm px-4 py-3">
+                <label className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold sm:whitespace-nowrap">
                   Kelas / Divisi
                 </label>
                 <select
@@ -1030,10 +1023,10 @@ export default function LiveEventDetail() {
                     setSelectedBucket(e.target.value);
                     stopAutoPlay();
                   }}
-                  className="w-full sm:max-w-md bg-transparent text-white text-sm sm:text-base font-medium border-none outline-none focus:ring-0 py-1 [color-scheme:dark]"
+                  className="w-full sm:max-w-md bg-transparent text-slate-900 text-sm sm:text-base font-medium border-none outline-none focus:ring-0 py-1"
                 >
                   {bucketOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value} className="bg-[#0a1628] text-white">
+                    <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
@@ -1053,16 +1046,16 @@ export default function LiveEventDetail() {
             {/* Updated-at info */}
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-lg sm:text-xl font-bold text-white/90">{activeTabLabel}</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">{activeTabLabel}</h2>
                 {activeCategory !== "OVERALL" && results.teams.length > 0 && (
                   <span className="inline-flex items-center gap-1.5">
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
                         isActiveCategoryOfficial
-                          ? "border-emerald-400/60 text-emerald-300 bg-emerald-500/10"
+                          ? "border-emerald-200 text-emerald-700 bg-emerald-50"
                           : isActiveCategoryProvisional
-                          ? "border-amber-400/60 text-amber-300 bg-amber-500/10"
-                          : "border-red-400/60 text-red-300 bg-red-500/10"
+                          ? "border-amber-200 text-amber-700 bg-amber-50"
+                          : "border-red-200 text-red-700 bg-red-50"
                       }`}
                       title="Status hasil ditetapkan operator di timing system, per kategori"
                     >
@@ -1073,7 +1066,7 @@ export default function LiveEventDetail() {
                         : "Unofficial Result"}
                     </span>
                     {formattedOfficialSetAt && (
-                      <span className="text-[10px] sm:text-[11px] text-white/40">
+                      <span className="text-[10px] sm:text-[11px] text-slate-500">
                         {formattedOfficialSetAt}
                       </span>
                     )}
@@ -1081,7 +1074,7 @@ export default function LiveEventDetail() {
                 )}
               </div>
               {results.updatedAt && (
-                <p className="text-[11px] sm:text-xs text-white/40">
+                <p className="text-[11px] sm:text-xs text-slate-500">
                   Diperbarui {new Date(results.updatedAt).toLocaleTimeString("id-ID")}
                 </p>
               )}
@@ -1091,7 +1084,7 @@ export default function LiveEventDetail() {
             <motion.div
               animate={justUpdated ? { boxShadow: "0 0 0 2px rgba(74,222,128,0.5)" } : { boxShadow: "0 0 0 0px rgba(74,222,128,0)" }}
               transition={{ duration: 0.6 }}
-              className="rounded-2xl overflow-hidden border border-gray-200 bg-white"
+              className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm"
             >
               {loadingResults && !results.teams.length ? (
                 <div className="p-12 text-center text-gray-500">Memuat hasil…</div>
@@ -1718,14 +1711,14 @@ export default function LiveEventDetail() {
             {/* Sponsor strip */}
             {event.sponsorLogos.length > 0 && (
               <div className="mt-10 text-center">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-white/30 font-semibold mb-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400 font-semibold mb-4">
                   Didukung Oleh
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                   {event.sponsorLogos.map((logoUrl, idx) => (
                     <div
                       key={idx}
-                      className="h-14 sm:h-16 px-4 rounded-xl bg-white flex items-center justify-center shadow-md"
+                      className="h-14 sm:h-16 px-4 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-sm"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
