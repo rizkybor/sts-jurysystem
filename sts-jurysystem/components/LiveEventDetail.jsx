@@ -7,11 +7,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import getSocket from "@/utils/socket";
 import { firstEventFileUrl } from "@/utils/eventMedia";
 
-// Dynamic import, ssr:false — komponen ini pakai styled-components +
-// SVG yang butuh ukuran window (@g-loot/react-tournament-brackets),
-// dan Live Result adalah client component yang tetap di-SSR Next.js
-// pada request pertama; render di client saja menghindari mismatch
-// hydration & style-injection-order dari styled-components.
+// Dynamic import, ssr:false — layout bracket (posisi kartu, skala auto-fit,
+// mobile vs tablet/desktop) dihitung dari ukuran window, jadi dirender di
+// client saja supaya tidak mismatch hydration dgn hasil SSR.
 const HeadToHeadBracket = NextDynamic(
   () => import("@/components/HeadToHeadBracket"),
   {
@@ -787,6 +785,42 @@ export default function LiveEventDetail() {
         );
       })()
     : null;
+  // FITUR (2026-10-06): status Provisional/Unofficial/Official H2H PER
+  // BABAK — di sts-timingsystem (views/Result/HeadToHeadResult.vue) toggle
+  // status mengikuti tab babak yg dibuka, disimpan dgn key bucket +
+  // "__round__<roundId>". Babak yg belum pernah di-set = Provisional (sama
+  // spt refreshTabStatus() di sana, TANPA fallback ke status bucket).
+  const formatStatusSetAt = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return (
+      d.toLocaleString("id-ID", {
+        timeZone: RESULT_TZ_IANA[activeResultTimezone],
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }) +
+      " " +
+      activeResultTimezone
+    );
+  };
+  const h2hRoundStatus = {};
+  if (activeCategory === "H2H" && activeCategoryBucketKey) {
+    (results?.bracket?.rounds || []).forEach((r) => {
+      const k = `${activeCategoryBucketKey}__round__${r.id}`;
+      const st = event?.statusByCategory?.[k];
+      h2hRoundStatus[r.id] = {
+        status: ["provisional", "unofficial", "official"].includes(st)
+          ? st
+          : event?.officialByCategory?.[k]
+          ? "official"
+          : "provisional",
+        setAt: formatStatusSetAt(event?.officialSetAtByCategory?.[k]),
+      };
+    });
+  }
   const isSprintDetailed = activeCategory === "SPRINT";
   const isDrrDetailed = activeCategory === "DRR";
   const isSlalomDetailed = activeCategory === "SLALOM";
@@ -1123,7 +1157,9 @@ export default function LiveEventDetail() {
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2.5">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900">{activeTabLabel}</h2>
-                {activeCategory !== "OVERALL" && results.teams.length > 0 && (
+                {/* H2H tidak pakai badge status kategori di sini — statusnya
+                    per babak, tampil di bracket (lihat h2hRoundStatus). */}
+                {activeCategory !== "OVERALL" && activeCategory !== "H2H" && results.teams.length > 0 && (
                   <span className="inline-flex items-center gap-1.5">
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
@@ -1653,130 +1689,157 @@ export default function LiveEventDetail() {
                 </div>
                 </div>
               ) : isH2HDetailed ? (
-                <Fragment>
-                  <div className="flex items-start gap-2.5 px-2.5 py-1.5 border-b border-gray-200 bg-sts/10 text-slate-700 text-xs sm:text-sm">
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mt-0.5 text-sts shrink-0">
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0ZM9 9a1 1 0 0 1 2 0v4a1 1 0 1 1-2 0V9Zm1-4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>
-                      {h2hView === "bracket"
-                        ? "Bracket di bawah menampilkan progres pertandingan per-babak"
-                        : "Tabel di bawah = hasil akhir Head to Head dari seluruh babak"}
-                      {" "}({results.teams.length} tim tercatat), live mengikuti
-                      perubahan dari operator timing.
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 sm:p-4 lg:p-6 bg-white">
-                    <div className="flex items-center justify-between mb-2.5 sm:mb-3 lg:mb-5 lg:pb-4 lg:border-b lg:border-gray-100">
-                      <div className="flex items-center gap-2 lg:gap-3">
-                        <span className="hidden lg:flex w-9 h-9 rounded-lg bg-sts/10 text-sts items-center justify-center shrink-0">
-                          <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
-                            <path
-                              d="M4 5h4v4H4V5Zm0 10h4v4H4v-4Zm12-10h4v4h-4V5Zm0 10h4v4h-4v-4M8 7h6M8 17h6M18 7v10"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        </span>
-                        <div>
-                          <h3 className="text-xs sm:text-sm lg:text-lg font-bold text-gray-900 leading-tight">
-                            {h2hView === "bracket" ? "Bracket Pertandingan" : "Tabel Hasil Akhir"}
-                          </h3>
-                          <p className="hidden lg:block text-xs text-gray-400 mt-0.5">
-                            {results.teams.length} tim terdaftar
-                            {results.bracket?.rounds?.length
-                              ? ` • ${results.bracket.rounds.length} babak`
-                              : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 lg:gap-3 shrink-0">
-                        {/* Toggle Bracket/Tabel — bracket (SVG pan/zoom) susah
-                            digeser di mobile, Tabel jadi alternatif scroll
-                            native. Tersedia di semua ukuran layar. */}
-                        <div className="flex rounded-full bg-gray-100 p-0.5 text-[9px] sm:text-[10px] lg:text-xs font-semibold uppercase tracking-wider">
-                          <button
-                            type="button"
-                            onClick={() => setH2hView("bracket")}
-                            className={`px-2 sm:px-2.5 lg:px-4 py-1 lg:py-1.5 rounded-full transition-all ${
-                              h2hView === "bracket"
-                                ? "bg-white text-sts shadow-sm"
-                                : "text-gray-500 hover:text-gray-700"
-                            }`}
-                          >
-                            Bracket
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setH2hView("table")}
-                            className={`px-2 sm:px-2.5 lg:px-4 py-1 lg:py-1.5 rounded-full transition-all ${
-                              h2hView === "table"
-                                ? "bg-white text-sts shadow-sm"
-                                : "text-gray-500 hover:text-gray-700"
-                            }`}
-                          >
-                            Tabel
-                          </button>
-                        </div>
-                        <span className="text-[9px] sm:text-[10px] lg:text-xs font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-1.5 sm:px-2 lg:px-3 py-0.5 lg:py-1 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Live
-                        </span>
+                <div className="bg-white">
+                  {/* Header seksi H2H: judul + ringkasan, toggle Bracket/Tabel, Live */}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 lg:pt-5 pb-3 sm:pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <span className="flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-sts to-stsDarkHiglight text-white items-center justify-center shrink-0 shadow-sm">
+                        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                          <path
+                            d="M4 5h4v4H4V5Zm0 10h4v4H4v-4Zm12-10h4v4h-4V5Zm0 10h4v4h-4v-4M8 7h6M8 17h6M18 7v10"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="text-sm sm:text-base lg:text-lg font-bold text-slate-900 leading-tight truncate">
+                          {h2hView === "bracket" ? "Bracket Pertandingan" : "Klasemen Head to Head"}
+                        </h3>
+                        <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">
+                          {results.teams.length} tim
+                          {results.bracket?.rounds?.length
+                            ? ` · ${results.bracket.rounds.length} babak`
+                            : ""}
+                          {" · "}update otomatis dari operator timing
+                        </p>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Toggle Bracket/Tabel — tersedia di semua ukuran layar. */}
+                      <div
+                        role="tablist"
+                        aria-label="Tampilan Head to Head"
+                        className="flex flex-1 sm:flex-none rounded-xl bg-slate-100 p-1 text-[11px] sm:text-xs font-semibold"
+                      >
+                        {[
+                          { key: "bracket", label: "Bracket" },
+                          { key: "table", label: "Klasemen" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            role="tab"
+                            aria-selected={h2hView === opt.key}
+                            onClick={() => setH2hView(opt.key)}
+                            className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-lg transition-all ${
+                              h2hView === opt.key
+                                ? "bg-white text-sts shadow-sm"
+                                : "text-slate-500 hover:text-slate-700"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2.5 py-1 flex items-center gap-1.5 shrink-0">
+                        <span className="relative flex w-2 h-2">
+                          <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                          <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-500" />
+                        </span>
+                        Live
+                      </span>
+                    </div>
+                  </div>
 
+                  <div className="p-3 sm:p-5 lg:p-6">
                     {h2hView === "bracket" ? (
-                      <HeadToHeadBracket bracket={results.bracket} />
-                    ) : (
-                      <div className="overflow-x-auto -mx-2.5 sm:mx-0">
-                        <table className="w-full text-xs border-collapse">
-                          <thead className="bg-slate-700">
-                            <tr className="text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
-                              <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
-                              <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
-                              <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
-                              <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
+                      <HeadToHeadBracket bracket={results.bracket} roundStatus={h2hRoundStatus} />
+                    ) : results.teams.length ? (
+                      <div className="overflow-hidden rounded-2xl border border-slate-200">
+                        <table className="w-full text-xs sm:text-sm border-collapse">
+                          <thead>
+                            <tr className="bg-slate-800 text-[10px] sm:text-[11px] uppercase tracking-wider text-white/90 font-semibold">
+                              <th className="text-center px-2 sm:px-3 py-2.5 w-14 sm:w-20">Rank</th>
+                              <th className="text-left px-2 sm:px-3 py-2.5">Tim</th>
+                              <th className="hidden sm:table-cell text-left px-3 py-2.5 w-24">BIB</th>
+                              <th className="text-right px-2 sm:px-3 py-2.5 w-24 sm:w-32">Status</th>
                             </tr>
                           </thead>
-                          <tbody>
-                            {results.teams.map((r, idx) => {
-                              const isTop3 = r.rank >= 1 && r.rank <= 3;
-                              const isProvisional = r.rank != null && !r.rankIsFinal;
+                          <tbody className="divide-y divide-slate-100">
+                            {results.teams.map((r) => {
+                              // state/stage/rankLabel dari buildH2HStandings()
+                              // (route live-results) — klasemen diturunkan dari
+                              // bracket terkini; "1–2"/"3–4" = finalis yang
+                              // finalnya belum selesai.
+                              const isPlaced = r.state === "final" || r.rankIsFinal;
+                              const medal =
+                                isPlaced && r.rank >= 1 && r.rank <= 3
+                                  ? ["bg-amber-400", "bg-slate-400", "bg-orange-400"][r.rank - 1]
+                                  : null;
+                              const STATE = {
+                                final: { label: "Final", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+                                playing: { label: "Bertanding", cls: "bg-sky-50 text-sky-700 ring-sky-200", dot: true },
+                                advanced: { label: "Lanjut", cls: "bg-sky-50 text-sky-700 ring-sky-200" },
+                                waiting: { label: "Menunggu", cls: "bg-slate-50 text-slate-500 ring-slate-200" },
+                                eliminated: { label: "Tersingkir", cls: "bg-rose-50 text-rose-600 ring-rose-200" },
+                              };
+                              const st = r.rankIsFinal
+                                ? STATE.final
+                                : STATE[r.state] || STATE.waiting;
+                              const rankText = r.rankLabel || (r.rank ?? "-");
                               return (
                                 <tr
                                   key={`${r.bib}-${r.name}`}
-                                  className={`border-b border-gray-100 last:border-b-0 ${
-                                    isTop3 ? "bg-amber-50" : "hover:bg-gray-50"
-                                  } transition-colors h-14`}
+                                  className={`transition-colors ${
+                                    medal ? "bg-amber-50/40" : "bg-white"
+                                  } hover:bg-slate-50`}
                                 >
-                                  <td className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap">
-                                    {idx + 1}
-                                  </td>
-                                  <td className="px-2.5 py-1.5 font-bold text-gray-900 whitespace-nowrap">
-                                    {r.name}
-                                  </td>
-                                  <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{r.bib}</td>
-                                  <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
+                                  <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-center">
                                     <span
-                                      className={`inline-flex items-center gap-1 font-bold tabular-nums ${
-                                        isTop3 ? "text-amber-600" : "text-gray-900"
+                                      className={`inline-flex min-w-[1.75rem] sm:min-w-[2rem] h-7 sm:h-8 px-1.5 items-center justify-center rounded-full text-xs sm:text-sm font-bold tabular-nums whitespace-nowrap ${
+                                        medal
+                                          ? `${medal} text-white shadow-sm`
+                                          : isPlaced
+                                          ? "bg-slate-100 text-slate-700"
+                                          : "bg-white text-slate-500 ring-1 ring-slate-200"
                                       }`}
+                                      title={
+                                        String(rankText).includes("–")
+                                          ? "Peringkat menunggu hasil final"
+                                          : isPlaced
+                                          ? "Peringkat sudah pasti"
+                                          : "Peringkat sementara — turnamen masih berjalan"
+                                      }
                                     >
-                                      {r.rank ?? "-"}
-                                      {isProvisional && (
-                                        <span
-                                          className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
-                                          title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
-                                        >
-                                          Live
-                                        </span>
-                                      )}
+                                      {rankText}
+                                    </span>
+                                  </td>
+                                  <td className="px-2 sm:px-3 py-2.5 sm:py-3 min-w-0">
+                                    <p className="font-bold text-slate-900 leading-tight">{r.name}</p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5">
+                                      <span className="sm:hidden">BIB {r.bib}</span>
+                                      {r.stage ? (
+                                        <>
+                                          <span className="sm:hidden"> · </span>
+                                          {r.stage}
+                                        </>
+                                      ) : null}
+                                      {r.totalTime ? (
+                                        <span className="tabular-nums"> · {String(r.totalTime).replace(/^00:/, "")}</span>
+                                      ) : null}
+                                    </p>
+                                  </td>
+                                  <td className="hidden sm:table-cell px-3 py-3 text-slate-600 font-semibold tabular-nums">
+                                    {r.bib}
+                                  </td>
+                                  <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-right">
+                                    <span
+                                      className={`inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full ring-1 whitespace-nowrap ${st.cls}`}
+                                    >
+                                      {st.dot ? <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" /> : null}
+                                      {st.label}
                                     </span>
                                   </td>
                                 </tr>
@@ -1785,9 +1848,13 @@ export default function LiveEventDetail() {
                           </tbody>
                         </table>
                       </div>
+                    ) : (
+                      <p className="text-slate-400 text-sm text-center py-10">
+                        Belum ada tim tercatat di kategori ini.
+                      </p>
                     )}
                   </div>
-                </Fragment>
+                </div>
               ) : isOverallDetailed ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">

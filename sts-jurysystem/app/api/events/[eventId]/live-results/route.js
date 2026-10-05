@@ -822,6 +822,171 @@ async function buildH2HBracket(db, key) {
   return { rounds, showBronze: !!bracketDoc.showBronze };
 }
 
+// Klasemen H2H LIVE dari bracket — BUG FIX (2026-10-06): dulu tab Klasemen
+// cuma membaca h2h_overall.overallRows apa adanya. Kalau operator menyimpan
+// overall saat turnamen masih berjalan, buildOverallPlacingsFromLastRound()
+// di timingsystem baru memesan peringkat 1-4 SETELAH Final A/B punya
+// pemenang — finalis yang belum bertanding ikut dinomori dari 5 (mis. WOMEN
+// U19: Final B = 3 & 4, tapi kedua tim Final A = 5 & 6), dan semua baris
+// tampil "Final". Di sini urutan diturunkan dari kondisi bracket terkini
+// dgn aturan yang sama: Final A -> 1-2, Final B -> 3-4, sisanya per babak
+// terjauh yg dicapai (babak lebih akhir = lebih baik), lalu waktu tercepat
+// di babak itu, lalu nama. Finalis yang belum ada pemenangnya ditampilkan
+// sbg rentang ("1–2"/"3–4"). Peringkat baru dianggap FINAL kalau seluruh
+// turnamen selesai — saat itu rank resmi h2h_overall (kalau sudah disimpan
+// ulang setelah selesai, ditandai ada baris ranked 1) yang dipakai.
+function buildH2HStandings(bracket, overallDoc) {
+  const rounds = Array.isArray(bracket?.rounds) ? bracket.rounds : [];
+  const main = rounds.filter((r) => !r.bronze);
+  if (!main.length) return null;
+  const bronze = rounds.find((r) => r.bronze) || null;
+
+  const keyOf = (t) =>
+    t && t.name
+      ? `${String(t.name).trim().toUpperCase()}|${String(t.bibTeam || "").trim()}`
+      : "";
+  const finalRound = main.length > 1 && main[main.length - 1].matches?.length === 1
+    ? main[main.length - 1]
+    : null;
+  const fm = finalRound ? finalRound.matches[0] : null;
+  const bm = bronze && bronze.matches?.[0] ? bronze.matches[0] : null;
+  const decided = (m) => !!(m && m.winner && m.winner.name);
+  const complete = !!fm && decided(fm) && (!bm || decided(bm));
+
+  const entries = new Map();
+  const touch = (team) => {
+    const k = keyOf(team);
+    if (!k) return null;
+    if (!entries.has(k)) {
+      entries.set(k, {
+        key: k,
+        name: team.name,
+        bib: team.bibTeam || "-",
+        roundIdx: -1,
+        roundName: "",
+        timeMs: Infinity,
+        time: null,
+        state: "waiting",
+        tier: 2,
+        place: null,
+      });
+    }
+    return entries.get(k);
+  };
+
+  // Babak terjauh yg dicapai tiap tim (main draw).
+  main.forEach((round, ri) => {
+    (round.matches || []).forEach((m) => {
+      [m.team1, m.team2].forEach((t) => {
+        const e = touch(t);
+        if (!e || ri < e.roundIdx) return;
+        const tt = t.result && (t.result.totalTime || t.result.raceTime) ? String(t.result.totalTime || t.result.raceTime) : "";
+        e.roundIdx = ri;
+        e.roundName = round.name;
+        e.time = tt || null;
+        e.timeMs = tt ? timeToMs(tt) : Infinity;
+        if (!decided(m) || m.bye) {
+          e.state = decided(m) ? "advanced" : (m.team1?.name && m.team2?.name ? "playing" : "waiting");
+        } else {
+          e.state = keyOf(m.winner) === e.key ? "advanced" : "eliminated";
+        }
+      });
+    });
+  });
+
+  // Final A -> tier 0 (1-2), Final B -> tier 1 (3-4).
+  const applyFinal = (m, tier, firstPlace, label) => {
+    if (!m) return;
+    [m.team1, m.team2].forEach((t) => {
+      const e = touch(t);
+      if (!e) return;
+      e.tier = tier;
+      e.roundName = label;
+      const tt = t.result && (t.result.totalTime || t.result.raceTime) ? String(t.result.totalTime || t.result.raceTime) : "";
+      e.time = tt || e.time;
+      if (decided(m)) {
+        e.place = keyOf(m.winner) === e.key ? firstPlace : firstPlace + 1;
+        e.state = "final";
+      } else {
+        e.place = null;
+        e.state = m.team1?.name && m.team2?.name ? "playing" : "waiting";
+      }
+    });
+  };
+  applyFinal(fm, 0, 1, "Final A");
+  applyFinal(bm, 1, 3, "Final B");
+
+  const list = Array.from(entries.values());
+  list.sort((a, b) => {
+    if (a.tier !== b.tier) return a.tier - b.tier;
+    if (a.tier < 2) {
+      const pa = a.place ?? Infinity;
+      const pb = b.place ?? Infinity;
+      if (pa !== pb) return pa - pb;
+    } else {
+      if (a.roundIdx !== b.roundIdx) return b.roundIdx - a.roundIdx;
+      // babak sama: yang masih bertanding/lanjut di atas yg sudah tersingkir
+      const alive = (x) => (x.state === "eliminated" ? 1 : 0);
+      if (alive(a) !== alive(b)) return alive(a) - alive(b);
+    }
+    if (a.timeMs !== b.timeMs) return a.timeMs - b.timeMs;
+    return String(a.name).localeCompare(String(b.name));
+  });
+
+  // Peringkat resmi (h2h_overall) hanya dipakai kalau turnamen selesai DAN
+  // dokumen itu disimpan setelah final (ada baris ranked 1).
+  const officialRows = Array.isArray(overallDoc?.overallRows) ? overallDoc.overallRows : [];
+  const officialByKey = new Map(
+    officialRows.map((r) => [
+      `${String(r?.name || r?.nameTeam || "").trim().toUpperCase()}|${String(r?.bib || r?.bibTeam || "").trim()}`,
+      r,
+    ])
+  );
+  const officialValid =
+    complete && officialRows.some((r) => Number(r?.ranked ?? r?.rank) === 1);
+
+  const tierCount = (tier) => list.filter((e) => e.tier === tier).length;
+  const reserved = (fm ? 2 : 0) + (bm ? 2 : 0);
+
+  let next = reserved + 1;
+  return list.map((e) => {
+    let rank;
+    let rankLabel;
+    if (e.tier === 0 || e.tier === 1) {
+      const base = e.tier === 0 ? 1 : 3;
+      if (e.place) {
+        rank = e.place;
+        rankLabel = String(e.place);
+      } else {
+        rank = base;
+        rankLabel = tierCount(e.tier) > 1 ? `${base}–${base + 1}` : String(base);
+      }
+    } else {
+      rank = next;
+      rankLabel = String(next);
+      next += 1;
+    }
+    const off = officialValid ? officialByKey.get(e.key) : null;
+    const offRank = off ? Number(off.ranked ?? off.rank) : NaN;
+    if (Number.isFinite(offRank) && offRank > 0) {
+      rank = offRank;
+      rankLabel = String(offRank);
+    }
+    return {
+      name: e.name,
+      bib: e.bib,
+      totalTime: e.time,
+      penaltyTime: null,
+      score: off && Number.isFinite(off.score) ? off.score : null,
+      rank,
+      rankLabel,
+      rankIsFinal: complete,
+      stage: e.roundName || null,
+      state: complete ? "final" : e.state,
+    };
+  }).sort((a, b) => a.rank - b.rank);
+}
+
 export const GET = async (req, { params }) => {
   try {
     await connectDB();
@@ -973,6 +1138,8 @@ export const GET = async (req, { params }) => {
         }, 0);
       }
       bracket = await buildH2HBracket(db, key);
+      const standings = buildH2HStandings(bracket, doc);
+      if (standings && standings.length) teams = standings;
     } else if (category === "RX") {
       const key = [eventId, initialId, raceId, divisionId].join("|");
       doc = await db.collection("rx_overall").findOne({ key });
