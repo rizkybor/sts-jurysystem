@@ -292,24 +292,79 @@ function mapDrrDetailed(doc, previewDocs) {
 // resmi SAMA SEKALI (bukan per-run) — begitu tim itu ke-Save (bahkan
 // Save Session 1 saja), baris resminya menang & preview run berikutnya
 // menunggu Save lagi, sama spt kategori lain.
-function mapSlalomDetailed(doc, previewDocs) {
+function mapSlalomDetailed(doc, previewDocs, rosterTeams) {
+  // LIVE langkah demi langkah per Run (pola sama dgn mapSprint()):
+  //  - rosterTeams = semua tim terdaftar (teamsRegisteredCollection) ->
+  //                  tim yg belum turun tetap tampil "Belum Start".
+  //  - doc         = hasil resmi (temporarySlalomResult, Save Session 1 /
+  //                  Save Result — fitur itu TETAP ada).
+  //  - previewDocs = live state per tim PER RUN (slalomlivepreviews), ditulis
+  //                  timingsystem di SETIAP input operator (lihat
+  //                  upsertSlalomLiveState.js). Per run: live state yg LEBIH
+  //                  BARU dari dokumen resmi menang.
   const rows = Array.isArray(doc?.teams) ? doc.teams : [];
-  const officialBibs = new Set(rows.map((t) => String(t?.bibTeam || "")));
-  const teams = rows.map((t) => {
+  const officialAt = doc?.updatedAt || doc?.savedAt || null;
+  const officialMs = officialAt ? new Date(officialAt).getTime() : 0;
+
+  const byKey = new Map();
+  const keyOf = (teamId, bib, name) =>
+    teamId ? `id:${teamId}` : bib ? `bib:${bib}` : `name:${String(name || "").toUpperCase()}`;
+  const findKey = (teamId, bib) => {
+    if (teamId && byKey.has(`id:${teamId}`)) return `id:${teamId}`;
+    if (bib) {
+      for (const [k, v] of byKey) if (v.bib === bib) return k;
+    }
+    return null;
+  };
+  const ensure = (teamId, bib, name, order) => {
+    const k = findKey(teamId, bib) || keyOf(teamId, bib, name);
+    if (!byKey.has(k)) {
+      byKey.set(k, {
+        teamId,
+        name: name || "-",
+        bib: bib || "-",
+        order,
+        runsByNo: {},
+        score: null,
+        officialRank: null,
+      });
+    }
+    const t = byKey.get(k);
+    if (name && (t.name === "-" || !t.name)) t.name = name;
+    return t;
+  };
+  const runHasData = (r) =>
+    !!(r && (r.startTime || r.finishTime || r.flag));
+
+  (rosterTeams || []).forEach((t, idx) => {
+    ensure(
+      String(t?.teamId || ""),
+      String(t?.bibTeam || ""),
+      t?.nameTeam,
+      Number(t?.startOrder) || idx + 1
+    );
+  });
+
+  rows.forEach((t, idx) => {
+    const team = ensure(
+      String(t?.teamId || ""),
+      String(t?.bibTeam || ""),
+      t?.nameTeam,
+      1000 + idx
+    );
+    team.score = Number.isFinite(t?.score) ? t.score : null;
+    team.officialRank = Number.isFinite(t?.ranked) ? t.ranked : null;
     const runsRaw = Array.isArray(t?.result) ? t.result : [];
-    const runs = runsRaw.map((r, idx) => {
+    runsRaw.forEach((r, i) => {
       const pt = r?.penaltyTotal || {};
-      // Array mentah per-gate (bukan cuma sum) — supaya Live Result bisa
-      // menampilkan rincian tiap gate, sama seperti tabel S/1..N/F di
-      // Result page timingsystem (SlalomResult.vue), bukan cuma total.
-      const gates = Array.isArray(pt.gates)
-        ? pt.gates.map((g) => Number(g) || 0)
-        : [];
+      // Array mentah per-gate — rincian tiap gate spt tabel S/1..N/F di
+      // Result page timingsystem (SlalomResult.vue).
+      const gates = Array.isArray(pt.gates) ? pt.gates.map((g) => Number(g) || 0) : [];
       const gatePenalty = gates.reduce((sum, g) => sum + g, 0);
       const startPenalty = Number.isFinite(pt.start) ? pt.start : 0;
       const finishPenalty = Number.isFinite(pt.finish) ? pt.finish : 0;
-      return {
-        runNo: idx + 1,
+      const run = {
+        runNo: i + 1,
         startPenalty,
         finishPenalty,
         gatePenalty,
@@ -322,72 +377,144 @@ function mapSlalomDetailed(doc, previewDocs) {
         finishTime: r?.finishTime || null,
         raceTime: r?.raceTime || null,
         totalTime: r?.totalTime || null, // "Result" per run
-        // BUG FIX: sama pola dgn mapSprint()/mapDrrDetailed() — dulu tidak
-        // dibawa, status DNF/DNS/DSQ PER RUN (markFlag() di SlalomRace.vue,
-        // independen per Run 1/Run 2) tidak pernah tampil.
+        // status DNF/DNS/DSQ PER RUN (markFlag() di SlalomRace.vue)
         flag: r?.flag || null,
+        isOfficial: true,
       };
+      if (runHasData(run)) team.runsByNo[run.runNo] = run;
     });
-    return {
-      name: t?.nameTeam || "-",
-      bib: t?.bibTeam || "-",
-      totalTime: t?.bestTime || null, // dipakai sortAndNumber fallback-by-time
-      score: Number.isFinite(t?.score) ? t.score : null,
-      rank: Number.isFinite(t?.ranked) ? t.ranked : null,
-      runs,
-    };
   });
 
-  // Kelompokkan preview per tim (teamId) — satu tim bisa punya sampai 2
-  // baris preview (Run 1 & Run 2) yang perlu digabung jadi satu `runs[]`
-  // sebelum dipush sbg 1 baris tim, sama bentuk dgn baris resmi di atas.
-  const previewByTeam = new Map();
-  (previewDocs || []).forEach((p) => {
-    const bib = String(p?.bibTeam || "");
-    if (bib && officialBibs.has(bib)) return; // tim ini sudah py baris resmi, preview diabaikan
-    const key = String(p?.teamId || bib);
-    if (!previewByTeam.has(key)) {
-      previewByTeam.set(key, {
-        name: p?.nameTeam || "-",
-        bib: p?.bibTeam || "-",
-        runs: [],
-      });
-    }
-    previewByTeam.get(key).runs.push({
-      runNo: Number(p?.runNumber) || previewByTeam.get(key).runs.length + 1,
-      startPenalty: Number.isFinite(p?.startPenalty) ? p.startPenalty : 0,
-      finishPenalty: Number.isFinite(p?.finishPenalty) ? p.finishPenalty : 0,
-      gatePenalty: Array.isArray(p?.gatePenalties)
-        ? p.gatePenalties.reduce((s, g) => s + (Number(g) || 0), 0)
-        : 0,
-      gates: Array.isArray(p?.gatePenalties) ? p.gatePenalties : [],
-      totalPenalty: null,
+  (previewDocs || []).forEach((p, idx) => {
+    const team = ensure(
+      String(p?.teamId || ""),
+      String(p?.bibTeam || ""),
+      p?.nameTeam,
+      2000 + idx
+    );
+    const runNo = Number(p?.runNumber) || 1;
+    const existing = team.runsByNo[runNo];
+    const previewMs = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+    if (existing && existing.isOfficial && previewMs <= officialMs) return; // resmi lebih baru
+    const gates = Array.isArray(p?.gatePenalties)
+      ? p.gatePenalties.map((g) => Number(g) || 0)
+      : [];
+    const gatePenalty = gates.reduce((sum, g) => sum + g, 0);
+    const startPenalty = Number.isFinite(p?.startPenalty) ? p.startPenalty : 0;
+    const finishPenalty = Number.isFinite(p?.finishPenalty) ? p.finishPenalty : 0;
+    team.runsByNo[runNo] = {
+      runNo,
+      startPenalty,
+      finishPenalty,
+      gatePenalty,
+      gates,
+      totalPenalty: Number.isFinite(p?.totalPenalty)
+        ? p.totalPenalty
+        : startPenalty + finishPenalty + gatePenalty,
       penaltyTime: p?.penaltyTime || null,
       startTime: p?.startTime || null,
       finishTime: p?.finishTime || null,
       raceTime: p?.raceTime || null,
       totalTime: p?.totalTime || null,
-      flag: null,
-    });
-  });
-  previewByTeam.forEach((t) => {
-    t.runs.sort((a, b) => a.runNo - b.runNo);
-    const bestRun = t.runs
-      .filter((r) => r.totalTime)
-      .sort((a, b) => timeToMs(a.totalTime) - timeToMs(b.totalTime))[0];
-    teams.push({
-      name: t.name,
-      bib: t.bib,
-      totalTime: bestRun ? bestRun.totalTime : null,
-      score: null,
-      rank: null, // belum resmi -> selalu fallback ke urutan waktu
-      runs: t.runs,
-      isLivePreview: true,
-    });
+      flag: p?.flag || null,
+      isOfficial: false,
+    };
   });
 
-  const hasRank = teams.some((t) => t.rank > 0);
-  return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
+  // Kondisi per run & per tim. Tim "selesai" = Run 2 sudah tuntas
+  // (finish/flag). Run 1 tuntas tapi Run 2 belum -> "Run 1 Selesai".
+  const runCondition = (r) => {
+    if (!r) return "NOT_STARTED";
+    if (r.flag) return String(r.flag).toUpperCase();
+    if (r.startTime && r.finishTime && r.totalTime) return "FINISHED";
+    if (r.startTime) return "ON_COURSE";
+    return "NOT_STARTED";
+  };
+  const isDone = (c) => c === "FINISHED" || c === "DNS" || c === "DNF" || c === "DSQ";
+
+  const teams = [...byKey.values()].map((t) => {
+    const runs = Object.keys(t.runsByNo)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((no) => ({ ...t.runsByNo[no], condition: runCondition(t.runsByNo[no]) }));
+    const r1 = runs.find((r) => r.runNo === 1);
+    const r2 = runs.find((r) => r.runNo === 2);
+    const c1 = r1 ? r1.condition : "NOT_STARTED";
+    const c2 = r2 ? r2.condition : "NOT_STARTED";
+    const onCourseRun = runs.find((r) => r.condition === "ON_COURSE");
+    const finishedRuns = runs.filter((r) => r.condition === "FINISHED");
+    const best = finishedRuns
+      .slice()
+      .sort((a, b) => timeToMs(a.totalTime) - timeToMs(b.totalTime))[0];
+
+    let condition = "NOT_STARTED";
+    if (onCourseRun) condition = "ON_COURSE";
+    else if (isDone(c2)) {
+      const allOfficial = runs.every((r) => r.isOfficial);
+      if (finishedRuns.length) condition = allOfficial ? "FINAL" : "FINISHED";
+      else condition = c2; // dua run tanpa waktu sah -> tampilkan flag
+    } else if (isDone(c1)) condition = finishedRuns.length ? "RUN1_DONE" : c1;
+
+    return {
+      teamId: t.teamId,
+      name: t.name,
+      bib: t.bib,
+      order: t.order,
+      runs,
+      condition,
+      activeRun: onCourseRun ? onCourseRun.runNo : null,
+      totalTime: best ? best.totalTime : null, // Best Time (dipakai ranking)
+      bestRunNo: best ? best.runNo : null,
+      score: t.score,
+      officialRank: t.officialRank,
+      isOfficial: runs.length > 0 && runs.every((r) => r.isOfficial),
+      isLivePreview: runs.some((r) => !r.isOfficial),
+    };
+  });
+
+  // Urutan: punya Best Time (by Best Time) -> On Course -> Belum Start ->
+  // tanpa waktu sah (flag di semua run).
+  const groupOf = (t) =>
+    t.totalTime ? 0 : t.condition === "ON_COURSE" ? 1 : t.condition === "NOT_STARTED" ? 2 : 3;
+  teams.sort((a, b) => {
+    const ga = groupOf(a);
+    const gb = groupOf(b);
+    if (ga !== gb) return ga - gb;
+    if (ga === 0) {
+      const d = timeToMs(a.totalTime) - timeToMs(b.totalTime);
+      if (d !== 0) return d;
+      return (a.officialRank || Infinity) - (b.officialRank || Infinity);
+    }
+    return (a.order || 0) - (b.order || 0);
+  });
+
+  // Peringkat LIVE dari Best Time — dihitung ulang setiap ada run yg finish.
+  let pos = 0;
+  return teams.map((t) => {
+    const ranked = !!t.totalTime;
+    if (ranked) pos += 1;
+    return {
+      ...t,
+      rank: ranked ? pos : null,
+      rankIsFinal: ranked && t.condition === "FINAL",
+    };
+  });
+}
+
+// Ringkasan progres Slalom (per Run) utk Live Result.
+function slalomProgress(teams) {
+  const out = { total: teams.length, run1Done: 0, run2Done: 0, onCourse: 0, notStarted: 0 };
+  const done = (c) => c === "FINISHED" || c === "DNS" || c === "DNF" || c === "DSQ";
+  teams.forEach((t) => {
+    const r1 = (t.runs || []).find((r) => r.runNo === 1);
+    const r2 = (t.runs || []).find((r) => r.runNo === 2);
+    if (r1 && done(r1.condition)) out.run1Done += 1;
+    if (r2 && done(r2.condition)) out.run2Done += 1;
+    if (t.condition === "ON_COURSE") out.onCourse += 1;
+    if (t.condition === "NOT_STARTED") out.notStarted += 1;
+  });
+  out.allDone = out.total > 0 && out.run2Done === out.total;
+  return out;
 }
 
 // H2H & RX sama-sama disimpan lewat pola "overallRows" (h2h_overall / rx_overall)
@@ -674,7 +801,16 @@ export const GET = async (req, { params }) => {
         raceId,
         divisionId,
       }).lean();
-      teams = mapSlalomDetailed(doc, slalomPreviewDocs);
+      // Semua tim terdaftar di bucket ini -> tim yg belum turun tetap tampil.
+      const slalomRosterDoc = await db.collection("teamsRegisteredCollection").findOne({
+        eventName: "SLALOM",
+        eventId,
+        initialId,
+        divisionId,
+        raceId,
+      });
+      teams = mapSlalomDetailed(doc, slalomPreviewDocs, slalomRosterDoc?.teams || []);
+      progress = slalomProgress(teams);
       if (slalomPreviewDocs.length) {
         latestPreviewAt = slalomPreviewDocs.reduce((max, p) => {
           const t = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
