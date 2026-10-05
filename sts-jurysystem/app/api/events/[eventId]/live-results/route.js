@@ -232,17 +232,86 @@ function sprintProgress(teams) {
 // raceTime/totalTime/ranked/score), bukan cuma ringkasan totalTime/score.
 // `previewDocs` = DrrLivePreview (lihat models/DrrLivePreview.js) — pola
 // sama persis dgn mapSprint()'s previewDocs (SprintLivePreview).
-function mapDrrDetailed(doc, previewDocs) {
-  const rows = Array.isArray(doc?.result) ? doc.result : [];
-  const officialBibs = new Set(rows.map((t) => String(t?.bibTeam || "")));
+// "HH:MM:SS(.ms)" (boleh diawali "-" = bonus) -> detik — sama aturan dgn
+// timeToPenaltyValue() di DownRiverRace.vue (timingsystem).
+function drrPenaltyTimeToSeconds(timeStr) {
+  const p = String(timeStr || "");
+  if (!p) return 0;
+  const neg = p.startsWith("-");
+  const [hh = "0", mm = "0", ssms = "0"] = p.replace("-", "").split(":");
+  const val = (Number(hh) || 0) * 3600 + (Number(mm) || 0) * 60 + (parseFloat(ssms) || 0);
+  return (neg ? -1 : 1) * Math.round(val);
+}
 
-  const teams = rows.map((t) => {
-    const r = t?.result || {};
-    return {
+function mapDrrDetailed(doc, previewDocs, rosterTeams) {
+  // LIVE langkah demi langkah (pola sama dgn mapSprint()):
+  //  - rosterTeams = semua tim terdaftar (teamsRegisteredCollection).
+  //  - doc         = hasil resmi (temporaryDrrResult, Save Result — TETAP ada).
+  //  - previewDocs = live state per tim (drrlivepreviews), ditulis timingsystem
+  //                  di SETIAP input operator (Start/PS/Section 1..N/PF/
+  //                  Finish/flag/Reset — lihat upsertDrrLiveState.js).
+  //                  Live state yg LEBIH BARU dari hasil resmi menang.
+  const rows = Array.isArray(doc?.result) ? doc.result : [];
+  const officialAt = doc?.updatedAt || doc?.savedAt || null;
+  const officialMs = officialAt ? new Date(officialAt).getTime() : 0;
+
+  const byKey = new Map();
+  const keyOf = (teamId, bib, name) =>
+    teamId ? `id:${teamId}` : bib ? `bib:${bib}` : `name:${String(name || "").toUpperCase()}`;
+  const findKey = (teamId, bib) => {
+    if (teamId && byKey.has(`id:${teamId}`)) return `id:${teamId}`;
+    if (bib) {
+      for (const [k, v] of byKey) if (v.bib === bib) return k;
+    }
+    return null;
+  };
+
+  const empty = {
+    startTime: null,
+    finishTime: null,
+    raceTime: null,
+    startPenalty: null,
+    sectionPenalty: null,
+    sectionPenalties: [],
+    finishPenalty: null,
+    totalPenalty: null,
+    penaltyTime: null,
+    totalTime: null,
+    score: null,
+    officialRank: null,
+    flag: null,
+    isOfficial: false,
+    isLivePreview: false,
+  };
+
+  (rosterTeams || []).forEach((t, idx) => {
+    const teamId = String(t?.teamId || "");
+    const bib = String(t?.bibTeam || "");
+    byKey.set(keyOf(teamId, bib, t?.nameTeam), {
+      ...empty,
+      teamId,
       name: t?.nameTeam || "-",
-      bib: t?.bibTeam || "-",
+      bib: bib || "-",
+      order: Number(t?.startOrder) || idx + 1,
+    });
+  });
+
+  rows.forEach((t, idx) => {
+    const r = t?.result || {};
+    const teamId = String(t?.teamId || "");
+    const bib = String(t?.bibTeam || "");
+    const k = findKey(teamId, bib) || keyOf(teamId, bib, t?.nameTeam);
+    const base = byKey.get(k) || { ...empty, teamId, order: 1000 + idx };
+    const sectionPenalties = Array.isArray(r.sectionPenaltyTime)
+      ? r.sectionPenaltyTime.map(drrPenaltyTimeToSeconds)
+      : [];
+    byKey.set(k, {
+      ...base,
+      name: t?.nameTeam || base.name || "-",
+      bib: bib || base.bib || "-",
       startPenalty: Number.isFinite(r.startPenalty) ? r.startPenalty : null,
       sectionPenalty: Number.isFinite(r.sectionPenalty) ? r.sectionPenalty : null,
+      sectionPenalties,
       finishPenalty: Number.isFinite(r.finishPenalty) ? r.finishPenalty : null,
       totalPenalty: Number.isFinite(r.totalPenalty) ? r.totalPenalty : null,
       penaltyTime: r.totalPenaltyTime || r.penaltyTime || null,
@@ -251,36 +320,93 @@ function mapDrrDetailed(doc, previewDocs) {
       raceTime: r.raceTime || null,
       totalTime: r.totalTime || null, // "Result"
       score: Number.isFinite(r.score) ? r.score : null,
-      rank: Number.isFinite(r.ranked) ? r.ranked : null,
-      // BUG FIX: sama pola dgn mapSprint() — dulu tidak dibawa, status
-      // DNF/DNS/DSQ (markFlag() di DownRiverRace.vue) tidak pernah tampil.
+      officialRank: Number.isFinite(r.ranked) ? r.ranked : null,
+      // status DNF/DNS/DSQ (markFlag() di DownRiverRace.vue)
       flag: r.flag || null,
-    };
+      isOfficial: true,
+    });
   });
 
-  (previewDocs || []).forEach((p) => {
+  (previewDocs || []).forEach((p, idx) => {
+    const teamId = String(p?.teamId || "");
     const bib = String(p?.bibTeam || "");
-    if (bib && officialBibs.has(bib)) return; // hasil resmi menang
-    teams.push({
-      name: p?.nameTeam || "-",
-      bib: p?.bibTeam || "-",
-      startPenalty: Number.isFinite(p?.startPenalty) ? p.startPenalty : null,
-      sectionPenalty: null,
-      finishPenalty: Number.isFinite(p?.finishPenalty) ? p.finishPenalty : null,
-      totalPenalty: null,
+    const k = findKey(teamId, bib) || keyOf(teamId, bib, p?.nameTeam);
+    const base = byKey.get(k) || { ...empty, teamId, order: 2000 + idx };
+    const previewMs = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+    const officialHasData =
+      base.isOfficial && (base.startTime || base.finishTime || base.flag);
+    if (officialHasData && previewMs <= officialMs) return; // resmi lebih baru
+    const sectionPenalties = Array.isArray(p?.sectionPenalties)
+      ? p.sectionPenalties.map((v) => Number(v) || 0)
+      : Array.isArray(p?.sectionPenaltyTime)
+      ? p.sectionPenaltyTime.map(drrPenaltyTimeToSeconds)
+      : [];
+    const startPenalty = Number.isFinite(p?.startPenalty) ? p.startPenalty : null;
+    const finishPenalty = Number.isFinite(p?.finishPenalty) ? p.finishPenalty : null;
+    const sectionPenalty = Number.isFinite(p?.sectionPenalty)
+      ? p.sectionPenalty
+      : sectionPenalties.reduce((sum, v) => sum + v, 0);
+    byKey.set(k, {
+      ...base,
+      name: p?.nameTeam || base.name || "-",
+      bib: bib || base.bib || "-",
+      startPenalty,
+      sectionPenalty,
+      sectionPenalties,
+      finishPenalty,
+      totalPenalty: Number.isFinite(p?.totalPenalty)
+        ? p.totalPenalty
+        : (startPenalty || 0) + (finishPenalty || 0) + (sectionPenalty || 0),
       penaltyTime: p?.penaltyTime || null,
       startTime: p?.startTime || null,
       finishTime: p?.finishTime || null,
       raceTime: p?.raceTime || null,
       totalTime: p?.totalTime || null,
       score: null,
-      rank: null, // belum resmi -> selalu fallback ke urutan waktu
+      officialRank: null,
+      flag: p?.flag || null,
+      isOfficial: false,
       isLivePreview: true,
     });
   });
 
-  const hasRank = teams.some((t) => t.rank > 0);
-  return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
+  const teams = [...byKey.values()].map((t) => {
+    let condition = "NOT_STARTED";
+    if (t.flag) condition = String(t.flag).toUpperCase();
+    else if (t.startTime && t.finishTime && t.totalTime)
+      condition = t.isOfficial ? "FINAL" : "FINISHED";
+    else if (t.startTime) condition = "ON_COURSE";
+    return { ...t, condition };
+  });
+
+  // Urutan: Finish (by Result) -> On Course (by start) -> Belum Start ->
+  // DNS/DNF/DSQ.
+  const groupOf = (c) =>
+    c === "FINAL" || c === "FINISHED" ? 0 : c === "ON_COURSE" ? 1 : c === "NOT_STARTED" ? 2 : 3;
+  teams.sort((a, b) => {
+    const ga = groupOf(a.condition);
+    const gb = groupOf(b.condition);
+    if (ga !== gb) return ga - gb;
+    if (ga === 0) {
+      const d = timeToMs(a.totalTime) - timeToMs(b.totalTime);
+      if (d !== 0) return d;
+      return (a.officialRank || Infinity) - (b.officialRank || Infinity);
+    }
+    if (ga === 1) return timeToMs(a.startTime) - timeToMs(b.startTime);
+    return (a.order || 0) - (b.order || 0);
+  });
+
+  // Peringkat LIVE dari Result — dihitung ulang setiap ada tim finish.
+  let pos = 0;
+  return teams.map((t) => {
+    const finished = t.condition === "FINAL" || t.condition === "FINISHED";
+    if (finished) pos += 1;
+    return {
+      ...t,
+      rank: finished ? pos : null,
+      rankIsFinal: finished && t.isOfficial,
+    };
+  });
 }
 
 // Slalom versi detail ("result: All") — satu tim bisa punya beberapa Run
@@ -781,7 +907,17 @@ export const GET = async (req, { params }) => {
         raceId,
         divisionId,
       }).lean();
-      teams = mapDrrDetailed(doc, drrPreviewDocs);
+      // Semua tim terdaftar di bucket ini -> tim yg belum turun tetap tampil.
+      const drrRosterDoc = await db.collection("teamsRegisteredCollection").findOne({
+        eventName: "DRR",
+        eventId,
+        initialId,
+        divisionId,
+        raceId,
+      });
+      teams = mapDrrDetailed(doc, drrPreviewDocs, drrRosterDoc?.teams || []);
+      // Kondisi tim DRR sama dgn Sprint -> ringkasan progres yg sama.
+      progress = sprintProgress(teams);
       if (drrPreviewDocs.length) {
         latestPreviewAt = drrPreviewDocs.reduce((max, p) => {
           const t = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
