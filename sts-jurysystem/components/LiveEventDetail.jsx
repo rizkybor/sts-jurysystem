@@ -173,6 +173,52 @@ function ConditionBadge({ condition, flag, label }) {
   );
 }
 
+// Bar progres race LIVE (Sprint & DRR) — dari `progress` API live-results
+// (sprintProgress()): selesai / On Course / Belum Start / DNS-DNF-DSQ.
+function RaceProgressStrip({ progress }) {
+  if (!progress) return null;
+  const pct = (n) => `${progress.total ? (n / progress.total) * 100 : 0}%`;
+  return (
+    <div className="px-3 py-2.5 border-b border-gray-100 bg-gray-50/70">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+        <span className="font-semibold text-gray-700">
+          {progress.allDone ? (
+            <span className="inline-flex items-center gap-1 text-emerald-700">✓ Semua tim selesai</span>
+          ) : (
+            <>
+              Progres race:{" "}
+              <span className="tabular-nums">
+                {progress.finished}/{progress.total}
+              </span>{" "}
+              tim selesai
+            </>
+          )}
+        </span>
+        <span className="flex flex-wrap items-center gap-3 text-gray-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+            On Course {progress.onCourse}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            Belum Start {progress.notStarted}
+          </span>
+          {progress.flagged > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              DNS/DNF/DSQ {progress.flagged}
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 rounded-full bg-gray-200 overflow-hidden flex">
+        <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: pct(progress.finished) }} />
+        <div className="h-full bg-sky-400 transition-all duration-500" style={{ width: pct(progress.onCourse) }} />
+      </div>
+    </div>
+  );
+}
+
 export default function LiveEventDetail() {
   const { id } = useParams(); // "/live/[id]"
 
@@ -1127,57 +1173,7 @@ export default function LiveEventDetail() {
               ) : isSprintDetailed ? (
                 <div>
                   {/* Progres race LIVE (langkah demi langkah sampai semua tim selesai) */}
-                  {results.progress && (
-                    <div className="px-3 py-2.5 border-b border-gray-100 bg-gray-50/70">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                        <span className="font-semibold text-gray-700">
-                          {results.progress.allDone ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-700">
-                              ✓ Semua tim selesai
-                            </span>
-                          ) : (
-                            <>
-                              Progres race:{" "}
-                              <span className="tabular-nums">
-                                {results.progress.finished}/{results.progress.total}
-                              </span>{" "}
-                              tim selesai
-                            </>
-                          )}
-                        </span>
-                        <span className="flex flex-wrap items-center gap-3 text-gray-500">
-                          <span className="inline-flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
-                            On Course {results.progress.onCourse}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                            Belum Start {results.progress.notStarted}
-                          </span>
-                          {results.progress.flagged > 0 && (
-                            <span className="inline-flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                              DNS/DNF/DSQ {results.progress.flagged}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 rounded-full bg-gray-200 overflow-hidden flex">
-                        <div
-                          className="h-full bg-emerald-500 transition-all duration-500"
-                          style={{
-                            width: `${results.progress.total ? (results.progress.finished / results.progress.total) * 100 : 0}%`,
-                          }}
-                        />
-                        <div
-                          className="h-full bg-sky-400 transition-all duration-500"
-                          style={{
-                            width: `${results.progress.total ? (results.progress.onCourse / results.progress.total) * 100 : 0}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  <RaceProgressStrip progress={results.progress} />
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead className="bg-slate-700">
@@ -1283,6 +1279,9 @@ export default function LiveEventDetail() {
                 </div>
                 </div>
               ) : isDrrDetailed ? (
+                <div>
+                  {/* Progres race LIVE DRR (langkah demi langkah sampai semua tim selesai) */}
+                  <RaceProgressStrip progress={results.progress} />
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead className="bg-slate-700">
@@ -1290,59 +1289,117 @@ export default function LiveEventDetail() {
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Status</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">PS</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Section</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">PF</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Result</th>
                       </tr>
                     </thead>
                     <tbody>
                       {results.teams.map((r, idx) => {
-                        const isTop3 = r.rank >= 1 && r.rank <= 3;
-                        const isProvisional = r.rank != null && !r.rankIsFinal;
+                        const finished = r.condition === "FINISHED" || r.condition === "FINAL";
+                        const isTop3 = finished && r.rank >= 1 && r.rank <= 3;
+                        const isProvisional = finished && r.rank != null && !r.rankIsFinal;
+                        const notStarted = r.condition === "NOT_STARTED";
+                        const started = !!r.startTime;
+                        const sections = Array.isArray(r.sectionPenalties)
+                          ? r.sectionPenalties
+                              .map((v, i) => ({ no: i + 1, v: Number(v) || 0 }))
+                              .filter((x) => x.v !== 0)
+                          : [];
+                        const rowTone = isTop3
+                          ? "bg-amber-50"
+                          : r.condition === "ON_COURSE"
+                          ? "bg-sky-50/60"
+                          : notStarted || r.flag
+                          ? "bg-white text-gray-400"
+                          : "hover:bg-gray-50";
+                        const penCell = (v) =>
+                          started && v != null ? (
+                            <span className={v > 0 ? "text-red-600 font-semibold" : v < 0 ? "text-emerald-600 font-semibold" : "text-gray-500"}>
+                              {v}
+                            </span>
+                          ) : (
+                            "-"
+                          );
                         return (
                           <tr
-                            key={`${r.bib}-${r.name}`}
-                            className={`border-b border-gray-100 last:border-b-0 ${
-                              isTop3 ? "bg-amber-50" : "hover:bg-gray-50"
-                            } transition-colors h-14`}
+                            key={`${r.teamId || r.bib}-${r.name}`}
+                            className={`border-b border-gray-100 last:border-b-0 ${rowTone} transition-colors h-14`}
                           >
                             <td className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
-                            <td className="px-2.5 py-1.5 font-bold text-gray-900 whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1.5">
-                                {r.name}
-                                {r.flag && <FlagBadge flag={r.flag} />}
-                              </span>
+                            <td
+                              className={`px-2.5 py-1.5 font-bold whitespace-nowrap ${
+                                notStarted || r.flag ? "text-gray-500" : "text-gray-900"
+                              }`}
+                            >
+                              {r.name}
                             </td>
                             <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-2.5 py-1.5 whitespace-nowrap">
+                              <ConditionBadge condition={r.condition} flag={r.flag} />
+                            </td>
                             <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1 font-bold tabular-nums ${
                                   isTop3 ? "text-amber-600" : "text-gray-900"
                                 }`}
                               >
-                                {r.flag ? "-" : r.rank ?? "-"}
-                                {isProvisional && !r.flag && (
+                                {r.rank ?? "-"}
+                                {isProvisional && (
                                   <span
                                     className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
-                                    title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
+                                    title="Peringkat sementara (live) dari Result tim yang sudah finish — final setelah operator Save Result"
                                   >
                                     Live
                                   </span>
                                 )}
                               </span>
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-red-600 tabular-nums whitespace-nowrap">
-                              {r.penaltyTime || "-"}
-                            </td>
                             <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
                               {r.startTime || "-"}
                             </td>
+                            <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+                              {penCell(r.startPenalty)}
+                            </td>
+                            <td className="px-2.5 py-1.5 whitespace-nowrap">
+                              {started && sections.length ? (
+                                <span className="inline-flex flex-wrap items-center gap-1">
+                                  {sections.map((x) => (
+                                    <span
+                                      key={`sec-${x.no}`}
+                                      className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border ${
+                                        x.v > 0
+                                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                      }`}
+                                      title={`Section ${x.no}`}
+                                    >
+                                      S{x.no} {x.v > 0 ? `+${x.v}` : x.v}
+                                    </span>
+                                  ))}
+                                </span>
+                              ) : started && r.sectionPenalty ? (
+                                <span className="font-mono text-gray-600">{r.sectionPenalty}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+                              {penCell(r.finishPenalty)}
+                            </td>
                             <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
                               {r.finishTime || "-"}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right font-mono text-red-600 tabular-nums whitespace-nowrap">
+                              {r.penaltyTime || "-"}
                             </td>
                             <td className="px-2.5 py-1.5 text-right font-mono font-bold text-gray-900 tabular-nums whitespace-nowrap">
                               {r.totalTime || "-"}
@@ -1352,6 +1409,7 @@ export default function LiveEventDetail() {
                       })}
                     </tbody>
                   </table>
+                </div>
                 </div>
               ) : isSlalomDetailed ? (
                 <div>
