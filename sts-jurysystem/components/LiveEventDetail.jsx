@@ -147,6 +147,29 @@ function FlagBadge({ flag }) {
   );
 }
 
+// Kondisi tim Sprint LIVE langkah demi langkah — `condition` dihitung API
+// live-results (mapSprint) dari live state per tim yg ditulis timingsystem
+// di setiap input operator (Start/PS/PF/Finish/flag/Reset).
+const CONDITION_META = {
+  NOT_STARTED: { label: "Belum Start", cls: "bg-slate-100 text-slate-500 border-slate-200", dot: "bg-slate-400" },
+  ON_COURSE: { label: "On Course", cls: "bg-sky-50 text-sky-700 border-sky-300", dot: "bg-sky-500 animate-pulse" },
+  FINISHED: { label: "Finish", cls: "bg-emerald-50 text-emerald-700 border-emerald-300", dot: "bg-emerald-500" },
+  FINAL: { label: "Final", cls: "bg-indigo-50 text-indigo-700 border-indigo-200", dot: "bg-indigo-500" },
+};
+function ConditionBadge({ condition, flag }) {
+  if (flag && FLAG_LABELS[flag]) return <FlagBadge flag={flag} />;
+  const m = CONDITION_META[condition];
+  if (!m) return <span className="text-gray-400">-</span>;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${m.cls}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
+      {m.label}
+    </span>
+  );
+}
+
 export default function LiveEventDetail() {
   const { id } = useParams(); // "/live/[id]"
 
@@ -166,6 +189,7 @@ export default function LiveEventDetail() {
     teams: [],
     updatedAt: null,
     bracket: null,
+    progress: null,
   });
   const [loadingResults, setLoadingResults] = useState(false);
   const [resultsError, setResultsError] = useState(null);
@@ -535,6 +559,9 @@ export default function LiveEventDetail() {
             teams: data.teams || [],
             updatedAt: data.updatedAt,
             bracket: data.bracket || null,
+            // Sprint: ringkasan X/Y tim selesai (lihat sprintProgress()
+            // di live-results/route.js)
+            progress: data.progress || null,
           };
         });
       } else {
@@ -1095,6 +1122,59 @@ export default function LiveEventDetail() {
                   <p className="text-gray-500">Belum ada hasil untuk kategori/kelas ini.</p>
                 </div>
               ) : isSprintDetailed ? (
+                <div>
+                  {/* Progres race LIVE (langkah demi langkah sampai semua tim selesai) */}
+                  {results.progress && (
+                    <div className="px-3 py-2.5 border-b border-gray-100 bg-gray-50/70">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                        <span className="font-semibold text-gray-700">
+                          {results.progress.allDone ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-700">
+                              ✓ Semua tim selesai
+                            </span>
+                          ) : (
+                            <>
+                              Progres race:{" "}
+                              <span className="tabular-nums">
+                                {results.progress.finished}/{results.progress.total}
+                              </span>{" "}
+                              tim selesai
+                            </>
+                          )}
+                        </span>
+                        <span className="flex flex-wrap items-center gap-3 text-gray-500">
+                          <span className="inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                            On Course {results.progress.onCourse}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            Belum Start {results.progress.notStarted}
+                          </span>
+                          {results.progress.flagged > 0 && (
+                            <span className="inline-flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                              DNS/DNF/DSQ {results.progress.flagged}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 rounded-full bg-gray-200 overflow-hidden flex">
+                        <div
+                          className="h-full bg-emerald-500 transition-all duration-500"
+                          style={{
+                            width: `${results.progress.total ? (results.progress.finished / results.progress.total) * 100 : 0}%`,
+                          }}
+                        />
+                        <div
+                          className="h-full bg-sky-400 transition-all duration-500"
+                          style={{
+                            width: `${results.progress.total ? (results.progress.onCourse / results.progress.total) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead className="bg-slate-700">
@@ -1102,8 +1182,11 @@ export default function LiveEventDetail() {
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Status</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">PS</th>
+                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">PF</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Finish Time</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Result</th>
@@ -1111,45 +1194,48 @@ export default function LiveEventDetail() {
                     </thead>
                     <tbody>
                       {results.teams.map((r, idx) => {
-                        const isTop3 = r.rank >= 1 && r.rank <= 3;
-                        const isProvisional = r.rank != null && !r.rankIsFinal;
+                        const finished = r.condition === "FINISHED" || r.condition === "FINAL";
+                        const isTop3 = finished && r.rank >= 1 && r.rank <= 3;
+                        const isProvisional = finished && r.rank != null && !r.rankIsFinal;
+                        const notStarted = r.condition === "NOT_STARTED";
+                        const started = !!r.startTime;
+                        const rowTone = isTop3
+                          ? "bg-amber-50"
+                          : r.condition === "ON_COURSE"
+                          ? "bg-sky-50/60"
+                          : notStarted || r.flag
+                          ? "bg-white text-gray-400"
+                          : "hover:bg-gray-50";
                         return (
                           <tr
-                            key={`${r.bib}-${r.name}`}
-                            className={`border-b border-gray-100 last:border-b-0 ${
-                              isTop3 ? "bg-amber-50" : "hover:bg-gray-50"
-                            } ${r.isLivePreview ? "bg-emerald-50" : ""} transition-colors h-14`}
+                            key={`${r.teamId || r.bib}-${r.name}`}
+                            className={`border-b border-gray-100 last:border-b-0 ${rowTone} transition-colors h-14`}
                           >
                             <td className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
-                            <td className="px-2.5 py-1.5 font-bold text-gray-900 whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1.5">
-                                {r.name}
-                                {r.flag && <FlagBadge flag={r.flag} />}
-                                {r.isLivePreview && (
-                                  <span
-                                    className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300"
-                                    title="Tim sudah selesai di timing system, hasil sementara ini belum di-Save Result oleh operator"
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    Live
-                                  </span>
-                                )}
-                              </span>
+                            <td
+                              className={`px-2.5 py-1.5 font-bold whitespace-nowrap ${
+                                notStarted || r.flag ? "text-gray-500" : "text-gray-900"
+                              }`}
+                            >
+                              {r.name}
                             </td>
                             <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-2.5 py-1.5 whitespace-nowrap">
+                              <ConditionBadge condition={r.condition} flag={r.flag} />
+                            </td>
                             <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1 font-bold tabular-nums ${
                                   isTop3 ? "text-amber-600" : "text-gray-900"
                                 }`}
                               >
-                                {r.flag ? "-" : r.rank ?? "-"}
-                                {isProvisional && !r.flag && (
+                                {r.rank ?? "-"}
+                                {isProvisional && (
                                   <span
                                     className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
-                                    title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
+                                    title="Peringkat sementara (live) dari Result tim yang sudah finish — final setelah operator Save Result"
                                   >
                                     Live
                                   </span>
@@ -1158,6 +1244,24 @@ export default function LiveEventDetail() {
                             </td>
                             <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
                               {r.startTime || "-"}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+                              {started && r.startPenalty != null ? (
+                                <span className={r.startPenalty > 0 ? "text-red-600 font-semibold" : "text-gray-500"}>
+                                  {r.startPenalty}
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+                              {started && r.finishPenalty != null ? (
+                                <span className={r.finishPenalty > 0 ? "text-red-600 font-semibold" : "text-gray-500"}>
+                                  {r.finishPenalty}
+                                </span>
+                              ) : (
+                                "-"
+                              )}
                             </td>
                             <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
                               {r.finishTime || "-"}
@@ -1173,6 +1277,7 @@ export default function LiveEventDetail() {
                       })}
                     </tbody>
                   </table>
+                </div>
                 </div>
               ) : isDrrDetailed ? (
                 <div className="overflow-x-auto">

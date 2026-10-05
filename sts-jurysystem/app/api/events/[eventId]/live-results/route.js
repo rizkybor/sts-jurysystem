@@ -63,37 +63,101 @@ function sortAndNumber(teams, { by = "rank" } = {}) {
 // hasil resmi (dari `doc`) SELALU diprioritaskan; preview cuma dipakai
 // utk tim yang belum punya baris resmi sama sekali, supaya Live Result
 // benar-benar reaktif per-tim, tidak menunggu Save Result operator.
-function mapSprint(doc, previewDocs) {
+function mapSprint(doc, previewDocs, rosterTeams) {
+  // LIVE langkah demi langkah (bukan cuma saat Save Result):
+  //  - rosterTeams  = semua tim terdaftar di bucket ini
+  //                   (teamsRegisteredCollection) -> tim yg belum turun
+  //                   tetap tampil "Belum Start".
+  //  - doc          = hasil resmi (temporarySprintResult, ditulis saat
+  //                   operator klik Save Result — fitur itu TETAP ada).
+  //  - previewDocs  = live state per tim (sprintlivepreviews), ditulis
+  //                   sts-timingsystem di SETIAP langkah input operator
+  //                   (Start Time / PS / PF / Finish Time / flag / Reset —
+  //                   lihat upsertSprintLiveState.js di timingsystem).
+  // Live state yang LEBIH BARU dari hasil resmi menang (operator mengedit
+  // lagi setelah Save Result); sebaliknya hasil resmi menang & ditandai
+  // "Final".
   const rows = Array.isArray(doc?.result) ? doc.result : [];
-  const officialBibs = new Set(rows.map((t) => String(t?.bibTeam || "")));
+  const officialAt = doc?.updatedAt || doc?.savedAt || null;
+  const officialMs = officialAt ? new Date(officialAt).getTime() : 0;
 
-  const teams = rows.map((t) => {
-    const r = t?.result || {};
-    return {
+  const byKey = new Map();
+  const keyOf = (teamId, bib, name) =>
+    teamId ? `id:${teamId}` : bib ? `bib:${bib}` : `name:${String(name || "").toUpperCase()}`;
+  // Cari baris yg sudah ada via teamId ATAU bib (dokumen lama kadang tanpa teamId)
+  const findKey = (teamId, bib) => {
+    if (teamId && byKey.has(`id:${teamId}`)) return `id:${teamId}`;
+    if (bib) {
+      for (const [k, v] of byKey) if (v.bib === bib) return k;
+    }
+    return null;
+  };
+
+  const empty = {
+    startTime: null,
+    finishTime: null,
+    raceTime: null,
+    startPenalty: null,
+    finishPenalty: null,
+    penaltyTime: null,
+    totalTime: null,
+    score: null,
+    officialRank: null,
+    flag: null,
+    isOfficial: false,
+    isLivePreview: false,
+  };
+
+  (rosterTeams || []).forEach((t, idx) => {
+    const teamId = String(t?.teamId || "");
+    const bib = String(t?.bibTeam || "");
+    byKey.set(keyOf(teamId, bib, t?.nameTeam), {
+      ...empty,
+      teamId,
       name: t?.nameTeam || "-",
-      bib: t?.bibTeam || "-",
+      bib: bib || "-",
+      order: Number(t?.startOrder) || idx + 1,
+    });
+  });
+
+  rows.forEach((t, idx) => {
+    const r = t?.result || {};
+    const teamId = String(t?.teamId || "");
+    const bib = String(t?.bibTeam || "");
+    const k = findKey(teamId, bib) || keyOf(teamId, bib, t?.nameTeam);
+    const base = byKey.get(k) || { ...empty, teamId, order: 1000 + idx };
+    byKey.set(k, {
+      ...base,
+      name: t?.nameTeam || base.name || "-",
+      bib: bib || base.bib || "-",
       startTime: r.startTime || null,
       finishTime: r.finishTime || null,
       raceTime: r.raceTime || null,
       startPenalty: Number.isFinite(r.startPenalty) ? r.startPenalty : null,
       finishPenalty: Number.isFinite(r.finishPenalty) ? r.finishPenalty : null,
       penaltyTime: r.totalPenaltyTime || r.penaltyTime || null,
-      totalTime: r.totalTime || null, // "Result" (race time + penalty time)
+      totalTime: r.totalTime || null,
       score: Number.isFinite(r.score) ? r.score : null,
-      rank: Number.isFinite(r.ranked) ? r.ranked : null,
-      // BUG FIX: dulu tidak ada di whitelist ini — status DNF/DNS/DSQ (di-set
-      // via markFlag() di SprintRace.vue, timingsystem) jadi tidak pernah
-      // sampai ke Live Result, walau sudah benar tersimpan di DB.
+      officialRank: Number.isFinite(r.ranked) ? r.ranked : null,
+      // status DNF/DNS/DSQ (markFlag() di SprintRace.vue)
       flag: r.flag || null,
-    };
+      isOfficial: true,
+    });
   });
 
-  (previewDocs || []).forEach((p) => {
+  (previewDocs || []).forEach((p, idx) => {
+    const teamId = String(p?.teamId || "");
     const bib = String(p?.bibTeam || "");
-    if (bib && officialBibs.has(bib)) return; // hasil resmi menang
-    teams.push({
-      name: p?.nameTeam || "-",
-      bib: p?.bibTeam || "-",
+    const k = findKey(teamId, bib) || keyOf(teamId, bib, p?.nameTeam);
+    const base = byKey.get(k) || { ...empty, teamId, order: 2000 + idx };
+    const previewMs = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+    const officialHasData =
+      base.isOfficial && (base.startTime || base.finishTime || base.flag);
+    if (officialHasData && previewMs <= officialMs) return; // resmi lebih baru
+    byKey.set(k, {
+      ...base,
+      name: p?.nameTeam || base.name || "-",
+      bib: bib || base.bib || "-",
       startTime: p?.startTime || null,
       finishTime: p?.finishTime || null,
       raceTime: p?.raceTime || null,
@@ -102,13 +166,64 @@ function mapSprint(doc, previewDocs) {
       penaltyTime: p?.penaltyTime || null,
       totalTime: p?.totalTime || null,
       score: null,
-      rank: null, // belum resmi -> selalu fallback ke urutan waktu
+      officialRank: null,
+      flag: p?.flag || null,
+      isOfficial: false,
       isLivePreview: true,
     });
   });
 
-  const hasRank = teams.some((t) => t.rank > 0);
-  return sortAndNumber(teams, { by: hasRank ? "rank" : "time" });
+  // Kondisi tim -> urutan tampil: Finish (by Result) -> On Course (by
+  // start) -> Belum Start (urutan start) -> DNS/DNF/DSQ.
+  const teams = [...byKey.values()].map((t) => {
+    let condition = "NOT_STARTED";
+    if (t.flag) condition = String(t.flag).toUpperCase();
+    else if (t.startTime && t.finishTime && t.totalTime)
+      condition = t.isOfficial ? "FINAL" : "FINISHED";
+    else if (t.startTime) condition = "ON_COURSE";
+    return { ...t, condition };
+  });
+
+  const groupOf = (c) =>
+    c === "FINAL" || c === "FINISHED" ? 0 : c === "ON_COURSE" ? 1 : c === "NOT_STARTED" ? 2 : 3;
+  teams.sort((a, b) => {
+    const ga = groupOf(a.condition);
+    const gb = groupOf(b.condition);
+    if (ga !== gb) return ga - gb;
+    if (ga === 0) {
+      const d = timeToMs(a.totalTime) - timeToMs(b.totalTime);
+      if (d !== 0) return d;
+      return (a.officialRank || Infinity) - (b.officialRank || Infinity);
+    }
+    if (ga === 1) return timeToMs(a.startTime) - timeToMs(b.startTime);
+    return (a.order || 0) - (b.order || 0);
+  });
+
+  // Peringkat LIVE: dihitung ulang dari Result (totalTime) setiap ada tim
+  // finish — pemimpin sementara selalu di atas sampai semua tim selesai.
+  let pos = 0;
+  return teams.map((t) => {
+    const finished = t.condition === "FINAL" || t.condition === "FINISHED";
+    if (finished) pos += 1;
+    return {
+      ...t,
+      rank: finished ? pos : null,
+      rankIsFinal: finished && t.isOfficial,
+    };
+  });
+}
+
+// Ringkasan progres Sprint utk Live Result (X/Y tim selesai).
+function sprintProgress(teams) {
+  const out = { total: teams.length, finished: 0, onCourse: 0, notStarted: 0, flagged: 0 };
+  teams.forEach((t) => {
+    if (t.condition === "FINAL" || t.condition === "FINISHED") out.finished += 1;
+    else if (t.condition === "ON_COURSE") out.onCourse += 1;
+    else if (t.condition === "NOT_STARTED") out.notStarted += 1;
+    else out.flagged += 1;
+  });
+  out.allDone = out.total > 0 && out.onCourse === 0 && out.notStarted === 0;
+  return out;
 }
 
 // DRR versi detail — field mentah dari normalizeResult() di
@@ -490,6 +605,7 @@ export const GET = async (req, { params }) => {
     let teams = [];
     let latestPreviewAt = null;
     let bracket = null;
+    let progress = null;
 
     if (category === "SPRINT") {
       doc = await db
@@ -507,7 +623,17 @@ export const GET = async (req, { params }) => {
         raceId,
         divisionId,
       }).lean();
-      teams = mapSprint(doc, previewDocs);
+      // Semua tim terdaftar di bucket ini — supaya tim yg belum turun tetap
+      // tampil "Belum Start" (koleksi milik sts-timingsystem, cluster sama).
+      const rosterDoc = await db.collection("teamsRegisteredCollection").findOne({
+        eventName: "SPRINT",
+        eventId,
+        initialId,
+        divisionId,
+        raceId,
+      });
+      teams = mapSprint(doc, previewDocs, rosterDoc?.teams || []);
+      progress = sprintProgress(teams);
       if (previewDocs.length) {
         latestPreviewAt = previewDocs.reduce((max, p) => {
           const t = p?.updatedAt ? new Date(p.updatedAt).getTime() : 0;
@@ -622,6 +748,7 @@ export const GET = async (req, { params }) => {
         updatedAt: combinedUpdatedAt,
         teams,
         ...(category === "H2H" ? { bracket } : {}),
+        ...(progress ? { progress } : {}),
       }),
       { status: 200 }
     );
