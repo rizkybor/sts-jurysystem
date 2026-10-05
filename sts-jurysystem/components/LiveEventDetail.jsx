@@ -155,9 +155,12 @@ const CONDITION_META = {
   ON_COURSE: { label: "On Course", cls: "bg-sky-50 text-sky-700 border-sky-300", dot: "bg-sky-500 animate-pulse" },
   FINISHED: { label: "Finish", cls: "bg-emerald-50 text-emerald-700 border-emerald-300", dot: "bg-emerald-500" },
   FINAL: { label: "Final", cls: "bg-indigo-50 text-indigo-700 border-indigo-200", dot: "bg-indigo-500" },
+  // Slalom: Run 1 tuntas, menunggu Run 2
+  RUN1_DONE: { label: "Run 1 Selesai", cls: "bg-teal-50 text-teal-700 border-teal-300", dot: "bg-teal-500" },
 };
-function ConditionBadge({ condition, flag }) {
+function ConditionBadge({ condition, flag, label }) {
   if (flag && FLAG_LABELS[flag]) return <FlagBadge flag={flag} />;
+  if (FLAG_LABELS[condition]) return <FlagBadge flag={condition} />;
   const m = CONDITION_META[condition];
   if (!m) return <span className="text-gray-400">-</span>;
   return (
@@ -165,7 +168,7 @@ function ConditionBadge({ condition, flag }) {
       className={`inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${m.cls}`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
-      {m.label}
+      {label || m.label}
     </span>
   );
 }
@@ -1351,6 +1354,58 @@ export default function LiveEventDetail() {
                   </table>
                 </div>
               ) : isSlalomDetailed ? (
+                <div>
+                  {/* Progres race LIVE per Run (langkah demi langkah sampai semua tim selesai Run 2) */}
+                  {results.progress && (
+                    <div className="px-3 py-2.5 border-b border-gray-100 bg-gray-50/70">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                        <span className="font-semibold text-gray-700">
+                          {results.progress.allDone ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-700">
+                              ✓ Semua tim selesai (Run 1 &amp; Run 2)
+                            </span>
+                          ) : (
+                            <>
+                              Run 1:{" "}
+                              <span className="tabular-nums">
+                                {results.progress.run1Done}/{results.progress.total}
+                              </span>
+                              <span className="mx-2 text-gray-300">|</span>
+                              Run 2:{" "}
+                              <span className="tabular-nums">
+                                {results.progress.run2Done}/{results.progress.total}
+                              </span>
+                            </>
+                          )}
+                        </span>
+                        <span className="flex flex-wrap items-center gap-3 text-gray-500">
+                          <span className="inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                            On Course {results.progress.onCourse}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            Belum Start {results.progress.notStarted}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                        {[
+                          ["Run 1", results.progress.run1Done],
+                          ["Run 2", results.progress.run2Done],
+                        ].map(([label, done]) => (
+                          <div key={label} className="h-1.5 rounded-full bg-gray-200 overflow-hidden" title={label}>
+                            <div
+                              className="h-full bg-emerald-500 transition-all duration-500"
+                              style={{
+                                width: `${results.progress.total ? (done / results.progress.total) * 100 : 0}%`,
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead className="bg-slate-700">
@@ -1358,6 +1413,7 @@ export default function LiveEventDetail() {
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
+                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Status</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
                         <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Run</th>
                         <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Pen. Start</th>
@@ -1382,6 +1438,7 @@ export default function LiveEventDetail() {
                         const isTop3 = r.rank >= 1 && r.rank <= 3;
                         const isProvisional = r.rank != null && !r.rankIsFinal;
                         const runs = r.runs && r.runs.length ? r.runs : [{}];
+                        const notStarted = r.condition === "NOT_STARTED";
                         // Run tercepat (waktu terkecil di antara run yang
                         // sudah selesai) — dipakai buat highlight best time.
                         const bestRunIdx = runs.reduce((best, run, i) => {
@@ -1392,14 +1449,19 @@ export default function LiveEventDetail() {
                         }, -1);
                         return runs.map((run, runIdx) => {
                           const isBestRun = runIdx === bestRunIdx;
+                          const runOnCourse = run.condition === "ON_COURSE";
                           return (
                           <tr
-                            key={`${r.bib}-${r.name}-run${runIdx}`}
+                            key={`${r.teamId || r.bib}-${r.name}-run${runIdx}`}
                             className={`border-b border-gray-100 last:border-b-0 ${
-                              isBestRun
+                              runOnCourse
+                                ? "bg-sky-50/70"
+                                : isBestRun
                                 ? "bg-emerald-50"
                                 : isTop3
                                 ? "bg-amber-50"
+                                : notStarted
+                                ? "bg-white text-gray-400"
                                 : "hover:bg-gray-50"
                             } transition-colors h-14`}
                           >
@@ -1425,6 +1487,21 @@ export default function LiveEventDetail() {
                                 className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap align-top"
                               >
                                 {r.bib}
+                              </td>
+                            )}
+                            {runIdx === 0 && (
+                              <td
+                                rowSpan={runs.length}
+                                className="px-2.5 py-1.5 whitespace-nowrap align-top"
+                              >
+                                <ConditionBadge
+                                  condition={r.condition}
+                                  label={
+                                    r.condition === "ON_COURSE" && r.activeRun
+                                      ? `Run ${r.activeRun} On Course`
+                                      : undefined
+                                  }
+                                />
                               </td>
                             )}
                             {runIdx === 0 && (
@@ -1457,6 +1534,12 @@ export default function LiveEventDetail() {
                               >
                                 {run.runNo ? `Run ${run.runNo}` : "-"}
                                 {run.flag && <FlagBadge flag={run.flag} />}
+                                {runOnCourse && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 border border-sky-300">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                                    On Course
+                                  </span>
+                                )}
                                 {isBestRun && (
                                   <span
                                     className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300"
@@ -1509,6 +1592,7 @@ export default function LiveEventDetail() {
                       })}
                     </tbody>
                   </table>
+                </div>
                 </div>
               ) : isH2HDetailed ? (
                 <Fragment>
