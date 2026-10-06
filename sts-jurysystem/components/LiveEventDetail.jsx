@@ -1806,8 +1806,8 @@ export default function LiveEventDetail() {
                                           : "bg-white text-slate-500 ring-1 ring-slate-200"
                                       }`}
                                       title={
-                                        String(rankText).includes("–")
-                                          ? "Peringkat menunggu hasil final"
+                                        rankText === "-"
+                                          ? "Belum ada peringkat — final belum dipertandingkan"
                                           : isPlaced
                                           ? "Peringkat sudah pasti"
                                           : "Peringkat sementara — turnamen masih berjalan"

@@ -945,11 +945,10 @@ function buildH2HStandings(bracket, overallDoc) {
   const officialValid =
     complete && officialRows.some((r) => Number(r?.ranked ?? r?.rank) === 1);
 
-  const tierCount = (tier) => list.filter((e) => e.tier === tier).length;
   const reserved = (fm ? 2 : 0) + (bm ? 2 : 0);
 
   let next = reserved + 1;
-  return list.map((e) => {
+  const rows = list.map((e) => {
     let rank;
     let rankLabel;
     if (e.tier === 0 || e.tier === 1) {
@@ -958,8 +957,10 @@ function buildH2HStandings(bracket, overallDoc) {
         rank = e.place;
         rankLabel = String(e.place);
       } else {
-        rank = base;
-        rankLabel = tierCount(e.tier) > 1 ? `${base}–${base + 1}` : String(base);
+        // Final belum dipertandingkan -> BELUM ada peringkat (sama dgn
+        // buildOverallPlacingsFromLastRound() di timingsystem: _pending).
+        rank = null;
+        rankLabel = "-";
       }
     } else {
       rank = next;
@@ -984,7 +985,11 @@ function buildH2HStandings(bracket, overallDoc) {
       stage: e.roundName || null,
       state: complete ? "final" : e.state,
     };
-  }).sort((a, b) => a.rank - b.rank);
+  });
+  // `list` sudah terurut (Final A, Final B, lalu babak terjauh) — finalis
+  // tanpa peringkat tetap di posisi tier-nya. Diurut ulang hanya kalau rank
+  // resmi h2h_overall dipakai (turnamen selesai, semua py rank).
+  return officialValid ? rows.sort((a, b) => a.rank - b.rank) : rows;
 }
 
 export const GET = async (req, { params }) => {
