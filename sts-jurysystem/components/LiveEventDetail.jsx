@@ -15,9 +15,10 @@ const HeadToHeadBracket = NextDynamic(
   {
     ssr: false,
     loading: () => (
-      <p className="text-gray-400 text-center py-8 text-sm">
-        Memuat bracket...
-      </p>
+      <div className="flex flex-col items-center justify-center gap-3 py-12 text-sm text-slate-500" aria-busy="true">
+        <span className="w-8 h-8 rounded-full border-[3px] border-sts/20 border-t-sts animate-spin" />
+        Memuat bracket…
+      </div>
     ),
   }
 );
@@ -104,9 +105,9 @@ const POLL_INTERVAL_MS = 20000;
 const ROTATE_DURATION_OPTIONS = [5, 10, 15, 20, 30];
 
 const RANK_BADGE = {
-  1: "from-yellow-300 via-yellow-400 to-yellow-600 text-yellow-950 shadow-[0_0_18px_rgba(250,204,21,0.55)]",
-  2: "from-slate-200 via-slate-300 to-slate-400 text-slate-900 shadow-[0_0_14px_rgba(203,213,225,0.4)]",
-  3: "from-amber-500 via-amber-600 to-amber-800 text-amber-50 shadow-[0_0_14px_rgba(180,83,9,0.45)]",
+  1: "bg-amber-400 text-amber-950",
+  2: "bg-slate-300 text-slate-800",
+  3: "bg-orange-400 text-white",
 };
 
 function LiveClock() {
@@ -160,7 +161,7 @@ function ConditionBadge({ condition, flag, label }) {
   if (flag && FLAG_LABELS[flag]) return <FlagBadge flag={flag} />;
   if (FLAG_LABELS[condition]) return <FlagBadge flag={condition} />;
   const m = CONDITION_META[condition];
-  if (!m) return <span className="text-gray-400">-</span>;
+  if (!m) return <span className="text-slate-400">-</span>;
   return (
     <span
       className={`inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${m.cls}`}
@@ -177,9 +178,9 @@ function RaceProgressStrip({ progress }) {
   if (!progress) return null;
   const pct = (n) => `${progress.total ? (n / progress.total) * 100 : 0}%`;
   return (
-    <div className="px-3 py-2.5 border-b border-gray-100 bg-gray-50/70">
+    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-        <span className="font-semibold text-gray-700">
+        <span className="font-semibold text-slate-700">
           {progress.allDone ? (
             <span className="inline-flex items-center gap-1 text-emerald-700">✓ Semua tim selesai</span>
           ) : (
@@ -192,7 +193,7 @@ function RaceProgressStrip({ progress }) {
             </>
           )}
         </span>
-        <span className="flex flex-wrap items-center gap-3 text-gray-500">
+        <span className="flex flex-wrap items-center gap-3 text-slate-500">
           <span className="inline-flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
             On Course {progress.onCourse}
@@ -209,9 +210,73 @@ function RaceProgressStrip({ progress }) {
           )}
         </span>
       </div>
-      <div className="mt-1.5 h-1.5 rounded-full bg-gray-200 overflow-hidden flex">
+      <div className="mt-1.5 h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
         <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: pct(progress.finished) }} />
         <div className="h-full bg-sky-400 transition-all duration-500" style={{ width: pct(progress.onCourse) }} />
+      </div>
+    </div>
+  );
+}
+
+// === Loader / skeleton (murni tampilan) ===
+function InlineSpinner({ className = "w-3.5 h-3.5" }) {
+  return (
+    <span
+      className={`inline-block rounded-full border-2 border-sts/25 border-t-sts animate-spin ${className}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+function LoadingLabel({ children }) {
+  return (
+    <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-slate-100 bg-slate-50/70 text-xs font-medium text-slate-500">
+      <InlineSpinner />
+      {children}
+    </div>
+  );
+}
+
+function LeaderboardSkeleton({ rows = 6, label = "Memuat hasil…" }) {
+  return (
+    <div aria-busy="true" aria-live="polite">
+      <LoadingLabel>{label}</LoadingLabel>
+      <div className="divide-y divide-slate-100 animate-pulse">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-[40px_1fr_auto] sm:grid-cols-[56px_1fr_90px_110px] items-center gap-3 px-4 sm:px-5 h-12"
+          >
+            <span className="w-7 h-7 rounded-full bg-slate-100" />
+            <span className="space-y-1.5">
+              <span
+                className="block h-3 rounded bg-slate-200"
+                style={{ width: `${70 - ((i * 13) % 35)}%` }}
+              />
+              <span className="block h-2 w-16 rounded bg-slate-100 sm:hidden" />
+            </span>
+            <span className="hidden sm:block h-3 w-12 rounded bg-slate-100" />
+            <span className="h-3 w-16 sm:w-20 rounded bg-slate-200 justify-self-end" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PageContentSkeleton() {
+  return (
+    <div className="space-y-5" aria-busy="true">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-2.5 flex gap-1.5 animate-pulse">
+        {[96, 80, 112, 72].map((w, i) => (
+          <span key={i} className="h-10 rounded-xl bg-slate-100 shrink-0" style={{ width: w }} />
+        ))}
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200 animate-pulse">
+          <span className="block h-5 w-40 rounded bg-slate-200" />
+        </div>
+        <LeaderboardSkeleton label="Memuat data event…" />
       </div>
     </div>
   );
@@ -867,184 +932,203 @@ export default function LiveEventDetail() {
         ))}
       </div>
 
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
-            </span>
-            <span className="uppercase tracking-[0.25em] text-[11px] sm:text-xs font-bold text-red-600">
-              Live
-            </span>
-          </div>
+      {/* Header band: toolbar + info event */}
+      <header className="relative bg-white border-b border-slate-200">
+        <div className="h-1 bg-sts" />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between gap-3 py-3 border-b border-slate-100">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Link
+                href="/live"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 border border-slate-200 transition-colors"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
+                </svg>
+                <span className="hidden xs:inline">Kembali</span>
+              </Link>
+              <span className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-red-50 border border-red-100">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                </span>
+                <span className="uppercase tracking-[0.2em] text-[11px] font-bold text-red-600">
+                  Live
+                </span>
+              </span>
+              <span className="hidden sm:inline-flex items-center h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-600 font-semibold tabular-nums">
+                <LiveClock />
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden sm:block text-xs text-slate-500 font-medium tabular-nums">
-              <LiveClock />
-            </span>
+            <div className="flex items-center gap-2">
+              {/* Share */}
+              <div className="relative" ref={shareMenuRef}>
+                <button
+                  type="button"
+                  onClick={handleNativeShare}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 border border-slate-200 transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                    <path d="M18 16.08a2.92 2.92 0 0 0-1.95.75L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a3 3 0 1 0-.9-1.72L8 9.58a3 3 0 1 0 0 4.84l7.13 4.16a3 3 0 1 0 2.87-2.5Z" />
+                  </svg>
+                  <span className="hidden xs:inline">Bagikan</span>
+                </button>
 
-            {/* Share */}
-            <div className="relative" ref={shareMenuRef}>
+                <AnimatePresence>
+                  {shareOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden z-20"
+                    >
+                      <button
+                        type="button"
+                        onClick={handleShareWhatsApp}
+                        className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-500 flex-shrink-0">
+                          <path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.14-1.35A10 10 0 1 0 12 2Zm0 18.2a8.17 8.17 0 0 1-4.17-1.14l-.3-.18-3.05.8.81-2.97-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.45-.72-1.68-.8-.22-.08-.39-.12-.55.12-.16.25-.63.8-.78.96-.14.16-.28.18-.53.06-.25-.12-1.06-.39-2.01-1.24-.75-.66-1.25-1.48-1.4-1.73-.14-.25-.02-.38.11-.5.11-.11.25-.28.37-.42.12-.14.16-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.32-.75-1.81-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.04 0 1.2.88 2.36 1 2.53.12.16 1.73 2.64 4.2 3.7.59.25 1.05.4 1.4.51.59.19 1.13.16 1.55.1.47-.07 1.45-.59 1.66-1.16.2-.57.2-1.06.14-1.16-.06-.11-.22-.17-.47-.29Z" />
+                        </svg>
+                        WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
+                      >
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-sts flex-shrink-0">
+                          {copied ? (
+                            <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z" />
+                          ) : (
+                            <path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z" />
+                          )}
+                        </svg>
+                        {copied ? "Link tersalin!" : "Salin Link"}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Fullscreen — sembunyikan Navbar/Footer global (bukan
+                  bagian elemen ini) supaya cocok dipakai di layar TV/proyektor
+                  venue lomba. */}
               <button
                 type="button"
-                onClick={handleNativeShare}
-                className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
+                onClick={toggleFullscreen}
+                title={isFullscreen ? "Keluar Fullscreen" : "Fullscreen"}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 border border-slate-200 transition-colors"
               >
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-                  <path d="M18 16.08a2.92 2.92 0 0 0-1.95.75L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a3 3 0 1 0-.9-1.72L8 9.58a3 3 0 1 0 0 4.84l7.13 4.16a3 3 0 1 0 2.87-2.5Z" />
-                </svg>
-                <span className="hidden xs:inline">Bagikan</span>
+                {isFullscreen ? (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3v2h3a4 4 0 0 0 4-4V3H8Zm8 0h-2v3a4 4 0 0 0 4 4h3V8h-3a2 2 0 0 1-2-2V3ZM8 21v-3a2 2 0 0 0-2-2H3v-2h3a4 4 0 0 1 4 4v3H8Zm8 0h-2v-3a4 4 0 0 1 4-4h3v2h-3a2 2 0 0 0-2 2v3Z" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                    <path d="M3 9V3h6v2H5v4H3Zm12-6h6v6h-2V5h-4V3ZM3 15h2v4h4v2H3v-6Zm16 4v-4h2v6h-6v-2h4Z" />
+                  </svg>
+                )}
+                <span className="hidden xs:inline">
+                  {isFullscreen ? "Keluar" : "Fullscreen"}
+                </span>
               </button>
-
-              <AnimatePresence>
-                {shareOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden z-20"
-                  >
-                    <button
-                      type="button"
-                      onClick={handleShareWhatsApp}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-500 flex-shrink-0">
-                        <path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.14-1.35A10 10 0 1 0 12 2Zm0 18.2a8.17 8.17 0 0 1-4.17-1.14l-.3-.18-3.05.8.81-2.97-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.45-.72-1.68-.8-.22-.08-.39-.12-.55.12-.16.25-.63.8-.78.96-.14.16-.28.18-.53.06-.25-.12-1.06-.39-2.01-1.24-.75-.66-1.25-1.48-1.4-1.73-.14-.25-.02-.38.11-.5.11-.11.25-.28.37-.42.12-.14.16-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.32-.75-1.81-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.04 0 1.2.88 2.36 1 2.53.12.16 1.73 2.64 4.2 3.7.59.25 1.05.4 1.4.51.59.19 1.13.16 1.55.1.47-.07 1.45-.59 1.66-1.16.2-.57.2-1.06.14-1.16-.06-.11-.22-.17-.47-.29Z" />
-                      </svg>
-                      WhatsApp
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCopyLink}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
-                    >
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-sts flex-shrink-0">
-                        {copied ? (
-                          <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z" />
-                        ) : (
-                          <path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z" />
-                        )}
-                      </svg>
-                      {copied ? "Link tersalin!" : "Salin Link"}
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
+          </div>
 
-            {/* Fullscreen — sembunyikan Navbar/Footer global (bukan
-                bagian elemen ini) supaya cocok dipakai di layar TV/proyektor
-                venue lomba. */}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              title={isFullscreen ? "Keluar Fullscreen" : "Fullscreen"}
-              className="flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
-            >
-              {isFullscreen ? (
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-                  <path d="M8 3v3a2 2 0 0 1-2 2H3v2h3a4 4 0 0 0 4-4V3H8Zm8 0h-2v3a4 4 0 0 0 4 4h3V8h-3a2 2 0 0 1-2-2V3ZM8 21v-3a2 2 0 0 0-2-2H3v-2h3a4 4 0 0 1 4 4v3H8Zm8 0h-2v-3a4 4 0 0 1 4-4h3v2h-3a2 2 0 0 0-2 2v3Z" />
-                </svg>
+          {/* Event Info */}
+          {loading && (
+            <div className="py-5 sm:py-6 flex items-center gap-4 sm:gap-5 animate-pulse" aria-busy="true">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-100 shrink-0" />
+              <div className="flex-1 min-w-0 space-y-3">
+                <div className="h-6 sm:h-8 bg-slate-200 rounded-lg w-3/4 sm:w-1/2" />
+                <div className="flex flex-wrap gap-2">
+                  <div className="h-6 w-20 bg-slate-100 rounded-md" />
+                  <div className="h-6 w-28 bg-slate-100 rounded-md" />
+                  <div className="h-6 w-36 bg-slate-100 rounded-md" />
+                </div>
+              </div>
+            </div>
+          )}
+          {!loading && !errMsg && event && (
+            <div className="py-5 sm:py-6 flex items-center gap-4 sm:gap-5">
+              {event.logoUrl ? (
+                <img
+                  src={event.logoUrl}
+                  alt={`${event.name} logo`}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain border border-slate-200 flex-shrink-0 bg-white p-1.5"
+                  onError={(e) => {
+                    if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) {
+                      e.currentTarget.src = DEFAULT_IMG;
+                      e.currentTarget.className =
+                        "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-slate-200 flex-shrink-0 bg-white";
+                    }
+                  }}
+                />
               ) : (
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-                  <path d="M3 9V3h6v2H5v4H3Zm12-6h6v6h-2V5h-4V3ZM3 15h2v4h4v2H3v-6Zm16 4v-4h2v6h-6v-2h4Z" />
-                </svg>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border border-slate-200 bg-slate-50 flex-shrink-0 flex items-center justify-center text-2xl sm:text-3xl font-extrabold text-sts">
+                  {event.name?.charAt(0)?.toUpperCase() || "E"}
+                </div>
               )}
-              <span className="hidden xs:inline">
-                {isFullscreen ? "Keluar" : "Fullscreen"}
-              </span>
-            </button>
 
-            <Link
-              href="/live"
-              className="text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
-            >
-              ← Kembali
-            </Link>
-          </div>
-        </div>
-
-        {/* Loading / Error */}
-        {loading && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 mb-6 text-center text-slate-500">
-            Memuat data event…
-          </div>
-        )}
-        {errMsg && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 p-4 mb-6">
-            {errMsg}
-          </div>
-        )}
-
-        {/* Event Info */}
-        {!loading && !errMsg && event && (
-          <div className="mb-8 flex items-center gap-4 sm:gap-5">
-            {event.logoUrl ? (
-              <img
-                src={event.logoUrl}
-                alt={`${event.name} logo`}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain border border-slate-200 shadow-sm flex-shrink-0 bg-white p-1.5"
-                onError={(e) => {
-                  if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) {
-                    e.currentTarget.src = DEFAULT_IMG;
-                    e.currentTarget.className =
-                      "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-slate-200 shadow-sm flex-shrink-0 bg-white";
-                  }
-                }}
-              />
-            ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border border-slate-200 bg-white shadow-sm flex-shrink-0 flex items-center justify-center text-2xl sm:text-3xl font-extrabold text-sts">
-                {event.name?.charAt(0)?.toUpperCase() || "E"}
-              </div>
-            )}
-
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-5xl font-extrabold tracking-tight leading-tight text-slate-900">
-                {event.name}
-              </h1>
-              <div className="mt-2 sm:mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs sm:text-sm text-slate-500">
-                <span className="inline-flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-sts">
-                    <path d="M12 2 1 21h22L12 2Z" />
-                  </svg>
-                  {event.levelName}
-                </span>
-                {(event.city || event.province) && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-sts">
-                      <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-tight text-slate-900">
+                  {event.name}
+                </h1>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-slate-600">
+                  {event.levelName && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-sts/10 text-stsDark font-semibold">
+                      {event.levelName}
+                    </span>
+                  )}
+                  {(event.city || event.province) && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-slate-400">
+                        <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+                      </svg>
+                      {event.city}
+                      {event.city && event.province ? ", " : ""}
+                      {event.province}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-slate-400">
+                      <path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7Zm-2 8h14v10H5V10Z" />
                     </svg>
-                    {event.city}
-                    {event.city && event.province ? ", " : ""}
-                    {event.province}
+                    {event.startDate
+                      ? new Date(event.startDate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
+                      : "-"}
+                    {" – "}
+                    {event.endDate
+                      ? new Date(event.endDate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
+                      : "-"}
                   </span>
-                )}
-                <span className="inline-flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-sts">
-                    <path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7Zm-2 8h14v10H5V10Z" />
-                  </svg>
-                  {event.startDate
-                    ? new Date(event.startDate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
-                    : "-"}
-                  {" – "}
-                  {event.endDate
-                    ? new Date(event.endDate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
-                    : "-"}
-                </span>
+                </div>
               </div>
             </div>
+          )}
+        </div>
+      </header>
+
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
+        {loading && <PageContentSkeleton />}
+        {errMsg && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 p-4 mb-6 flex items-start gap-2.5">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 shrink-0 mt-px text-red-500" aria-hidden="true">
+              <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+            </svg>
+            <span>{errMsg}</span>
           </div>
         )}
 
         {!loading && !errMsg && event && (
           <>
-            {/* Tabs + Auto-play control */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div className="flex flex-wrap items-center gap-2">
+            {/* Panel kontrol: tab kategori + kelas/divisi + auto-play */}
+            <div className="mb-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex gap-1.5 overflow-x-auto p-2 sm:p-2.5">
                 {availableTabs.map((tab) => (
                   <button
                     key={tab.code}
@@ -1052,143 +1136,116 @@ export default function LiveEventDetail() {
                       setActiveCategory(tab.code);
                       stopAutoPlay();
                     }}
-                    className={`relative px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-sm sm:text-base font-semibold transition-all ${
+                    className={`shrink-0 px-4 sm:px-5 h-10 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-colors ${
                       activeCategory === tab.code
-                        ? "bg-sts text-white border border-sts shadow-sm"
-                        : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200"
+                        ? "bg-sts text-white shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`}
                   >
                     {tab.label}
                   </button>
                 ))}
                 {availableTabs.length === 0 && (
-                  <p className="text-slate-500 text-sm">
+                  <p className="text-slate-500 text-sm px-2 py-2">
                     Belum ada kategori yang dikonfigurasi untuk event ini.
                   </p>
                 )}
               </div>
 
-              {/* Auto-play */}
-              {rotationSlides.length > 1 && (
-                <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white shadow-sm pl-1.5 pr-3 py-1.5">
-                  <button
-                    type="button"
-                    onClick={toggleAutoPlay}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
-                      autoPlay
-                        ? "bg-red-500 text-white hover:bg-red-600"
-                        : "bg-sts text-white hover:bg-stsDark"
-                    }`}
-                    aria-label={autoPlay ? "Hentikan auto-play" : "Mulai auto-play"}
-                    title={autoPlay ? "Stop" : "Play"}
-                  >
-                    {autoPlay ? (
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-                        <rect x="6" y="5" width="4" height="14" rx="1" />
-                        <rect x="14" y="5" width="4" height="14" rx="1" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 ml-0.5">
-                        <path d="M8 5v14l11-7L8 5Z" />
-                      </svg>
-                    )}
-                  </button>
+              {(bucketOptions.length > 0 || rotationSlides.length > 1) && (
+                <div className="flex flex-col lg:flex-row lg:items-end gap-3 px-3 sm:px-4 py-3 border-t border-slate-100">
+                  {/* Bucket selector */}
+                  {bucketOptions.length > 0 && (
+                    <div className="flex flex-col gap-2 flex-1 min-w-0">
+                      <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                        Kelas / Divisi
+                      </span>
+                      <div
+                        role="tablist"
+                        aria-label="Kelas / Divisi"
+                        className="flex gap-1.5 overflow-x-auto -mx-3 px-3 pb-1 sm:mx-0 sm:px-0 sm:pb-0 md:flex-wrap md:overflow-visible"
+                      >
+                        {bucketOptions.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            role="tab"
+                            aria-selected={selectedBucket === opt.value}
+                            onClick={() => {
+                              setSelectedBucket(opt.value);
+                              stopAutoPlay();
+                            }}
+                            className={`shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors ${
+                              selectedBucket === opt.value
+                                ? "bg-sts/10 text-stsDark border-sts ring-1 ring-sts/30"
+                                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-white hover:border-sts/40 hover:text-stsDark"
+                            }`}
+                          >
+                            {selectedBucket === opt.value && (
+                              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 shrink-0" aria-hidden="true">
+                                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                  <select
-                    value={rotateSeconds}
-                    onChange={(e) => setRotateSeconds(Number(e.target.value))}
-                    className="bg-transparent text-slate-700 text-xs sm:text-sm font-medium border-none outline-none focus:ring-0"
-                  >
-                    {ROTATE_DURATION_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}s
-                      </option>
-                    ))}
-                  </select>
+                  {/* Auto-play */}
+                  {rotationSlides.length > 1 && (
+                    <div className="flex items-center gap-2 lg:ml-auto rounded-xl border border-slate-200 bg-slate-50 pl-1.5 pr-3 h-10 self-start lg:self-auto shrink-0">
+                      <button
+                        type="button"
+                        onClick={toggleAutoPlay}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                          autoPlay
+                            ? "bg-red-500 text-white hover:bg-red-600"
+                            : "bg-sts text-white hover:bg-stsDark"
+                        }`}
+                        aria-label={autoPlay ? "Hentikan auto-play" : "Mulai auto-play"}
+                        title={autoPlay ? "Stop" : "Play"}
+                      >
+                        {autoPlay ? (
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                            <rect x="6" y="5" width="4" height="14" rx="1" />
+                            <rect x="14" y="5" width="4" height="14" rx="1" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 ml-0.5">
+                            <path d="M8 5v14l11-7L8 5Z" />
+                          </svg>
+                        )}
+                      </button>
 
-                  {autoPlay && (
-                    <span className="relative flex h-1.5 w-10 rounded-full bg-slate-200 overflow-hidden">
-                      <motion.span
-                        key={slideKey}
-                        initial={{ width: "0%" }}
-                        animate={{ width: "100%" }}
-                        transition={{ duration: rotateSeconds, ease: "linear" }}
-                        className="absolute inset-y-0 left-0 bg-sts rounded-full"
-                      />
-                    </span>
+                      <span className="text-xs text-slate-500 font-medium">Auto-play</span>
+                      <select
+                        value={rotateSeconds}
+                        onChange={(e) => setRotateSeconds(Number(e.target.value))}
+                        className="bg-transparent text-slate-700 text-xs sm:text-sm font-semibold border-none outline-none focus:ring-0"
+                      >
+                        {ROTATE_DURATION_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}s
+                          </option>
+                        ))}
+                      </select>
+
+                      {autoPlay && (
+                        <span className="relative flex h-1.5 w-10 rounded-full bg-slate-200 overflow-hidden">
+                          <motion.span
+                            key={slideKey}
+                            initial={{ width: "0%" }}
+                            animate={{ width: "100%" }}
+                            transition={{ duration: rotateSeconds, ease: "linear" }}
+                            className="absolute inset-y-0 left-0 bg-sts rounded-full"
+                          />
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-
-            {/* Bucket selector */}
-            {bucketOptions.length > 0 && (
-              <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-xl border border-slate-200 bg-white shadow-sm px-4 py-3">
-                <label className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold sm:whitespace-nowrap">
-                  Kelas / Divisi
-                </label>
-                <select
-                  value={selectedBucket}
-                  onChange={(e) => {
-                    setSelectedBucket(e.target.value);
-                    stopAutoPlay();
-                  }}
-                  className="w-full sm:max-w-md bg-transparent text-slate-900 text-sm sm:text-base font-medium border-none outline-none focus:ring-0 py-1"
-                >
-                  {bucketOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                {autoPlay && (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-sts font-semibold sm:ml-auto">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sts opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sts" />
-                    </span>
-                    Auto-play aktif
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Updated-at info */}
-            <div className="flex items-center justify-between mb-3 px-1">
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900">{activeTabLabel}</h2>
-                {/* H2H tidak pakai badge status kategori di sini — statusnya
-                    per babak, tampil di bracket (lihat h2hRoundStatus). */}
-                {activeCategory !== "OVERALL" && activeCategory !== "H2H" && results.teams.length > 0 && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
-                        isActiveCategoryOfficial
-                          ? "border-emerald-200 text-emerald-700 bg-emerald-50"
-                          : isActiveCategoryProvisional
-                          ? "border-amber-200 text-amber-700 bg-amber-50"
-                          : "border-red-200 text-red-700 bg-red-50"
-                      }`}
-                      title="Status hasil ditetapkan operator di timing system, per kategori"
-                    >
-                      {isActiveCategoryOfficial
-                        ? "Official Result"
-                        : isActiveCategoryProvisional
-                        ? "Provisional Result"
-                        : "Unofficial Result"}
-                    </span>
-                    {formattedOfficialSetAt && (
-                      <span className="text-[10px] sm:text-[11px] text-slate-500">
-                        {formattedOfficialSetAt}
-                      </span>
-                    )}
-                  </span>
-                )}
-              </div>
-              {results.updatedAt && (
-                <p className="text-[11px] sm:text-xs text-slate-500">
-                  Diperbarui {new Date(results.updatedAt).toLocaleTimeString("id-ID")}
-                </p>
               )}
             </div>
 
@@ -1198,13 +1255,61 @@ export default function LiveEventDetail() {
               transition={{ duration: 0.6 }}
               className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm"
             >
+              {/* Judul hasil + status + waktu update */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 sm:px-5 py-3.5 border-b border-slate-200">
+                <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+                  <h2 className="text-base sm:text-xl font-bold text-slate-900">{activeTabLabel}</h2>
+                  {/* H2H tidak pakai badge status kategori di sini — statusnya
+                      per babak, tampil di bracket (lihat h2hRoundStatus). */}
+                  {activeCategory !== "OVERALL" && activeCategory !== "H2H" && results.teams.length > 0 && (
+                    <span className="inline-flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${
+                          isActiveCategoryOfficial
+                            ? "border-emerald-200 text-emerald-700 bg-emerald-50"
+                            : isActiveCategoryProvisional
+                            ? "border-amber-200 text-amber-700 bg-amber-50"
+                            : "border-red-200 text-red-700 bg-red-50"
+                        }`}
+                        title="Status hasil ditetapkan operator di timing system, per kategori"
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isActiveCategoryOfficial
+                              ? "bg-emerald-500"
+                              : isActiveCategoryProvisional
+                              ? "bg-amber-500"
+                              : "bg-red-500"
+                          }`}
+                        />
+                        {isActiveCategoryOfficial
+                          ? "Official Result"
+                          : isActiveCategoryProvisional
+                          ? "Provisional Result"
+                          : "Unofficial Result"}
+                      </span>
+                      {formattedOfficialSetAt && (
+                        <span className="text-[10px] sm:text-[11px] text-slate-500">
+                          {formattedOfficialSetAt}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                {results.updatedAt && (
+                  <p className="text-[11px] sm:text-xs text-slate-500 tabular-nums shrink-0">
+                    Diperbarui {new Date(results.updatedAt).toLocaleTimeString("id-ID")}
+                  </p>
+                )}
+              </div>
+
               {loadingResults && !results.teams.length ? (
-                <div className="p-12 text-center text-gray-500">Memuat hasil…</div>
+                <LeaderboardSkeleton />
               ) : resultsError ? (
                 <div className="p-6 text-center text-red-600">{resultsError}</div>
               ) : results.teams.length === 0 ? (
                 <div className="p-12 text-center">
-                  <p className="text-gray-500">Belum ada hasil untuk kategori/kelas ini.</p>
+                  <p className="text-slate-500">Belum ada hasil untuk kategori/kelas ini.</p>
                 </div>
               ) : isSprintDetailed ? (
                 <div>
@@ -1212,19 +1317,19 @@ export default function LiveEventDetail() {
                   <RaceProgressStrip progress={results.progress} />
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
-                    <thead className="bg-slate-700">
-                      <tr className="text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Status</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Start Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">PS</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">PF</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Finish Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Result</th>
+                    <thead className="bg-slate-50">
+                      <tr className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-200">
+                        <th className="text-left px-3 py-2 whitespace-nowrap">No</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">BIB</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">Status</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Ranked</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">PS</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">PF</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Result</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1239,37 +1344,37 @@ export default function LiveEventDetail() {
                           : r.condition === "ON_COURSE"
                           ? "bg-sky-50/60"
                           : notStarted || r.flag
-                          ? "bg-white text-gray-400"
-                          : "hover:bg-gray-50";
+                          ? "bg-white text-slate-400"
+                          : "hover:bg-slate-50";
                         return (
                           <tr
                             key={`${r.teamId || r.bib}-${r.name}`}
-                            className={`border-b border-gray-100 last:border-b-0 ${rowTone} transition-colors h-14`}
+                            className={`border-b border-slate-100 last:border-b-0 ${rowTone} transition-colors h-12`}
                           >
-                            <td className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap">
+                            <td className="px-3 py-2 text-slate-500 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
                             <td
-                              className={`px-2.5 py-1.5 font-bold whitespace-nowrap ${
-                                notStarted || r.flag ? "text-gray-500" : "text-gray-900"
+                              className={`px-3 py-2 font-bold whitespace-nowrap ${
+                                notStarted || r.flag ? "text-slate-500" : "text-slate-900"
                               }`}
                             >
                               {r.name}
                             </td>
-                            <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{r.bib}</td>
-                            <td className="px-2.5 py-1.5 whitespace-nowrap">
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
                               <ConditionBadge condition={r.condition} flag={r.flag} />
                             </td>
-                            <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
+                            <td className="px-3 py-2 text-right whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1 font-bold tabular-nums ${
-                                  isTop3 ? "text-amber-600" : "text-gray-900"
+                                  isTop3 ? "text-amber-600" : "text-slate-900"
                                 }`}
                               >
                                 {r.rank ?? "-"}
                                 {isProvisional && (
                                   <span
-                                    className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                                    className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"
                                     title="Peringkat sementara (live) dari Result tim yang sudah finish — final setelah operator Save Result"
                                   >
                                     Live
@@ -1277,34 +1382,34 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                               {r.startTime || "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap">
                               {started && r.startPenalty != null ? (
-                                <span className={r.startPenalty > 0 ? "text-red-600 font-semibold" : "text-gray-500"}>
+                                <span className={r.startPenalty > 0 ? "text-red-600 font-semibold" : "text-slate-500"}>
                                   {r.startPenalty}
                                 </span>
                               ) : (
                                 "-"
                               )}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap">
                               {started && r.finishPenalty != null ? (
-                                <span className={r.finishPenalty > 0 ? "text-red-600 font-semibold" : "text-gray-500"}>
+                                <span className={r.finishPenalty > 0 ? "text-red-600 font-semibold" : "text-slate-500"}>
                                   {r.finishPenalty}
                                 </span>
                               ) : (
                                 "-"
                               )}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                               {r.finishTime || "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-red-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-red-600 tabular-nums whitespace-nowrap">
                               {r.penaltyTime || "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono font-bold text-gray-900 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono font-bold text-slate-900 tabular-nums whitespace-nowrap">
                               {r.totalTime || "-"}
                             </td>
                           </tr>
@@ -1320,20 +1425,20 @@ export default function LiveEventDetail() {
                   <RaceProgressStrip progress={results.progress} />
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
-                    <thead className="bg-slate-700">
-                      <tr className="text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Status</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Start Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">PS</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Section</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">PF</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Finish Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Result</th>
+                    <thead className="bg-slate-50">
+                      <tr className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-200">
+                        <th className="text-left px-3 py-2 whitespace-nowrap">No</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">BIB</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">Status</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Ranked</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">PS</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">Section</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">PF</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Result</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1353,11 +1458,11 @@ export default function LiveEventDetail() {
                           : r.condition === "ON_COURSE"
                           ? "bg-sky-50/60"
                           : notStarted || r.flag
-                          ? "bg-white text-gray-400"
-                          : "hover:bg-gray-50";
+                          ? "bg-white text-slate-400"
+                          : "hover:bg-slate-50";
                         const penCell = (v) =>
                           started && v != null ? (
-                            <span className={v > 0 ? "text-red-600 font-semibold" : v < 0 ? "text-emerald-600 font-semibold" : "text-gray-500"}>
+                            <span className={v > 0 ? "text-red-600 font-semibold" : v < 0 ? "text-emerald-600 font-semibold" : "text-slate-500"}>
                               {v}
                             </span>
                           ) : (
@@ -1366,32 +1471,32 @@ export default function LiveEventDetail() {
                         return (
                           <tr
                             key={`${r.teamId || r.bib}-${r.name}`}
-                            className={`border-b border-gray-100 last:border-b-0 ${rowTone} transition-colors h-14`}
+                            className={`border-b border-slate-100 last:border-b-0 ${rowTone} transition-colors h-12`}
                           >
-                            <td className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap">
+                            <td className="px-3 py-2 text-slate-500 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
                             <td
-                              className={`px-2.5 py-1.5 font-bold whitespace-nowrap ${
-                                notStarted || r.flag ? "text-gray-500" : "text-gray-900"
+                              className={`px-3 py-2 font-bold whitespace-nowrap ${
+                                notStarted || r.flag ? "text-slate-500" : "text-slate-900"
                               }`}
                             >
                               {r.name}
                             </td>
-                            <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{r.bib}</td>
-                            <td className="px-2.5 py-1.5 whitespace-nowrap">
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
                               <ConditionBadge condition={r.condition} flag={r.flag} />
                             </td>
-                            <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
+                            <td className="px-3 py-2 text-right whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1 font-bold tabular-nums ${
-                                  isTop3 ? "text-amber-600" : "text-gray-900"
+                                  isTop3 ? "text-amber-600" : "text-slate-900"
                                 }`}
                               >
                                 {r.rank ?? "-"}
                                 {isProvisional && (
                                   <span
-                                    className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                                    className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"
                                     title="Peringkat sementara (live) dari Result tim yang sudah finish — final setelah operator Save Result"
                                   >
                                     Live
@@ -1399,13 +1504,13 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                               {r.startTime || "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap">
                               {penCell(r.startPenalty)}
                             </td>
-                            <td className="px-2.5 py-1.5 whitespace-nowrap">
+                            <td className="px-3 py-2 whitespace-nowrap">
                               {started && sections.length ? (
                                 <span className="inline-flex flex-wrap items-center gap-1">
                                   {sections.map((x) => (
@@ -1423,21 +1528,21 @@ export default function LiveEventDetail() {
                                   ))}
                                 </span>
                               ) : started && r.sectionPenalty ? (
-                                <span className="font-mono text-gray-600">{r.sectionPenalty}</span>
+                                <span className="font-mono text-slate-600">{r.sectionPenalty}</span>
                               ) : (
-                                <span className="text-gray-400">-</span>
+                                <span className="text-slate-400">-</span>
                               )}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap">
                               {penCell(r.finishPenalty)}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                               {r.finishTime || "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-red-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-red-600 tabular-nums whitespace-nowrap">
                               {r.penaltyTime || "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono font-bold text-gray-900 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono font-bold text-slate-900 tabular-nums whitespace-nowrap">
                               {r.totalTime || "-"}
                             </td>
                           </tr>
@@ -1451,9 +1556,9 @@ export default function LiveEventDetail() {
                 <div>
                   {/* Progres race LIVE per Run (langkah demi langkah sampai semua tim selesai Run 2) */}
                   {results.progress && (
-                    <div className="px-3 py-2.5 border-b border-gray-100 bg-gray-50/70">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
                       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                        <span className="font-semibold text-gray-700">
+                        <span className="font-semibold text-slate-700">
                           {results.progress.allDone ? (
                             <span className="inline-flex items-center gap-1 text-emerald-700">
                               ✓ Semua tim selesai (Run 1 &amp; Run 2)
@@ -1464,7 +1569,7 @@ export default function LiveEventDetail() {
                               <span className="tabular-nums">
                                 {results.progress.run1Done}/{results.progress.total}
                               </span>
-                              <span className="mx-2 text-gray-300">|</span>
+                              <span className="mx-2 text-slate-300">|</span>
                               Run 2:{" "}
                               <span className="tabular-nums">
                                 {results.progress.run2Done}/{results.progress.total}
@@ -1472,7 +1577,7 @@ export default function LiveEventDetail() {
                             </>
                           )}
                         </span>
-                        <span className="flex flex-wrap items-center gap-3 text-gray-500">
+                        <span className="flex flex-wrap items-center gap-3 text-slate-500">
                           <span className="inline-flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
                             On Course {results.progress.onCourse}
@@ -1488,7 +1593,7 @@ export default function LiveEventDetail() {
                           ["Run 1", results.progress.run1Done],
                           ["Run 2", results.progress.run2Done],
                         ].map(([label, done]) => (
-                          <div key={label} className="h-1.5 rounded-full bg-gray-200 overflow-hidden" title={label}>
+                          <div key={label} className="h-1.5 rounded-full bg-slate-200 overflow-hidden" title={label}>
                             <div
                               className="h-full bg-emerald-500 transition-all duration-500"
                               style={{
@@ -1502,29 +1607,29 @@ export default function LiveEventDetail() {
                   )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
-                    <thead className="bg-slate-700">
-                      <tr className="text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">No</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Team Name</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">BIB</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Status</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Ranked</th>
-                        <th className="text-left px-2.5 py-1.5 whitespace-nowrap">Run</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Pen. Start</th>
+                    <thead className="bg-slate-50">
+                      <tr className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-200">
+                        <th className="text-left px-3 py-2 whitespace-nowrap">No</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">Team Name</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">BIB</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">Status</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Ranked</th>
+                        <th className="text-left px-3 py-2 whitespace-nowrap">Run</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Pen. Start</th>
                         {Array.from({ length: maxGates }, (_, gi) => (
                           <th
                             key={`gate-head-${gi}`}
-                            className="text-right px-2.5 py-1.5 whitespace-nowrap"
+                            className="text-right px-3 py-2 whitespace-nowrap"
                           >
                             G{gi + 1}
                           </th>
                         ))}
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Pen. Finish</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Pen. Total</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Penalty Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Start Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Finish Time</th>
-                        <th className="text-right px-2.5 py-1.5 whitespace-nowrap">Result</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Pen. Finish</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Pen. Total</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Penalty Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Start Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Finish Time</th>
+                        <th className="text-right px-3 py-2 whitespace-nowrap">Result</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1547,7 +1652,7 @@ export default function LiveEventDetail() {
                           return (
                           <tr
                             key={`${r.teamId || r.bib}-${r.name}-run${runIdx}`}
-                            className={`border-b border-gray-100 last:border-b-0 ${
+                            className={`border-b border-slate-100 last:border-b-0 ${
                               runOnCourse
                                 ? "bg-sky-50/70"
                                 : isBestRun
@@ -1555,14 +1660,14 @@ export default function LiveEventDetail() {
                                 : isTop3
                                 ? "bg-amber-50"
                                 : notStarted
-                                ? "bg-white text-gray-400"
-                                : "hover:bg-gray-50"
-                            } transition-colors h-14`}
+                                ? "bg-white text-slate-400"
+                                : "hover:bg-slate-50"
+                            } transition-colors h-12`}
                           >
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap align-top"
+                                className="px-3 py-2 text-slate-500 font-medium whitespace-nowrap align-top"
                               >
                                 {idx + 1}
                               </td>
@@ -1570,7 +1675,7 @@ export default function LiveEventDetail() {
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-2.5 py-1.5 font-bold text-gray-900 whitespace-nowrap align-top"
+                                className="px-3 py-2 font-bold text-slate-900 whitespace-nowrap align-top"
                               >
                                 {r.name}
                               </td>
@@ -1578,7 +1683,7 @@ export default function LiveEventDetail() {
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap align-top"
+                                className="px-3 py-2 text-slate-600 whitespace-nowrap align-top"
                               >
                                 {r.bib}
                               </td>
@@ -1586,7 +1691,7 @@ export default function LiveEventDetail() {
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-2.5 py-1.5 whitespace-nowrap align-top"
+                                className="px-3 py-2 whitespace-nowrap align-top"
                               >
                                 <ConditionBadge
                                   condition={r.condition}
@@ -1601,17 +1706,17 @@ export default function LiveEventDetail() {
                             {runIdx === 0 && (
                               <td
                                 rowSpan={runs.length}
-                                className="px-2.5 py-1.5 text-right whitespace-nowrap align-top"
+                                className="px-3 py-2 text-right whitespace-nowrap align-top"
                               >
                                 <span
                                   className={`inline-flex items-center gap-1 font-bold tabular-nums ${
-                                    isTop3 ? "text-amber-600" : "text-gray-900"
+                                    isTop3 ? "text-amber-600" : "text-slate-900"
                                   }`}
                                 >
                                   {r.rank ?? "-"}
                                   {isProvisional && (
                                     <span
-                                      className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                                      className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"
                                       title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
                                     >
                                       Live
@@ -1620,10 +1725,10 @@ export default function LiveEventDetail() {
                                 </span>
                               </td>
                             )}
-                            <td className="px-2.5 py-1.5 whitespace-nowrap">
+                            <td className="px-3 py-2 whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center gap-1.5 ${
-                                  isBestRun ? "text-emerald-600 font-semibold" : "text-gray-600"
+                                  isBestRun ? "text-emerald-600 font-semibold" : "text-slate-600"
                                 }`}
                               >
                                 {run.runNo ? `Run ${run.runNo}` : "-"}
@@ -1644,7 +1749,7 @@ export default function LiveEventDetail() {
                                 )}
                               </span>
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                               {Number.isFinite(run.startPenalty) ? run.startPenalty : "-"}
                             </td>
                             {Array.from({ length: maxGates }, (_, gi) => {
@@ -1652,30 +1757,30 @@ export default function LiveEventDetail() {
                               return (
                                 <td
                                   key={`gate-${runIdx}-${gi}`}
-                                  className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap"
+                                  className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap"
                                 >
                                   {Number.isFinite(g) ? g : "-"}
                                 </td>
                               );
                             })}
-                            <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                               {Number.isFinite(run.finishPenalty) ? run.finishPenalty : "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-red-600 font-semibold tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-red-600 font-semibold tabular-nums whitespace-nowrap">
                               {Number.isFinite(run.totalPenalty) ? run.totalPenalty : "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-red-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-red-600 tabular-nums whitespace-nowrap">
                               {run.penaltyTime || "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                               {run.startTime || "-"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                               {run.finishTime || "-"}
                             </td>
                             <td
-                              className={`px-2.5 py-1.5 text-right font-mono font-bold tabular-nums whitespace-nowrap ${
-                                isBestRun ? "text-emerald-600" : "text-gray-900"
+                              className={`px-3 py-2 text-right font-mono font-bold tabular-nums whitespace-nowrap ${
+                                isBestRun ? "text-emerald-600" : "text-slate-900"
                               }`}
                             >
                               {run.totalTime || "-"}
@@ -1693,7 +1798,7 @@ export default function LiveEventDetail() {
                   {/* Header seksi H2H: judul + ringkasan, toggle Bracket/Tabel, Live */}
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 lg:pt-5 pb-3 sm:pb-4 border-b border-slate-100">
                     <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                      <span className="flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-sts to-stsDarkHiglight text-white items-center justify-center shrink-0 shadow-sm">
+                      <span className="flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sts text-white items-center justify-center shrink-0">
                         <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
                           <path
                             d="M4 5h4v4H4V5Zm0 10h4v4H4v-4Zm12-10h4v4h-4V5Zm0 10h4v4h-4v-4M8 7h6M8 17h6M18 7v10"
@@ -1760,7 +1865,7 @@ export default function LiveEventDetail() {
                       <div className="overflow-hidden rounded-2xl border border-slate-200">
                         <table className="w-full text-xs sm:text-sm border-collapse">
                           <thead>
-                            <tr className="bg-slate-800 text-[10px] sm:text-[11px] uppercase tracking-wider text-white/90 font-semibold">
+                            <tr className="bg-slate-50 border-b border-slate-200 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
                               <th className="text-center px-2 sm:px-3 py-2.5 w-14 sm:w-20">Rank</th>
                               <th className="text-left px-2 sm:px-3 py-2.5">Tim</th>
                               <th className="hidden sm:table-cell text-left px-3 py-2.5 w-24">BIB</th>
@@ -1858,29 +1963,29 @@ export default function LiveEventDetail() {
               ) : isOverallDetailed ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
-                    <thead className="bg-slate-700">
-                      <tr className="text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
-                        <th rowSpan={2} className="text-left px-2.5 py-1.5 align-bottom whitespace-nowrap">No</th>
-                        <th rowSpan={2} className="text-left px-2.5 py-1.5 align-bottom whitespace-nowrap">Team Name</th>
-                        <th rowSpan={2} className="text-left px-2.5 py-1.5 align-bottom whitespace-nowrap">BIB</th>
+                    <thead className="bg-slate-50">
+                      <tr className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-200">
+                        <th rowSpan={2} className="text-left px-3 py-2 align-bottom whitespace-nowrap">No</th>
+                        <th rowSpan={2} className="text-left px-3 py-2 align-bottom whitespace-nowrap">Team Name</th>
+                        <th rowSpan={2} className="text-left px-3 py-2 align-bottom whitespace-nowrap">BIB</th>
                         {overallCategories.map((cat) => (
                           <th
                             key={cat.code}
                             colSpan={2}
-                            className="text-center px-4 py-2 whitespace-nowrap border-l border-slate-600"
+                            className="text-center px-4 py-2 whitespace-nowrap border-l border-slate-200"
                           >
                             {cat.label}
                           </th>
                         ))}
-                        <th rowSpan={2} className="text-right px-2.5 py-1.5 align-bottom whitespace-nowrap border-l border-slate-600">
+                        <th rowSpan={2} className="text-right px-3 py-2 align-bottom whitespace-nowrap border-l border-slate-200">
                           Total Score
                         </th>
-                        <th rowSpan={2} className="text-right px-2.5 py-1.5 align-bottom whitespace-nowrap">Rank</th>
+                        <th rowSpan={2} className="text-right px-3 py-2 align-bottom whitespace-nowrap">Rank</th>
                       </tr>
-                      <tr className="text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
+                      <tr className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-200">
                         {overallCategories.map((cat) => (
                           <Fragment key={cat.code}>
-                            <th className="text-right px-3 py-2 whitespace-nowrap border-l border-slate-600">
+                            <th className="text-right px-3 py-2 whitespace-nowrap border-l border-slate-200">
                               Score
                             </th>
                             <th className="text-right px-3 py-2 whitespace-nowrap">
@@ -1896,34 +2001,34 @@ export default function LiveEventDetail() {
                         return (
                           <tr
                             key={`${r.bib}-${r.name}`}
-                            className={`border-b border-gray-100 last:border-b-0 ${
-                              isTop3 ? "bg-amber-50" : "hover:bg-gray-50"
-                            } transition-colors h-14`}
+                            className={`border-b border-slate-100 last:border-b-0 ${
+                              isTop3 ? "bg-amber-50" : "hover:bg-slate-50"
+                            } transition-colors h-12`}
                           >
-                            <td className="px-2.5 py-1.5 text-gray-500 font-medium whitespace-nowrap">
+                            <td className="px-3 py-2 text-slate-500 font-medium whitespace-nowrap">
                               {idx + 1}
                             </td>
-                            <td className="px-2.5 py-1.5 font-bold text-gray-900 whitespace-nowrap">
+                            <td className="px-3 py-2 font-bold text-slate-900 whitespace-nowrap">
                               {r.name}
                             </td>
-                            <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{r.bib}</td>
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.bib}</td>
                             {overallCategories.map((cat) => (
                               <Fragment key={cat.code}>
-                                <td className="px-3 py-3 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap border-l border-gray-100">
+                                <td className="px-3 py-3 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap border-l border-slate-100">
                                   {r[cat.scoreKey] || 0}
                                 </td>
-                                <td className="px-3 py-3 text-right font-mono text-gray-600 tabular-nums whitespace-nowrap">
+                                <td className="px-3 py-3 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                                   {r[cat.rankKey] || "-"}
                                 </td>
                               </Fragment>
                             ))}
-                            <td className="px-2.5 py-1.5 text-right font-mono font-bold text-gray-900 tabular-nums whitespace-nowrap border-l border-gray-200">
+                            <td className="px-3 py-2 text-right font-mono font-bold text-slate-900 tabular-nums whitespace-nowrap border-l border-slate-200">
                               {r.totalScore ?? 0}
                             </td>
-                            <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
+                            <td className="px-3 py-2 text-right whitespace-nowrap">
                               <span
                                 className={`font-bold tabular-nums ${
-                                  isTop3 ? "text-amber-600" : "text-gray-900"
+                                  isTop3 ? "text-amber-600" : "text-slate-900"
                                 }`}
                               >
                                 {r.rank ?? "-"}
@@ -1938,7 +2043,7 @@ export default function LiveEventDetail() {
               ) : (
                 <>
                   {/* Header row (desktop) */}
-                  <div className="hidden sm:grid grid-cols-[64px_1fr_100px_repeat(3,110px)] gap-3 px-4 py-2 bg-slate-700 text-[10px] uppercase tracking-wider text-white font-semibold border-b border-slate-600 divide-x divide-slate-600">
+                  <div className="hidden sm:grid grid-cols-[64px_1fr_100px_repeat(3,110px)] gap-3 px-4 py-2.5 bg-slate-50 text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-200">
                     <span>Rank</span>
                     <span>Tim</span>
                     <span>BIB</span>
@@ -1959,59 +2064,59 @@ export default function LiveEventDetail() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ duration: 0.35 }}
-                          className={`grid grid-cols-[48px_1fr_auto] sm:grid-cols-[64px_1fr_100px_repeat(3,110px)] items-center gap-3 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-gray-100 last:border-b-0 ${
-                            isTop3 ? "bg-amber-50" : "hover:bg-gray-50"
+                          className={`grid grid-cols-[48px_1fr_auto] sm:grid-cols-[64px_1fr_100px_repeat(3,110px)] items-center gap-3 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-100 last:border-b-0 ${
+                            isTop3 ? "bg-amber-50" : "hover:bg-slate-50"
                           } transition-colors`}
                         >
                           <div className="flex items-center">
                             {isTop3 ? (
                               <span
-                                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-extrabold text-xs sm:text-sm bg-gradient-to-br ${RANK_BADGE[rank]}`}
+                                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-extrabold text-xs sm:text-sm ${RANK_BADGE[rank]}`}
                               >
                                 {rank}
                               </span>
                             ) : (
-                              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm text-gray-500 border border-gray-300">
+                              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm text-slate-500 border border-slate-300">
                                 {rank ?? "-"}
                               </span>
                             )}
                           </div>
 
                           <div className="min-w-0">
-                            <p className="font-bold text-sm sm:text-base text-gray-900 truncate flex items-center gap-2">
+                            <p className="font-bold text-sm sm:text-base text-slate-900 truncate flex items-center gap-2">
                               <span className="truncate">{r.name}</span>
                               {isProvisional && (
                                 <span
-                                  className="shrink-0 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                                  className="shrink-0 text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"
                                   title="Peringkat sementara berdasarkan hasil saat ini — belum difinalisasi operator"
                                 >
                                   Live
                                 </span>
                               )}
                             </p>
-                            <p className="sm:hidden text-[10px] text-gray-400">BIB {r.bib}</p>
+                            <p className="sm:hidden text-[10px] text-slate-400">BIB {r.bib}</p>
                           </div>
 
-                          <p className="hidden sm:block text-gray-500 font-medium text-sm">{r.bib}</p>
+                          <p className="hidden sm:block text-slate-500 font-medium text-sm">{r.bib}</p>
 
                           {columns.includes("time") && (
-                            <p className="hidden sm:block text-right font-mono text-sm sm:text-base font-bold text-gray-900 tabular-nums">
+                            <p className="hidden sm:block text-right font-mono text-sm sm:text-base font-bold text-slate-900 tabular-nums">
                               {r.totalTime || "-"}
                             </p>
                           )}
                           {columns.includes("penalty") && (
-                            <p className="hidden sm:block text-right text-sm text-gray-600 tabular-nums">
+                            <p className="hidden sm:block text-right text-sm text-slate-600 tabular-nums">
                               {r.penaltyTime || "-"}
                             </p>
                           )}
                           {columns.includes("score") && (
-                            <p className="hidden sm:block text-right font-mono text-sm sm:text-base font-bold text-gray-900 tabular-nums">
+                            <p className="hidden sm:block text-right font-mono text-sm sm:text-base font-bold text-slate-900 tabular-nums">
                               {r.score ?? "-"}
                             </p>
                           )}
 
                           {/* Mobile compact value (time atau score) */}
-                          <p className="sm:hidden text-right font-mono text-sm font-bold text-gray-900 tabular-nums">
+                          <p className="sm:hidden text-right font-mono text-sm font-bold text-slate-900 tabular-nums">
                             {columns.includes("time") ? r.totalTime || "-" : r.score ?? "-"}
                           </p>
                         </motion.div>
