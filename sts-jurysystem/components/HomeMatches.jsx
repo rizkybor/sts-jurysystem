@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import MatchCard from '@/components/MatchCard'
+import OrienteeringEventCard from '@/components/OrienteeringEventCard'
 import connectDB from '@/config/database'
 import Event from '@/models/Event'
+import { listPublicOrienteeringEvents } from '@/utils/orienteeringEvents'
 
 // Query DB langsung (server component) — sebelumnya lewat fetchMatches(),
 // yang self-fetch ke `${NEXT_PUBLIC_API_DOMAIN}/matches` (hardcode
@@ -29,10 +31,28 @@ const HomeMatches = async () => {
     // yang sudah di-nonaktifkan operator tetap muncul di homepage.
     // Case-insensitive krn nilai lama di beberapa dokumen historis bisa
     // "activated" huruf kecil semua.
-    recentMatches = await Event.find({ statusEvent: /^activated$/i })
+    const rafting = await Event.find({ statusEvent: /^activated$/i })
       .sort({ createdAt: -1 })
       .limit(3)
       .lean()
+    // + event modul Orienteering yang tampil di Live Result — digabung lalu
+    // diambil 3 yang paling baru DIBUAT (createdAt), lintas cabang.
+    let orienteering = []
+    try {
+      orienteering = await listPublicOrienteeringEvents()
+    } catch (err) {
+      console.error('❌ [HomeMatches] Failed to load orienteering events:', err)
+    }
+    const createdAt = (e) => {
+      const t = new Date(e.createdAt).getTime()
+      return Number.isFinite(t) ? t : 0
+    }
+    recentMatches = [
+      ...rafting.map((e) => ({ ...e, kind: 'rafting' })),
+      ...orienteering,
+    ]
+      .sort((a, b) => createdAt(b) - createdAt(a))
+      .slice(0, 3)
   } catch (err) {
     console.error('❌ [HomeMatches] Failed to load recent events:', err)
     recentMatches = []
@@ -57,9 +77,13 @@ const HomeMatches = async () => {
                 No Matches Found
               </p>
             ) : (
-              recentMatches.map((match) => (
-                <MatchCard key={String(match._id)} match={match} />
-              ))
+              recentMatches.map((match) =>
+                match.kind === 'orienteering' ? (
+                  <OrienteeringEventCard key={`ori-${match.id}`} event={match} />
+                ) : (
+                  <MatchCard key={String(match._id)} match={match} />
+                )
+              )
             )}
           </div>
         </div>

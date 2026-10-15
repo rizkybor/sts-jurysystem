@@ -35,7 +35,7 @@ const MatchesPage = async () => {
             Browse Events
           </h1>
           <p className="mt-1.5 text-sm text-white/80 max-w-lg mx-auto">
-            Search whitewater rafting championship events by name or
+            Search Rafting and Orienteering events by name, sport, or
             classification level.
           </p>
         </div>

@@ -10,7 +10,7 @@ function fmtDate(s) {
   if (!s) return "";
   const d = new Date(`${s}T00:00:00+07:00`);
   if (isNaN(d)) return s;
-  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
 }
 
 function todayWIB() {
@@ -37,11 +37,11 @@ export default function OrienteeringLiveList({ search = "", liveOnly = false }) 
       try {
         const res = await fetch("/api/orienteering/events", { cache: "no-store" });
         const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "Gagal memuat");
+        if (!res.ok) throw new Error(data?.error || "Failed to load");
         if (!aborted) setEvents(data.events || []);
       } catch (e) {
         if (!aborted) {
-          setError(e.message || "Gagal memuat");
+          setError(e.message || "Failed to load");
           setEvents([]);
         }
       }
@@ -66,10 +66,10 @@ export default function OrienteeringLiveList({ search = "", liveOnly = false }) 
       <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500 bg-white rounded-2xl ring-1 ring-gray-200/70">
         <CompassIcon className="w-16 h-16 text-emerald-600/40 mb-4" />
         <h3 className="text-xl font-semibold text-gray-700 mb-1">
-          {error ? "Gagal memuat event" : "Belum ada event Orienteering"}
+          {error ? "Failed to load events" : "No Orienteering events yet"}
         </h3>
         <p className="text-gray-500 max-w-md px-4 text-sm">
-          {error || "Event Orienteering yang dipublikasikan dari STiming System akan tampil di sini."}
+          {error || "Orienteering events published from STiming System will appear here."}
         </p>
       </div>
     );
@@ -118,7 +118,7 @@ export default function OrienteeringLiveList({ search = "", liveOnly = false }) 
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-none" />
                       <span className="font-medium">{r.name}</span>
                       {r.location && <span className="text-gray-500 truncate">· {r.location}</span>}
-                      <span className="ml-auto flex-none text-xs text-gray-400">{r.participantCount} peserta</span>
+                      <span className="ml-auto flex-none text-xs text-gray-400">{r.participantCount} runners</span>
                     </li>
                   ))}
                 </ul>
@@ -141,10 +141,10 @@ export default function OrienteeringLiveList({ search = "", liveOnly = false }) 
               )}
               <div className="mt-4 flex items-center justify-between text-sm">
                 <span className="text-gray-500">
-                  👥 {ev.participantCount} peserta · {ev.categoryCount} kategori
+                  👥 {ev.participantCount} runners · {ev.categoryCount} categories
                 </span>
                 <span className="text-emerald-700 font-semibold group-hover:translate-x-0.5 transition-transform">
-                  Lihat Hasil →
+                  View Results →
                 </span>
               </div>
             </div>
@@ -173,7 +173,7 @@ export function StatusBadge({ status, className = "" }) {
         status === "done" ? "bg-gray-100 text-gray-600 ring-1 ring-gray-200" : "bg-white/90 text-sky-700"
       } ${className}`}
     >
-      {status === "done" ? "Selesai" : "Akan datang"}
+      {status === "done" ? "Finished" : "Upcoming"}
     </span>
   );
 }

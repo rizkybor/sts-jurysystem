@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import MatchCard from "@/components/MatchCard";
+import OrienteeringEventCard from "@/components/OrienteeringEventCard";
 import { CardSkeletonGrid } from "@/components/CardSkeleton";
 import Pagination from "@/components/Pagination";
 
@@ -9,6 +10,7 @@ const Matches = () => {
   const searchParams = useSearchParams();
   const q = searchParams.get("q") || "";
   const level = searchParams.get("level") || "All";
+  const sport = searchParams.get("sport") || "all";
 
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,7 @@ const Matches = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [q, level]);
+  }, [q, level, sport]);
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -27,12 +29,13 @@ const Matches = () => {
         const params = new URLSearchParams({
           page: String(page),
           pageSize: String(pageSize),
-          sort: "nearest",
         });
         if (q.trim()) params.set("q", q.trim());
         if (level && level !== "All") params.set("level", level);
+        if (sport !== "all") params.set("sport", sport);
 
-        const res = await fetch(`/api/matches?${params.toString()}`);
+        // lintas cabang (Rafting + Orienteering); urutan "nearest" di server
+        const res = await fetch(`/api/browse-events?${params.toString()}`);
         if (!res.ok) throw new Error("Failed to fetch matches");
 
         const data = await res.json();
@@ -50,7 +53,7 @@ const Matches = () => {
     };
 
     fetchMatches();
-  }, [page, pageSize, q, level]);
+  }, [page, pageSize, q, level, sport]);
 
   const handlePageChange = (newPage) => setPage(newPage);
 
@@ -89,9 +92,13 @@ const Matches = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-          {matches.map((match) => (
-            <MatchCard key={match._id} match={match} />
-          ))}
+          {matches.map((match) =>
+            match.kind === "orienteering" ? (
+              <OrienteeringEventCard key={`ori-${match.id}`} event={match} />
+            ) : (
+              <MatchCard key={match._id} match={match} />
+            )
+          )}
         </div>
       )}
 

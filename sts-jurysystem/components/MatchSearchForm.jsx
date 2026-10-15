@@ -14,23 +14,34 @@ const LEVELS = [
   "Classification - I",
 ];
 
+// Cabang olahraga: Rafting (event biasa) & Orienteering (modul terpisah).
+const SPORTS = [
+  { code: "all", label: "Semua" },
+  { code: "rafting", label: "Rafting" },
+  { code: "orienteering", label: "Orienteering" },
+];
+
 const MatchSearchForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [keyword, setKeyword] = useState(searchParams.get("q") || "");
   const [level, setLevel] = useState(searchParams.get("level") || "All");
+  const [sport, setSport] = useState(searchParams.get("sport") || "all");
 
   // Sinkronkan form dengan URL (mis. saat reload halaman dengan ?level=... di URL)
   useEffect(() => {
     setKeyword(searchParams.get("q") || "");
     setLevel(searchParams.get("level") || "All");
+    setSport(searchParams.get("sport") || "all");
   }, [searchParams]);
 
-  const navigate = (nextKeyword, nextLevel) => {
+  const navigate = (nextKeyword, nextLevel, nextSport = sport) => {
     const params = new URLSearchParams();
     if (nextKeyword.trim()) params.set("q", nextKeyword.trim());
-    if (nextLevel && nextLevel !== "All") params.set("level", nextLevel);
+    // level klasifikasi hanya milik Rafting
+    if (nextLevel && nextLevel !== "All" && nextSport !== "orienteering") params.set("level", nextLevel);
+    if (nextSport && nextSport !== "all") params.set("sport", nextSport);
 
     router.push(`/matches${params.toString() ? `?${params.toString()}` : ""}`);
   };
@@ -46,11 +57,19 @@ const MatchSearchForm = () => {
     navigate(keyword, nextLevel);
   };
 
-  const hasActiveFilter = Boolean(keyword.trim()) || level !== "All";
+  const handleSportChange = (nextSport) => {
+    setSport(nextSport);
+    const nextLevel = nextSport === "orienteering" ? "All" : level;
+    if (nextLevel !== level) setLevel(nextLevel);
+    navigate(keyword, nextLevel, nextSport);
+  };
+
+  const hasActiveFilter = Boolean(keyword.trim()) || level !== "All" || sport !== "all";
 
   const resetFilters = () => {
     setKeyword("");
     setLevel("All");
+    setSport("all");
     router.push("/matches");
   };
 
@@ -83,7 +102,33 @@ const MatchSearchForm = () => {
         </div>
       </div>
 
-      {/* Level */}
+      {/* Cabang */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          Cabang
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {SPORTS.map((x) => (
+            <button
+              key={x.code}
+              type="button"
+              onClick={() => handleSportChange(x.code)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                sport === x.code
+                  ? x.code === "orienteering"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "bg-sts text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {x.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Level (khusus Rafting) */}
+      {sport !== "orienteering" && (
       <div>
         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
           Classification Level
@@ -120,7 +165,11 @@ const MatchSearchForm = () => {
             );
           })}
         </div>
+        {level !== "All" && sport === "all" && (
+          <p className="mt-1.5 text-[11px] text-gray-400">Level klasifikasi hanya untuk event Rafting.</p>
+        )}
       </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1">

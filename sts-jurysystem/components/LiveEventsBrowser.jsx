@@ -224,7 +224,7 @@ export default function LiveEventsBrowser() {
           </h1>
           <p className="mt-1.5 text-sm text-white/80 max-w-lg">
             {sport === "orienteering"
-              ? "Hasil Orienteering — diperbarui otomatis setiap kartu SI dibaca."
+              ? "Orienteering results — updated automatically every time an SI Card is read."
               : "All Whitewater Rafting Championship events currently in progress."}
           </p>
           <div className="mt-5 inline-flex p-1 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm">
@@ -258,7 +258,7 @@ export default function LiveEventsBrowser() {
           <div className="mb-6 max-w-sm">
             <input
               type="search"
-              placeholder="Cari event Orienteering..."
+              placeholder="Search Orienteering events..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-stsHighlight"
