@@ -4,6 +4,14 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import FilterSidebar from "@/components/FilterSidebar";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { CardSkeletonGrid } from "@/components/CardSkeleton";
+import OrienteeringLiveList from "@/components/OrienteeringLiveList";
+
+// Cabang olahraga di halaman Live Results. Rafting = alur lama (tidak
+// berubah); Orienteering = modul terpisah dari sts-timingsystem.
+const SPORTS = [
+  { code: "rafting", label: "Rafting" },
+  { code: "orienteering", label: "Orienteering" },
+];
 
 const PAGE_SIZE = 9;
 const DEFAULT_IMG = "/images/logo-dummy.png"; // pastikan ada di /public/images
@@ -95,6 +103,20 @@ export default function LiveEventsBrowser() {
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("All");
   const [liveOnly, setLiveOnly] = useState(false);
+  const [sport, setSport] = useState("rafting");
+
+  // ?sport=orienteering (mis. tombol kembali dari detail Orienteering)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("sport");
+    if (SPORTS.some((x) => x.code === q)) setSport(q);
+  }, []);
+  const pickSport = (code) => {
+    setSport(code);
+    const url = new URL(window.location.href);
+    if (code === "rafting") url.searchParams.delete("sport");
+    else url.searchParams.set("sport", code);
+    window.history.replaceState(null, "", url);
+  };
 
   useEffect(() => {
     let aborted = false;
@@ -201,9 +223,25 @@ export default function LiveEventsBrowser() {
             Live Results
           </h1>
           <p className="mt-1.5 text-sm text-white/80 max-w-lg">
-            All Whitewater Rafting Championship events currently in progress.
+            {sport === "orienteering"
+              ? "Hasil Orienteering — diperbarui otomatis setiap kartu SI dibaca."
+              : "All Whitewater Rafting Championship events currently in progress."}
           </p>
-          {liveCount > 0 && (
+          <div className="mt-5 inline-flex p-1 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm">
+            {SPORTS.map((x) => (
+              <button
+                key={x.code}
+                type="button"
+                onClick={() => pickSport(x.code)}
+                className={`px-4 sm:px-5 py-1.5 rounded-full text-sm font-semibold transition ${
+                  sport === x.code ? "bg-white text-sts shadow" : "text-white/85 hover:text-white"
+                }`}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
+          {sport === "rafting" && liveCount > 0 && (
             <span className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-white text-xs font-semibold backdrop-blur-sm">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
@@ -215,6 +253,20 @@ export default function LiveEventsBrowser() {
         </div>
       </div>
 
+      {sport === "orienteering" ? (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+          <div className="mb-6 max-w-sm">
+            <input
+              type="search"
+              placeholder="Cari event Orienteering..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-stsHighlight"
+            />
+          </div>
+          <OrienteeringLiveList search={search} />
+        </div>
+      ) : (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         {/* Mobile filter trigger */}
         <div className="lg:hidden mb-5">
@@ -528,6 +580,7 @@ export default function LiveEventsBrowser() {
           </main>
         </div>
       </div>
+      )}
     </section>
   );
 }
