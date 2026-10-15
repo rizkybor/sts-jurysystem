@@ -3,11 +3,11 @@ import MatchesLayout from '@/components/MatchesLayout';
 export const metadata = {
   title: 'Browse Events',
   description:
-    'Cari dan jelajahi event Whitewater Rafting Championship berdasarkan nama atau level klasifikasi. Temukan jadwal dan detail lengkap tiap event.',
+    'Cari dan jelajahi event Whitewater Rafting dan Orienteering berdasarkan nama, cabang, atau level klasifikasi. Temukan jadwal dan detail lengkap tiap event.',
   openGraph: {
     title: 'Browse Events | STiming Scoring',
     description:
-      'Cari dan jelajahi event Whitewater Rafting Championship berdasarkan nama atau level klasifikasi.',
+      'Cari dan jelajahi event Whitewater Rafting dan Orienteering berdasarkan nama, cabang, atau level klasifikasi.',
     url: '/matches',
     type: 'website',
     images: [

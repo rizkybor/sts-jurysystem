@@ -4,11 +4,11 @@ import Link from "next/link";
 export const metadata = {
   title: "Tentang Kami",
   description:
-    "Tentang STiming Scoring (STS) — platform timing dan penjurian untuk event arung jeram/whitewater rafting.",
+    "Tentang STiming Scoring (STS) — platform timing dan penjurian untuk event arung jeram/whitewater rafting dan orienteering.",
   openGraph: {
     title: "Tentang Kami | STiming Scoring",
     description:
-      "Tentang STiming Scoring (STS) — platform timing dan penjurian untuk event arung jeram/whitewater rafting.",
+      "Tentang STiming Scoring (STS) — platform timing dan penjurian untuk event arung jeram/whitewater rafting dan orienteering.",
     url: "/about",
     type: "website",
     images: [
@@ -30,19 +30,19 @@ const PRODUCTS = [
     title: "Aplikasi Juri",
     platform: "Web · Tablet & Mobile",
     description:
-      "Tempat juri mencatat penilaian tiap kategori lomba — Sprint, Slalom, Head to Head, Down River Race, dan Rafting Cross — langsung dari lapangan secara realtime.",
+      "Tempat juri Whitewater Rafting mencatat penilaian tiap kategori lomba — Sprint, Slalom, Head to Head, Down River Race, dan Rafting Cross — langsung dari lapangan secara realtime.",
   },
   {
     title: "Aplikasi Timing",
     platform: "Desktop",
     description:
-      "Dioperasikan oleh tim operator untuk mengelola data peserta, waktu, dan hasil pertandingan secara resmi selama event berlangsung.",
+      "Dioperasikan oleh tim operator untuk mengelola data peserta, waktu, dan hasil pertandingan secara resmi — termasuk modul Orienteering yang membaca waktu langsung dari SI Card (SPORTident).",
   },
   {
     title: "Live Result & Halaman Publik",
     platform: "Web",
     description:
-      "Tempat penonton dan peserta memantau hasil pertandingan secara live, termasuk skor, peringkat, dan detail event.",
+      "Tempat penonton dan peserta memantau hasil Whitewater Rafting dan Orienteering secara live, termasuk skor, peringkat, split per pos, dan detail event.",
   },
 ];
 
@@ -50,7 +50,7 @@ const VALUES = [
   {
     title: "Akurat",
     description:
-      "Setiap penilaian dan catatan waktu diverifikasi melalui alur kerja yang konsisten antara juri dan operator, meminimalkan kesalahan input.",
+      "Setiap penilaian dan catatan waktu diverifikasi melalui alur kerja yang konsisten antara juri dan operator; waktu Orienteering dihitung langsung dari punch SI Card, meminimalkan kesalahan input.",
   },
   {
     title: "Real-time",
@@ -60,7 +60,7 @@ const VALUES = [
   {
     title: "Transparan",
     description:
-      "Status hasil resmi (official/unofficial) ditampilkan jelas per kategori, sehingga peserta dan penonton tahu persis validitas data yang mereka lihat.",
+      "Status hasil resmi (official/unofficial) ditampilkan jelas per kategori, dan setiap koreksi hasil oleh operator ditandai, sehingga peserta dan penonton tahu persis validitas data yang mereka lihat.",
   },
 ];
 
@@ -94,7 +94,7 @@ export default function AboutPage() {
               </h1>
               <p className="mt-3 max-w-2xl mx-auto text-sm sm:text-base text-white/85 leading-relaxed">
                 Platform digital untuk mengelola timing, penjurian, dan hasil
-                pertandingan pada event Whitewater Rafting Championship —
+                pertandingan pada event Whitewater Rafting dan Orienteering —
                 akurat, transparan, dan dapat diakses secara real-time.
               </p>
             </div>

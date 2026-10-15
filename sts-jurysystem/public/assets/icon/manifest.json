@@ -1,7 +1,7 @@
 {
   "name": "STiming Scoring",
   "short_name": "STS",
-  "description": "Platform timing dan penjurian untuk event Whitewater Rafting Championship — akurat, transparan, real-time.",
+  "description": "Platform timing dan penjurian untuk event Whitewater Rafting dan Orienteering — akurat, transparan, real-time.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

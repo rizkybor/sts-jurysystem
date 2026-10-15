@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function CookiesPage() {
   return (
-    <LegalPageLayout title="Kebijakan Cookie" updatedAt="17 September 2026">
+    <LegalPageLayout title="Kebijakan Cookie" updatedAt="15 Oktober 2026">
       <LegalSection>
         <p>
           Halaman ini menjelaskan bagaimana STiming Scoring
@@ -42,8 +42,10 @@ export default function CookiesPage() {
           </li>
           <li>
             <strong>Preferensi lokal</strong> — beberapa pengaturan tampilan
-            (misalnya status perbesar/perkecil panel chat, dan status
-            pemberitahuan cookie yang sudah Anda baca) disimpan di
+            (misalnya status perbesar/perkecil panel chat, status
+            pemberitahuan cookie yang sudah Anda baca, dan jenis lomba
+            Orienteering — Sprint/Middle Distance — yang terakhir Anda pilih
+            di Live Result) disimpan di
             penyimpanan lokal browser Anda agar preferensi tetap tersimpan
             di perangkat yang sama.
           </li>

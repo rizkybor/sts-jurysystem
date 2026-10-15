@@ -2,18 +2,40 @@ import LegalPageLayout, { LegalSection } from "@/components/LegalPageLayout";
 
 export const metadata = {
   title: "Kebijakan Privasi",
-  description: "Kebijakan privasi STiming Scoring.",
+  description: "Kebijakan privasi STiming Scoring untuk event Whitewater Rafting dan Orienteering.",
 };
 
 export default function PrivacyPage() {
   return (
-    <LegalPageLayout title="Kebijakan Privasi" updatedAt="17 September 2026">
+    <LegalPageLayout title="Kebijakan Privasi" updatedAt="15 Oktober 2026">
       <LegalSection>
         <p>
           Kebijakan Privasi ini menjelaskan bagaimana STiming Scoring
           (&quot;STS&quot;, &quot;kami&quot;) mengumpulkan,
           menggunakan, dan melindungi data Anda saat menggunakan Layanan
           kami.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Status Layanan & Perangkat Timing">
+        <p>
+          STiming Scoring adalah <strong>sistem timing tidak resmi
+          (<em>Unofficial</em> Microgate &amp; SPORTident Timing System)</strong>
+          yang dikembangkan secara independen oleh PT. Jendela Cakra Digital
+          agar dapat bekerja dengan perangkat timing Microgate (mis.
+          RaceTime2) dan SPORTident (SI Card &amp; SI Reader).
+        </p>
+        <p>
+          STiming Scoring <strong>tidak berafiliasi dengan, tidak disponsori,
+          dan tidak didukung secara resmi</strong> oleh Microgate S.r.l.
+          maupun SPORTident GmbH. Data dari perangkat tersebut (catatan waktu
+          dan punch SI Card) dibaca langsung oleh aplikasi timing STS di
+          perangkat operator, lalu diproses dan disimpan oleh STS sesuai
+          Kebijakan Privasi ini — tidak dikirim ke maupun melalui layanan
+          Microgate atau SPORTident. &quot;Microgate&quot;, &quot;RaceTime&quot;,
+          &quot;SPORTident&quot;, dan &quot;SI Card&quot; adalah merek dagang
+          milik pemiliknya masing-masing dan disebutkan hanya untuk
+          menjelaskan kompatibilitas perangkat.
         </p>
       </LegalSection>
 
@@ -26,6 +48,12 @@ export default function PrivacyPage() {
           <li>
             <strong>Data penjurian</strong> — penilaian, catatan waktu, dan
             hasil yang Anda input sebagai juri untuk suatu event.
+          </li>
+          <li>
+            <strong>Data peserta Orienteering</strong> — nama, kategori,
+            klub, negara, BIB, jadwal start, IOF ID, serta nomor SI Card dan
+            catatan waktu punch dari kartu, yang diinput atau diimpor oleh
+            panitia melalui aplikasi timing.
           </li>
           <li>
             <strong>Konten live chat</strong> — pesan teks, gambar, dan pesan
@@ -61,7 +89,11 @@ export default function PrivacyPage() {
           Data disimpan pada basis data terkelola (MongoDB Atlas) dengan
           akses terbatas. Berkas gambar dan pesan suara pada fitur live chat
           disimpan melalui layanan pihak ketiga (Cloudinary) yang kami
-          kelola khusus untuk kebutuhan aplikasi ini.
+          kelola khusus untuk kebutuhan aplikasi ini. Poster dan logo event
+          juga disimpan melalui Cloudinary. Gambar bendera negara pada
+          halaman hasil dimuat dari layanan pihak ketiga flagcdn.com,
+          sehingga browser Anda akan menghubungi layanan tersebut saat
+          menampilkan bendera.
         </p>
       </LegalSection>
 
@@ -71,6 +103,14 @@ export default function PrivacyPage() {
           ketiga. Data hasil pertandingan yang bersifat publik (mis. nama
           peserta, skor, peringkat) dapat ditampilkan pada halaman Live
           Result sebagai bagian dari layanan publikasi hasil event.
+        </p>
+        <p>
+          Untuk event Orienteering, data yang ditampilkan ke publik terbatas
+          pada nama, kategori, klub, negara (beserta bendera), BIB, jadwal
+          start, waktu start/finish dan split per pos, serta status hasil.
+          Nomor SI Card dan IOF ID <strong>tidak</strong> ditampilkan pada
+          halaman publik. Penyelenggara dapat menyembunyikan suatu event
+          Orienteering dari Live Result kapan saja.
         </p>
       </LegalSection>
 

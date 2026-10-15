@@ -22,9 +22,9 @@ export const metadata = {
     template: '%s | STiming Scoring',
   },
   description:
-    'Sustainable Timing Scoring menyediakan solusi sistem pencatatan waktu profesional untuk perlombaan dan event olahraga. Akurat, real-time, dan dapat disesuaikan dengan kebutuhan setiap kompetisi.',
+    'Sustainable Timing Scoring menyediakan solusi timing, penjurian, dan live result profesional untuk event Whitewater Rafting dan Orienteering. Akurat, real-time, dan dapat disesuaikan dengan kebutuhan setiap kompetisi.',
   keywords:
-    'timing system, race timing, event timing, sports timing, stopwatch system, smart timing, professional timing service, event management, race results, live timing, rafting, pecinta alam, race, pertandingan, championship',
+    'timing system, race timing, event timing, sports timing, stopwatch system, smart timing, professional timing service, event management, race results, live timing, rafting, whitewater rafting, arung jeram, orienteering, orienteering live result, SI Card, sportident, pecinta alam, race, pertandingan, championship',
 
   authors: [{ name: COMPANY_NAME, url: COMPANY_URL }],
   creator: COMPANY_NAME,
@@ -52,7 +52,7 @@ export const metadata = {
   openGraph: {
     title: 'STiming Scoring | Smart & Accurate Event Timing System',
     description:
-      'Solusi profesional untuk pencatatan waktu event dan perlombaan. Akurat, efisien, dan berkelanjutan.',
+      'Solusi profesional untuk timing, penjurian, dan live result event Whitewater Rafting dan Orienteering. Akurat, efisien, dan berkelanjutan.',
     url: '/',
     siteName: 'STiming Scoring',
     images: [
@@ -72,7 +72,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'STiming Scoring | Professional Event Timing System',
     description:
-      'Akurat, real-time, dan ramah lingkungan — solusi terbaik untuk sistem pencatatan waktu event Anda.',
+      'Timing & live result Whitewater Rafting dan Orienteering — akurat, real-time, dan ramah lingkungan.',
     images: ['/assets/images/sts-logo-primary.png'],
     creator: '@sustainabletiming',
   },
@@ -97,7 +97,7 @@ const jsonLd = {
   '@type': 'WebSite',
   name: 'STiming Scoring',
   description:
-    'Platform timing dan penjurian untuk event Whitewater Rafting Championship — akurat, transparan, real-time.',
+    'Platform timing dan penjurian untuk event Whitewater Rafting dan Orienteering — akurat, transparan, real-time.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   publisher: {
     '@type': 'Organization',

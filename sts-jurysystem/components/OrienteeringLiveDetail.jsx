@@ -75,6 +75,19 @@ const schedOf = (r) => r.scheduledStart || r.start || "";
 // Start/finish dari punch SI Card. Hasil & Live Result Orienteering HANYA
 // dihitung dari SI Card — jadwal start (Starting Order) tidak pernah dipakai
 // menghitung; kartu tanpa punch Start = No Start (tanpa waktu).
+// Hasil yang dikoreksi operator di timing system (Edit Hasil)
+function EditedTag({ r }) {
+  if (!r.edited) return null;
+  return (
+    <span
+      title={`Corrected by the timing operator${r.editNote ? `: ${r.editNote}` : ""}`}
+      className="ml-1 inline-block px-1.5 rounded bg-orange-100 text-orange-700 text-[10px] font-bold align-middle"
+    >
+      Edited
+    </span>
+  );
+}
+
 function StartFinish({ r, className = "" }) {
   const muted = "text-gray-400";
   if (!r.cardStart && !r.cardFinish) return null;
@@ -488,6 +501,7 @@ function ClassBoard({ cls, match, filtering, flashKeys, rowKey, onOpen }) {
                   <span className="flex items-center gap-1.5 min-w-0">
                     <CountryFlag nationality={r.nationality} />
                     <span className="font-semibold truncate">{r.name}</span>
+                    <EditedTag r={r} />
                   </span>
                   {/* negara cukup lewat bendera (nama negara = tooltip) */}
                   {r.club && <span className={`block text-xs truncate text-gray-500`}>{r.club}</span>}
@@ -609,6 +623,7 @@ function SplitModal({ detail, onClose }) {
             <div className="flex items-center gap-2">
               <CountryFlag nationality={r.nationality} size="lg" />
               <span className="font-bold text-lg leading-tight">{r.name}</span>
+              <EditedTag r={r} />
             </div>
             <div className={`text-xs text-gray-500`}>
               {cls.className}

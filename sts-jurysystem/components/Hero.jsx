@@ -30,7 +30,7 @@ const Hero = () => {
         </h1>
 
         <p className="mt-5 text-base sm:text-lg text-white/80 max-w-2xl">
-          Discover whitewater rafting championship events, browse match
+          Discover whitewater rafting and orienteering events, browse
           results, and follow live scoring in real time.
         </p>
 

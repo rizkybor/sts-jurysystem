@@ -29,7 +29,7 @@ const Footer = () => {
             <Image src={logo} alt="STiming Scoring" className="h-9 w-auto mb-3" />
             <p className="text-sm text-white/70 leading-relaxed max-w-xs">
               Platform timing &amp; penjurian untuk event Whitewater Rafting
-              Championship — akurat, transparan, real-time.
+              dan Orienteering — akurat, transparan, real-time.
             </p>
           </div>
 

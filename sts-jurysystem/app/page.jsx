@@ -16,11 +16,11 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   description:
-    'STiming Scoring — temukan event Whitewater Rafting Championship, jelajahi hasil pertandingan, dan pantau skor live secara real-time.',
+    'STiming Scoring — temukan event Whitewater Rafting dan Orienteering, jelajahi hasil pertandingan, dan pantau skor live secara real-time.',
   openGraph: {
     title: 'STiming Scoring | Smart & Accurate Event Timing System',
     description:
-      'Temukan event Whitewater Rafting Championship, jelajahi hasil pertandingan, dan pantau skor live secara real-time.',
+      'Temukan event Whitewater Rafting dan Orienteering, jelajahi hasil pertandingan, dan pantau skor live secara real-time.',
     url: '/',
     type: 'website',
     images: [
