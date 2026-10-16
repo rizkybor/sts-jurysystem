@@ -20,7 +20,7 @@ import { CompassIcon, StatusBadge, orienteeringStatus } from "@/components/Orien
 // "orienteering:updated" masuk, plus polling cadangan.
 
 const POLL_MS = 20000;
-const RECENT_COUNT = 8;
+const RECENT_COUNT = 10;
 
 const STATUS_TEXT = { OK: "OK", MP: "MP", DNF: "DNF", NO_START: "No Start", DSQ: "DSQ", DNS: "DNS" };
 const STATUS_HINT = {
@@ -92,7 +92,7 @@ function StartFinish({ r, className = "" }) {
   const muted = "text-gray-400";
   if (!r.cardStart && !r.cardFinish) return null;
   return (
-    <span className={`block text-[11px] tabular-nums ${muted} ${className}`}>
+    <span className={`block text-[10px] tabular-nums ${muted} ${className}`}>
       {r.cardStart ? <>Start {r.cardStart}</> : <span className="text-red-500">no Start punch</span>}
       {r.cardFinish ? <> · Finish {r.cardFinish}</> : <span className="text-red-500"> · no Finish punch</span>}
     </span>
@@ -236,7 +236,7 @@ export default function OrienteeringLiveDetail() {
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center px-4">
         <CompassIcon className="w-16 h-16 text-emerald-600/40" />
         <p className="text-gray-600">{error}</p>
-        <Link href="/live?sport=orienteering" className="px-5 py-2.5 rounded-xl bg-sts text-white text-sm font-semibold">
+        <Link href="/live?sport=orienteering" className="px-5 py-2.5 rounded-xl bg-sts text-white text-xs font-semibold">
           Back to Live Results
         </Link>
       </div>
@@ -254,13 +254,13 @@ export default function OrienteeringLiveDetail() {
   return (
     <section
       ref={rootRef}
-      className={`min-h-screen transition-colors text-gray-900 ${isFull ? "bg-slate-200 overflow-y-auto" : "bg-gray-50"}`}
+      className={`min-h-screen transition-colors text-gray-900 text-sm ${isFull ? "bg-slate-200 overflow-y-auto" : "bg-gray-50"}`}
     >
       {/* ===== Header ringkas ===== */}
       <div className="bg-gradient-to-br from-emerald-800 via-teal-800 to-stsDarkHiglight">
         <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${isFull ? "max-w-none py-3" : "max-w-7xl py-5 sm:py-6"}`}>
           {!isFull && (
-            <Link href="/live?sport=orienteering" className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium mb-3">
+            <Link href="/live?sport=orienteering" className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-xs font-medium mb-3">
               ← Live Results
             </Link>
           )}
@@ -276,19 +276,19 @@ export default function OrienteeringLiveDetail() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={status} />
-                <span className="text-xs text-white/70 hidden sm:inline">
+                <span className="text-[11px] text-white/70 hidden sm:inline">
                   {fmtDate(ev.startDate)}
                   {ev.endDate && ev.endDate !== ev.startDate ? ` – ${fmtDate(ev.endDate)}` : ""}
                 </span>
               </div>
-              <h1 className="mt-0.5 text-lg sm:text-2xl font-bold text-white tracking-tight truncate">{ev.name}</h1>
+              <h1 className="mt-0.5 text-base sm:text-xl font-bold text-white tracking-tight truncate">{ev.name}</h1>
             </div>
-            {isFull && <div className="hidden md:block text-3xl font-bold tabular-nums text-white">{fmtClock(now)}</div>}
+            {isFull && <div className="hidden md:block text-2xl font-bold tabular-nums text-white">{fmtClock(now)}</div>}
             <button
               type="button"
               onClick={toggleFull}
               title={isFull ? "Exit Full Screen (Esc)" : "Full Screen"}
-              className="flex-none inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white text-sm font-semibold transition"
+              className="flex-none inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white text-xs font-semibold transition"
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 {isFull ? (
@@ -310,7 +310,7 @@ export default function OrienteeringLiveDetail() {
                   key={r.id || "default"}
                   type="button"
                   onClick={() => pickRace(r.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold transition ring-1 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ring-1 ${
                     active ? "bg-white text-emerald-800 ring-white shadow" : "bg-white/10 text-white ring-white/25 hover:bg-white/20"
                   }`}
                 >
@@ -321,9 +321,9 @@ export default function OrienteeringLiveDetail() {
                 </button>
               );
             })}
-            <div className="ml-auto flex items-center gap-3 text-white text-sm">
+            <div className="ml-auto flex items-center gap-3 text-white text-xs">
               <span>
-                <b className="text-lg tabular-nums">{totals.finished}</b>
+                <b className="text-base tabular-nums">{totals.finished}</b>
                 <span className="text-white/70"> / {totals.total} finished</span>
               </span>
               <span className="hidden sm:block w-28 h-2 rounded-full bg-white/20 overflow-hidden">
@@ -335,56 +335,17 @@ export default function OrienteeringLiveDetail() {
       </div>
 
       <div className={`mx-auto px-4 sm:px-6 lg:px-8 py-5 ${isFull ? "max-w-none" : "max-w-7xl"}`}>
-        {/* ===== Baru Finish (lintas kategori) ===== */}
+        {/* ===== Latest Finishers (lintas kategori): 1 sorotan + daftar sebelumnya ===== */}
         {recent.length > 0 && (
           <div className="mb-5">
-            <div className={`flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-emerald-700`}>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              Latest Finishers
-              {race?.updatedAt && (
-                <span className={`ml-auto font-medium normal-case tracking-normal text-gray-400`}>
-                  updated {fmtClock(race.updatedAt)} WIB
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
-              {recent.map(({ row, cls }) => (
-                <button
-                  key={rowKey(cls, row)}
-                  type="button"
-                  onClick={() => setDetail({ row, cls })}
-                  className={`flex-none w-56 text-left rounded-xl p-3 ring-1 transition ${
-                    flashKeys.has(rowKey(cls, row)) ? "ori-flash" : ""
-                  } bg-white ring-gray-200 hover:ring-emerald-300 shadow-sm`}
-                >
-                  <div className="flex items-center gap-2">
-                    <CatChip cls={cls} />
-                    {row.rank ? (
-                      <span className={`text-xs font-bold ${row.rank <= 3 ? "text-amber-500" : "text-gray-600"}`}>
-                        #{row.rank}
-                      </span>
-                    ) : (
-                      <StatusPill r={row} small />
-                    )}
-                    <span className={`ml-auto text-[11px] tabular-nums text-gray-400`}>
-                      {fmtClock(row.readAt, false)}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-1.5 min-w-0">
-                    <CountryFlag nationality={row.nationality} />
-                    <span className="font-semibold truncate">{row.name}</span>
-                  </div>
-                  <div className="flex items-baseline justify-between">
-                    <span className={`text-xs truncate text-gray-500`}>{row.club || ""}</span>
-                    {row.status === "OK" && <span className="text-lg font-bold tabular-nums">{fmtSec(row.timeSec)}</span>}
-                  </div>
-                  <StartFinish r={row} className="mt-0.5" />
-                </button>
-              ))}
-            </div>
+          <LatestFinishers
+            recent={recent}
+            now={now}
+            updatedAt={race?.updatedAt}
+            flashKeys={flashKeys}
+            rowKey={rowKey}
+            onOpen={(row, cls) => setDetail({ row, cls })}
+          />
           </div>
         )}
 
@@ -396,7 +357,7 @@ export default function OrienteeringLiveDetail() {
                 key={t.id}
                 type="button"
                 onClick={() => setTypeId(t.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition ${
                   typeId === t.id
                     ? "bg-emerald-600 text-white"
                     : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100"
@@ -410,13 +371,13 @@ export default function OrienteeringLiveDetail() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search runner…"
-            className={`ml-auto w-full sm:w-60 px-3.5 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
+            className={`ml-auto w-full sm:w-60 px-3.5 py-2 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
               "bg-white border border-gray-200"
             }`}
           />
         </div>
 
-        {error && <p className="mb-3 text-xs text-red-500">Connection problem — showing the latest data.</p>}
+        {error && <p className="mb-3 text-[11px] text-red-500">Connection problem — showing the latest data.</p>}
 
         {/* ===== Papan semua kategori ===== */}
         {classes.length === 0 ? (
@@ -440,7 +401,7 @@ export default function OrienteeringLiveDetail() {
           </div>
         )}
 
-        <p className={`mt-5 text-xs text-gray-400`}>
+        <p className={`mt-5 text-[11px] text-gray-400`}>
           Click a runner to see split times per control. MP = Missing Punch · DNF = did not finish · DSQ = disqualified · DNS = did not start.
         </p>
       </div>
@@ -453,7 +414,166 @@ export default function OrienteeringLiveDetail() {
           100% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
         }
         .ori-flash { animation: ori-flash-kf 1.4s ease-out 3; }
+        @keyframes ori-marquee-kf {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .ori-marquee-track { animation: ori-marquee-kf var(--ori-marquee-duration, 30s) linear infinite; }
+        .ori-marquee:hover .ori-marquee-track,
+        .ori-marquee:focus-within .ori-marquee-track { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) {
+          .ori-marquee { overflow-x: auto; }
+          .ori-marquee-track { animation: none; }
+          .ori-marquee-dup { display: none; }
+        }
       `}</style>
+    </section>
+  );
+}
+
+/* --------------------------- Latest Finishers --------------------------- */
+
+function agoText(readAt, now) {
+  const t = new Date(readAt).getTime();
+  if (!Number.isFinite(t)) return "";
+  const sec = Math.max(0, Math.round((now.getTime() - t) / 1000));
+  if (sec < 45) return "just now";
+  if (sec < 3600) return `${Math.round(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+  return fmtClock(readAt, false);
+}
+
+// Marquee satu baris: finisher terbaru lintas kategori berjalan berulang
+// (terbaru paling depan) supaya hemat tempat. Berhenti saat di-hover/fokus;
+// kalau user minta reduced-motion → jadi strip yang bisa digeser manual.
+const STATUS_LONG = { MP: "MP", DNF: "Did Not Finish", NO_START: "No Start Punch", DSQ: "Disqualified", DNS: "Did Not Start" };
+function ordinal(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+const MARQUEE_SEC_PER_ITEM = 6;
+
+function FinisherChip({ row, cls, isLatest, now, flash, onOpen, hidden }) {
+  const ok = row.status === "OK";
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(row, cls)}
+      tabIndex={hidden ? -1 : undefined}
+      className={`flex-none inline-flex items-center gap-2 h-9 pl-2 pr-3 rounded-lg ring-1 text-left whitespace-nowrap transition hover:ring-emerald-300 ${
+        isLatest ? "bg-emerald-50 ring-emerald-200" : "bg-white ring-gray-200"
+      } ${flash ? "ori-flash" : ""}`}
+    >
+      <span className="text-[10px] font-semibold tabular-nums text-gray-500">
+        {isLatest ? "latest" : agoText(row.readAt, now)}
+      </span>
+      <span className="w-px h-4 bg-gray-200" />
+      <CountryFlag nationality={row.nationality} />
+      <span className="font-semibold text-gray-900 max-w-[12rem] truncate">{row.name}</span>
+      <CatChip cls={cls} size="xs" />
+      {ok ? (
+        <>
+          {row.rank ? (
+            <span
+              className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                row.rank === 1
+                  ? "bg-amber-100 text-amber-700"
+                  : row.rank <= 3
+                  ? "bg-orange-50 text-orange-600"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {ordinal(row.rank)}
+            </span>
+          ) : null}
+          <span className="font-bold tabular-nums text-gray-900">{fmtSec(row.timeSec)}</span>
+        </>
+      ) : (
+        <span className="text-[11px] font-bold text-red-600">{STATUS_LONG[row.status] || row.status}</span>
+      )}
+    </button>
+  );
+}
+
+function LatestFinishers({ recent, now, updatedAt, flashKeys, rowKey, onOpen }) {
+  // Isi diulang secukupnya sampai 1 "set" >= lebar kontainer, supaya ticker
+  // tidak menyisakan bagian kosong saat finisher masih sedikit.
+  const viewRef = useRef(null);
+  const oneRef = useRef(null);
+  const [reps, setReps] = useState(1);
+  useEffect(() => {
+    const view = viewRef.current;
+    const one = oneRef.current;
+    if (!view || !one) return undefined;
+    const measure = () => {
+      const w1 = one.scrollWidth;
+      const vw = view.clientWidth;
+      if (w1 > 0 && vw > 0) setReps(Math.max(1, Math.ceil(vw / w1)));
+    };
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (ro) {
+      ro.observe(view);
+      ro.observe(one);
+    }
+    return () => ro && ro.disconnect();
+  }, [recent.length]);
+
+  const duration = `${Math.max(20, recent.length * reps * MARQUEE_SEC_PER_ITEM)}s`;
+  const renderSet = (prefix, hidden) =>
+    recent.map(({ row, cls }, i) => (
+      <FinisherChip
+        key={`${prefix}${rowKey(cls, row)}`}
+        row={row}
+        cls={cls}
+        isLatest={i === 0 && prefix === "ar0-"}
+        now={now}
+        flash={flashKeys.has(rowKey(cls, row))}
+        onOpen={onOpen}
+        hidden={hidden}
+      />
+    ));
+  // satu "set" = isi diulang `reps` kali (salinan ke-2 dst. tersembunyi dari pembaca layar)
+  const renderFill = (half) =>
+    Array.from({ length: reps }, (_, k) => renderSet(`${half}r${k}-`, half === "b" || k > 0)).flat();
+
+  return (
+    <section className="flex items-stretch rounded-xl bg-white ring-1 ring-gray-200/70 shadow-sm overflow-hidden">
+      {/* label tetap (tidak ikut berjalan) */}
+      <div className="flex-none flex flex-col justify-center gap-0.5 px-3 sm:px-4 border-r border-gray-100 bg-emerald-50/50">
+        <span className="flex items-center gap-1.5">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 whitespace-nowrap">
+            <span className="sm:hidden">Latest</span>
+            <span className="hidden sm:inline">Latest Finishers</span>
+          </span>
+        </span>
+        {updatedAt && (
+          <span className="hidden sm:block text-[10px] text-gray-400 whitespace-nowrap tabular-nums">
+            {fmtClock(updatedAt)} WIB
+          </span>
+        )}
+      </div>
+
+      {/* track berjalan: 2 salinan isi, geser -50% → loop mulus */}
+      <div ref={viewRef} className="ori-marquee relative flex-1 min-w-0 overflow-hidden py-1.5" aria-label="Latest finishers">
+        {/* pengukur lebar 1 set (tak terlihat) */}
+        <div ref={oneRef} className="absolute invisible pointer-events-none flex gap-2 pl-2" aria-hidden="true">
+          {renderSet("m-", true)}
+        </div>
+        <div className="ori-marquee-track flex w-max" style={{ "--ori-marquee-duration": duration }}>
+          <div className="flex shrink-0 gap-2 pl-2">{renderFill("a")}</div>
+          <div className="ori-marquee-dup flex shrink-0 gap-2 pl-2" aria-hidden="true">
+            {renderFill("b")}
+          </div>
+        </div>
+        <span className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />
+      </div>
     </section>
   );
 }
@@ -470,7 +590,7 @@ function ClassBoard({ cls, match, filtering, flashKeys, rowKey, onOpen }) {
   return (
     <div className={`rounded-2xl overflow-hidden flex flex-col bg-white ring-1 ring-gray-200/70 shadow-sm`}>
       <div className={`flex items-center gap-2 px-4 py-3 ${wre ? "bg-amber-50" : "bg-sky-50/70"}`}>
-        <span className="text-lg font-extrabold tracking-tight">{cls.className}</span>
+        <span className="text-base font-extrabold tracking-tight">{cls.className}</span>
         <span
           className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
             wre ? "bg-amber-400/20 text-amber-600" : "bg-sky-400/20 text-sky-600"
@@ -478,13 +598,13 @@ function ClassBoard({ cls, match, filtering, flashKeys, rowKey, onOpen }) {
         >
           {wre ? "WRE" : cls.typeName ? cls.typeName.replace(/ Event$/i, "") : "-"}
         </span>
-        <span className={`ml-auto text-xs font-semibold tabular-nums text-gray-500`}>
+        <span className={`ml-auto text-[11px] font-semibold tabular-nums text-gray-500`}>
           {cls.finished}/{cls.total} finished
         </span>
       </div>
 
       {done.length === 0 ? (
-        <div className={`px-4 py-6 text-center text-sm text-gray-400`}>No finishers yet</div>
+        <div className={`px-4 py-6 text-center text-xs text-gray-400`}>No finishers yet</div>
       ) : (
         <ol className={`divide-y divide-gray-100`}>
           {done.map((r) => (
@@ -504,7 +624,7 @@ function ClassBoard({ cls, match, filtering, flashKeys, rowKey, onOpen }) {
                     <EditedTag r={r} />
                   </span>
                   {/* negara cukup lewat bendera (nama negara = tooltip) */}
-                  {r.club && <span className={`block text-xs truncate text-gray-500`}>{r.club}</span>}
+                  {r.club && <span className={`block text-[11px] truncate text-gray-500`}>{r.club}</span>}
                   <StartFinish r={r} />
                 </span>
                 <span className="text-right flex-none">
@@ -512,7 +632,7 @@ function ClassBoard({ cls, match, filtering, flashKeys, rowKey, onOpen }) {
                     <>
                       <span className="block font-bold tabular-nums">{fmtSec(r.timeSec)}</span>
                       {r.behindSec ? (
-                        <span className={`block text-xs tabular-nums text-gray-400`}>+{fmtSec(r.behindSec)}</span>
+                        <span className={`block text-[11px] tabular-nums text-gray-400`}>+{fmtSec(r.behindSec)}</span>
                       ) : r.rank === 1 ? (
                         <span className="block text-[10px] font-bold uppercase text-amber-500">Leader</span>
                       ) : null}
@@ -532,7 +652,7 @@ function ClassBoard({ cls, match, filtering, flashKeys, rowKey, onOpen }) {
           <button
             type="button"
             onClick={() => setShowPending((v) => !v)}
-            className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-gray-500 hover:bg-gray-50`}
+            className={`w-full flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold text-gray-500 hover:bg-gray-50`}
           >
             <span className="w-2 h-2 rounded-full bg-amber-400" />
             {/* kartu belum dibaca = belum mulai; jamnya hanya JADWAL Starting Order */}
@@ -545,12 +665,12 @@ function ClassBoard({ cls, match, filtering, flashKeys, rowKey, onOpen }) {
             <span className="ml-auto">{showPending ? "▲" : "▼"}</span>
           </button>
           {showPending && (
-            <ul className={`px-4 pb-3 space-y-1 text-sm text-gray-500`}>
+            <ul className={`px-4 pb-3 space-y-1 text-xs text-gray-500`}>
               {pending.map((r) => (
                 <li key={`${r.name}|${r.bib}`} className="flex items-center gap-2">
                   <CountryFlag nationality={r.nationality} />
                   <span className="truncate">{r.name}</span>
-                  <span className="ml-auto text-xs tabular-nums">{schedOf(r) ? `Scheduled ${schedOf(r)}` : "—"}</span>
+                  <span className="ml-auto text-[11px] tabular-nums">{schedOf(r) ? `Scheduled ${schedOf(r)}` : "—"}</span>
                 </li>
               ))}
             </ul>
@@ -571,14 +691,14 @@ function RankBadge({ rank }) {
       : rank === 3
       ? "bg-orange-400 text-white"
       : "bg-gray-100 text-gray-700";
-  return <span className={`w-7 h-7 flex-none inline-flex items-center justify-center rounded-full text-xs font-bold ${cls}`}>{rank}</span>;
+  return <span className={`w-7 h-7 flex-none inline-flex items-center justify-center rounded-full text-[11px] font-bold ${cls}`}>{rank}</span>;
 }
 
 function StatusPill({ r, small }) {
   return (
     <span
       title={STATUS_HINT[r.status] || ""}
-      className={`inline-block rounded-md bg-red-500/10 text-red-500 ring-1 ring-red-500/20 font-bold ${small ? "px-1.5 text-[10px]" : "px-2 py-0.5 text-xs"}`}
+      className={`inline-block rounded-md bg-red-500/10 text-red-500 ring-1 ring-red-500/20 font-bold ${small ? "px-1.5 text-[10px]" : "px-2 py-0.5 text-[11px]"}`}
     >
       {STATUS_TEXT[r.status] || r.status}
       {r.status === "MP" && r.missing ? ` ${r.missing}` : ""}
@@ -586,11 +706,11 @@ function StatusPill({ r, small }) {
   );
 }
 
-function CatChip({ cls }) {
+function CatChip({ cls, size }) {
   const wre = isWre(cls.typeName);
   return (
     <span
-      className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+      className={`flex-none rounded font-bold leading-none ${size === "xs" ? "px-1 py-[2px] text-[9px]" : "px-2 py-0.5 text-[10px]"} ${
         wre ? "bg-amber-400/20 text-amber-600" : "bg-sky-100 text-sky-700"
       }`}
     >
@@ -609,105 +729,144 @@ function SplitModal({ detail, onClose }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const ok = r.status === "OK";
+  const splits = r.splits || [];
+  const missedOf = (s) => s.found === false || (s.found === undefined && s.cumSec === null);
+  const legs = splits.map((s) => s.legSec).filter((v) => v !== null && v !== undefined);
+  // sorot leg tercepat hanya bila memang ada yg lebih cepat (bukan semua sama)
+  const minLeg = legs.length ? Math.min(...legs) : null;
+  const bestLeg = legs.length > 1 && legs.some((v) => v !== minLeg) ? minLeg : null;
+  const missedCount = splits.filter(missedOf).length;
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div
-        className={`relative w-full sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-xl ${
-          "bg-white text-gray-900"
-        }`}
-      >
-        <div className={`sticky top-0 flex items-start gap-3 px-5 py-4 border-b bg-white border-gray-100`}>
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-white text-gray-900 text-xs shadow-xl overflow-hidden">
+        {/* header */}
+        <div className="flex items-start gap-2.5 px-4 pt-3.5 pb-3 border-b border-gray-100">
           <RankBadge rank={r.rank} />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <CountryFlag nationality={r.nationality} size="lg" />
-              <span className="font-bold text-lg leading-tight">{r.name}</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <CountryFlag nationality={r.nationality} />
+              <span className="font-bold text-sm leading-tight truncate">{r.name}</span>
+              <CatChip cls={cls} size="xs" />
               <EditedTag r={r} />
             </div>
-            <div className={`text-xs text-gray-500`}>
-              {cls.className}
-              {r.bib ? ` · BIB ${r.bib}` : ""}
-              {r.club ? ` · ${r.club}` : ""}
-              {r.nationality ? ` · ${r.nationality}` : ""}
+            <div className="mt-0.5 text-[11px] text-gray-500 truncate">
+              {[r.club, r.nationality, r.bib ? `BIB ${r.bib}` : ""].filter(Boolean).join(" · ") || "-"}
             </div>
           </div>
-          <div className="text-right">
-            {r.status === "OK" ? (
+          <div className="text-right flex-none">
+            {ok ? (
               <>
-                <div className="text-2xl font-bold tabular-nums">{fmtSec(r.timeSec)}</div>
-                {r.behindSec ? <div className="text-xs text-gray-400 tabular-nums">+{fmtSec(r.behindSec)}</div> : null}
+                <div className="text-base font-extrabold tabular-nums leading-tight">{fmtSec(r.timeSec)}</div>
+                <div className={`text-[10px] tabular-nums ${r.rank === 1 ? "text-amber-600 font-semibold" : "text-gray-400"}`}>
+                  {r.rank === 1 ? "leading" : r.behindSec ? `+${fmtSec(r.behindSec)} behind` : ""}
+                </div>
               </>
             ) : (
               <StatusPill r={r} />
             )}
           </div>
-          <button type="button" onClick={onClose} className="ml-1 text-xl leading-none text-gray-400 hover:text-gray-600" aria-label="Close">
+          <button
+            type="button"
+            onClick={onClose}
+            className="-mr-1 -mt-0.5 w-6 h-6 inline-flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
 
-        <div className={`grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100`}>
+        {/* ringkasan waktu */}
+        <dl className="grid grid-cols-4 divide-x divide-gray-100 border-b border-gray-100 bg-gray-50/60 text-center">
           {[
-            ["Scheduled Start", schedOf(r) || "-", "Starting Order (info only, not used)"],
-            ["Start (SI Card)", r.cardStart || "none", "Start punch"],
-            ["Finish (SI Card)", r.cardFinish || "none", "Finish punch"],
-            ["Time", r.status === "OK" ? fmtSec(r.timeSec) : STATUS_TEXT[r.status] || r.status, r.status === "OK" ? "Finish − Start" : STATUS_HINT[r.status] || ""],
+            ["Scheduled", schedOf(r) || "-", "info only"],
+            ["Start", r.cardStart || "none", "SI Card"],
+            ["Finish", r.cardFinish || "none", "SI Card"],
+            ["Time", ok ? fmtSec(r.timeSec) : STATUS_TEXT[r.status] || r.status, ok ? "finish − start" : "not ranked"],
           ].map(([label, value, hint]) => (
-            <div key={label} className={`px-4 py-3 bg-white`}>
-              <div className={`text-[10px] font-bold uppercase tracking-wider text-gray-400`}>{label}</div>
-              <div
-                className={`mt-0.5 font-bold tabular-nums ${
-                  value === "none" ? "text-red-500" : ""
-                }`}
-              >
-                {value}
-              </div>
-              <div className={`text-[10px] text-gray-400`}>{hint}</div>
+            <div key={label} className="px-1.5 py-2">
+              <dt className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{label}</dt>
+              <dd className={`mt-0.5 font-semibold tabular-nums ${value === "none" ? "text-red-500" : "text-gray-800"}`}>{value}</dd>
+              <dd className="text-[9px] text-gray-400">{hint}</dd>
             </div>
           ))}
-        </div>
+        </dl>
 
-        {r.splits?.length ? (
-          <table className="w-full text-sm">
-            <thead className={`text-xs uppercase tracking-wide text-gray-400`}>
-              <tr>
-                <th className="px-5 py-2 text-left">#</th>
-                <th className="px-3 py-2 text-left">Control</th>
-                <th className="px-3 py-2 text-right">Time</th>
-                <th className="px-5 py-2 text-right">Leg</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-100`}>
-              {r.splits.map((s) => {
-                // snapshot lama tanpa `found`: anggap terlewat kalau tanpa waktu
-                const missed = s.found === false || (s.found === undefined && s.cumSec === null);
-                return (
-                <tr key={s.order} className={missed ? "text-red-500" : ""}>
-                  <td className="px-5 py-2 font-semibold">{s.order}</td>
-                  <td className="px-3 py-2">{s.code}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {missed ? (
-                      "missed"
-                    ) : s.cumSec !== null ? (
-                      fmtSec(s.cumSec)
-                    ) : (
-                      <span className={"text-gray-500"} title="Punch clock time — cumulative time cannot be calculated without a Start punch">
-                        {s.punchTime || "-"}
-                      </span>
-                    )}
-                  </td>
-                  <td className={`px-5 py-2 text-right tabular-nums text-gray-500`}>
-                    {s.legSec === null ? "" : `+${fmtSec(s.legSec)}`}
-                  </td>
+        {/* split per pos */}
+        <div className="flex items-center justify-between px-4 pt-2.5 pb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Splits · {splits.length} controls</span>
+          {missedCount > 0 && <span className="text-[10px] font-semibold text-red-500">{missedCount} missed</span>}
+        </div>
+        <div className="overflow-y-auto">
+          {splits.length ? (
+            <table className="w-full">
+              <thead className="sticky top-0 bg-white text-[9px] uppercase tracking-wider text-gray-400">
+                <tr className="border-b border-gray-100">
+                  <th className="pl-4 pr-2 py-1.5 text-left font-bold w-10">#</th>
+                  <th className="px-2 py-1.5 text-left font-bold">Control</th>
+                  <th className="px-2 py-1.5 text-right font-bold">Split</th>
+                  <th className="pl-2 pr-4 py-1.5 text-right font-bold">Leg</th>
                 </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <p className={`px-5 py-8 text-center text-sm text-gray-400`}>No split data yet.</p>
-        )}
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                <tr className="text-gray-400">
+                  <td className="pl-4 pr-2 py-1.5">S</td>
+                  <td className="px-2 py-1.5">Start</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{r.cardStart || "-"}</td>
+                  <td className="pl-2 pr-4 py-1.5" />
+                </tr>
+                {splits.map((sp) => {
+                  const missed = missedOf(sp);
+                  const best = !missed && bestLeg !== null && sp.legSec === bestLeg;
+                  return (
+                    <tr key={sp.order} className={missed ? "bg-red-50/60 text-red-500" : ""}>
+                      <td className="pl-4 pr-2 py-1.5 font-semibold text-gray-500">{sp.order}</td>
+                      <td className="px-2 py-1.5 font-semibold">{sp.code}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">
+                        {missed ? (
+                          <span className="font-semibold">missed</span>
+                        ) : sp.cumSec !== null && sp.cumSec !== undefined ? (
+                          fmtSec(sp.cumSec)
+                        ) : (
+                          <span className="text-gray-400" title="Punch clock time — no Start punch">
+                            {sp.punchTime || "-"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="pl-2 pr-4 py-1.5 text-right tabular-nums">
+                        {sp.legSec === null || sp.legSec === undefined ? (
+                          ""
+                        ) : (
+                          <span className={best ? "px-1 rounded bg-emerald-100 text-emerald-700 font-semibold" : "text-gray-500"}>
+                            +{fmtSec(sp.legSec)}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="font-semibold">
+                  <td className="pl-4 pr-2 py-1.5 text-gray-500">F</td>
+                  <td className="px-2 py-1.5">Finish</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{ok ? fmtSec(r.timeSec) : r.cardFinish || "-"}</td>
+                  <td className="pl-2 pr-4 py-1.5" />
+                </tr>
+              </tbody>
+            </table>
+          ) : (
+            <p className="px-4 py-6 text-center text-gray-400">No split data yet.</p>
+          )}
+          <p className="px-4 py-2 text-[10px] text-gray-400 border-t border-gray-50">
+            {bestLeg !== null && (
+              <>
+                <span className="inline-block px-1 rounded bg-emerald-100 text-emerald-700 font-semibold">+{fmtSec(bestLeg)}</span> fastest leg ·{" "}
+              </>
+            )}
+            Times from the SI Card only
+          </p>
+        </div>
       </div>
     </div>
   );
