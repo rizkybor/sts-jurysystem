@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ControlFlagIcon } from '@/components/OrienteeringLiveList'
 
 // Kartu event modul Orienteering — dipakai berdampingan dgn MatchCard
 // (event Rafting) di New Events homepage & /matches. Gaya visual sengaja
@@ -70,9 +71,7 @@ export default function OrienteeringEventCard({ event }) {
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
-            <svg viewBox="0 0 24 24" className="absolute inset-0 m-auto w-20 h-20 text-white/25" fill="currentColor" aria-hidden="true">
-              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm-5.5-2.5 7.51-3.49L17.5 6.5 9.99 9.99 6.5 17.5Zm5.5-6.6a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Z" />
-            </svg>
+            <ControlFlagIcon className="absolute inset-0 m-auto w-20 h-20 opacity-40" />
           )}
           <span className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold shadow-md backdrop-blur-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
             Orienteering

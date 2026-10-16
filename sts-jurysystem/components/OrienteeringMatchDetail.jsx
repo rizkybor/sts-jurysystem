@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Spinner from "@/components/Spinner";
-import { CompassIcon } from "@/components/OrienteeringLiveList";
+import { ControlFlagIcon } from "@/components/OrienteeringLiveList";
 import CountryFlag from "@/components/CountryFlag";
 
 // Detail event modul Orienteering (/matches/orienteering/[id]) — padanan
@@ -156,7 +156,7 @@ export default function OrienteeringMatchDetail() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={ev.image} alt={ev.name} className="w-full h-full object-cover" />
               ) : (
-                <CompassIcon className="absolute inset-0 m-auto w-24 h-24 text-white/25" />
+                <ControlFlagIcon className="absolute inset-0 m-auto w-24 h-24 opacity-40" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
               <div className="absolute top-4 left-4 flex flex-wrap gap-2">
@@ -174,7 +174,7 @@ export default function OrienteeringMatchDetail() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={ev.logo || ev.image} alt="" className={`w-full h-full ${ev.logo ? "object-contain p-1" : "object-cover"}`} />
                   ) : (
-                    <CompassIcon className="w-8 h-8 text-emerald-700" />
+                    <ControlFlagIcon className="w-8 h-8" />
                   )}
                 </span>
                 <h1 className="text-xl sm:text-3xl font-bold text-white drop-shadow-sm">{ev.name}</h1>
@@ -227,8 +227,8 @@ export default function OrienteeringMatchDetail() {
               <div className="space-y-2.5">
                 {races.map((r) => (
                   <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50/60 ring-1 ring-emerald-100">
-                    <span className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center flex-none">
-                      <CompassIcon className="w-5 h-5" />
+                    <span className="w-9 h-9 rounded-lg bg-white ring-1 ring-emerald-100 flex items-center justify-center flex-none">
+                      <ControlFlagIcon className="w-6 h-6" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-gray-900">{r.name}</div>

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CardSkeletonGrid } from "@/components/CardSkeleton";
+import controlFlagImg from "@/assets/images/orienteering-control-flag.jpg";
 
 // Daftar event Orienteering di halaman /live (tab "Orienteering"). Data dari
 // /api/orienteering/events — ditulis modul Orienteering sts-timingsystem.
@@ -64,7 +65,7 @@ export default function OrienteeringLiveList({ search = "", liveOnly = false }) 
   if (!list.length) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500 bg-white rounded-2xl ring-1 ring-gray-200/70">
-        <CompassIcon className="w-16 h-16 text-emerald-600/40 mb-4" />
+        <ControlFlagIcon className="w-16 h-16 opacity-70 mb-4" />
         <h3 className="text-xl font-semibold text-gray-700 mb-1">
           {error ? "Failed to load events" : "No Orienteering events yet"}
         </h3>
@@ -89,7 +90,7 @@ export default function OrienteeringLiveList({ search = "", liveOnly = false }) 
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
-                <CompassIcon className="absolute inset-0 m-auto w-20 h-20 text-white/25" />
+                <ControlFlagIcon className="absolute inset-0 m-auto w-20 h-20 opacity-40" />
               )}
               <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" />
               <StatusBadge status={ev.status} className="absolute top-3 right-3" />
@@ -178,10 +179,20 @@ export function StatusBadge({ status, className = "" }) {
   );
 }
 
-export function CompassIcon({ className = "" }) {
+// Ikon Orienteering = bendera kontrol (oranye/putih) dari
+// assets/images/orienteering-control-flag.jpg. File JPG punya margin putih
+// ~12.5% tiap sisi → di-crop lewat scale di dalam wadah overflow-hidden
+// supaya tidak muncul kotak putih di atas latar berwarna.
+export function ControlFlagIcon({ className = "" }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm-5.5-2.5 7.51-3.49L17.5 6.5 9.99 9.99 6.5 17.5Zm5.5-6.6a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Z" />
-    </svg>
+    <span className={`relative inline-block overflow-hidden rounded-[18%] shrink-0 ${className}`} aria-hidden="true">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={controlFlagImg.src}
+        alt=""
+        draggable={false}
+        className="absolute inset-0 w-full h-full object-cover scale-[1.34]"
+      />
+    </span>
   );
 }

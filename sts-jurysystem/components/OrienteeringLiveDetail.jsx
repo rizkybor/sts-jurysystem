@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import getSocket from "@/utils/socket";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import CountryFlag from "@/components/CountryFlag";
-import { CompassIcon, StatusBadge, orienteeringStatus } from "@/components/OrienteeringLiveList";
+import { ControlFlagIcon, StatusBadge, orienteeringStatus } from "@/components/OrienteeringLiveList";
 
 // Live Result Orienteering (read-only — Orienteering tidak punya juri).
 //
@@ -234,7 +234,7 @@ export default function OrienteeringLiveDetail() {
   if (!data) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center px-4">
-        <CompassIcon className="w-16 h-16 text-emerald-600/40" />
+        <ControlFlagIcon className="w-16 h-16 opacity-70" />
         <p className="text-gray-600">{error}</p>
         <Link href="/live?sport=orienteering" className="px-5 py-2.5 rounded-xl bg-sts text-white text-xs font-semibold">
           Back to Live Results
@@ -270,7 +270,7 @@ export default function OrienteeringLiveDetail() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={ev.logo || ev.image} alt="" className={`w-full h-full ${ev.logo ? "object-contain p-1" : "object-cover"}`} />
               ) : (
-                <CompassIcon className="w-7 h-7 text-emerald-700" />
+                <ControlFlagIcon className="w-7 h-7" />
               )}
             </span>
             <div className="min-w-0 flex-1">
