@@ -263,24 +263,64 @@ export default function OrienteeringMatchDetail() {
                         <b className="text-gray-900 text-sm">{t.participants}</b> peserta · {t.categories.length} kategori
                       </span>
                     </div>
-                    <div className="mt-1 text-[11px] text-gray-500">Dipertandingkan di: {t.raceNames.join(" & ") || "-"}</div>
-                    {t.categories.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {t.categories.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              setTypeId(t.id);
-                              setClassId(c.id);
-                            }}
-                            title="Tampilkan peserta kategori ini"
-                            className="px-2 py-0.5 rounded-md text-xs font-semibold bg-white ring-1 ring-gray-200 text-gray-700 hover:ring-emerald-400 transition"
-                          >
-                            {c.name} <b className="text-emerald-700">{c.participants}</b>
-                          </button>
+                    {/* Rincian per jenis — 1 blok per "Dipertandingkan di". Fallback
+                        ke tampilan gabungan kalau API lama belum kirim raceBreakdown. */}
+                    {Array.isArray(t.raceBreakdown) && t.raceBreakdown.length ? (
+                      <div className="mt-2 space-y-2">
+                        {t.raceBreakdown.map((rb) => (
+                          <div key={rb.raceId} className="rounded-lg bg-white/70 ring-1 ring-black/5 px-2.5 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] text-gray-500">
+                                Dipertandingkan di: <b className="font-semibold text-gray-800">{rb.raceName}</b>
+                              </span>
+                              <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                                <b className="text-gray-900">{rb.participants}</b> peserta
+                              </span>
+                            </div>
+                            {rb.categories.length > 0 && (
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {rb.categories.map((c) => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setRaceId(rb.raceId);
+                                      setTypeId(t.id);
+                                      setClassId(c.id);
+                                    }}
+                                    title={`Tampilkan peserta ${c.name} di ${rb.raceName}`}
+                                    className="px-2 py-0.5 rounded-md text-xs font-semibold bg-white ring-1 ring-gray-200 text-gray-700 hover:ring-emerald-400 transition"
+                                  >
+                                    {c.name} <b className="text-emerald-700">{c.participants}</b>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
+                    ) : (
+                      <>
+                        <div className="mt-1 text-[11px] text-gray-500">Dipertandingkan di: {t.raceNames.join(" & ") || "-"}</div>
+                        {t.categories.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {t.categories.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => {
+                                  setTypeId(t.id);
+                                  setClassId(c.id);
+                                }}
+                                title="Tampilkan peserta kategori ini"
+                                className="px-2 py-0.5 rounded-md text-xs font-semibold bg-white ring-1 ring-gray-200 text-gray-700 hover:ring-emerald-400 transition"
+                              >
+                                {c.name} <b className="text-emerald-700">{c.participants}</b>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 ))}

@@ -48,9 +48,22 @@ export async function GET(_request, context) {
     const people = new Map();
     const raceCount = new Map();
     const classCount = new Map();
+    // Hitungan per jenis (race): "raceId|classId" -> Set personKey, dan
+    // "raceId|typeId" -> Set personKey — dipakai rincian Type Event per jenis.
+    const raceClassCount = new Map();
+    const raceTypeCount = new Map();
+    const addTo = (map, k, v) => {
+      if (!map.has(k)) map.set(k, new Set());
+      map.get(k).add(v);
+    };
     for (const p of ps) {
       raceCount.set(p.raceId || "", (raceCount.get(p.raceId || "") || 0) + 1);
       const key = personKey(p);
+      if (p.classId) {
+        addTo(raceClassCount, `${p.raceId || ""}|${p.classId}`, key);
+        const tid = classById.get(p.classId)?.typeId;
+        if (tid) addTo(raceTypeCount, `${p.raceId || ""}|${tid}`, key);
+      }
       if (!people.has(key)) {
         people.set(key, {
           key,
@@ -106,6 +119,15 @@ export async function GET(_request, context) {
       types: types.map((t) => ({
         ...t,
         raceNames: t.raceIds.length ? t.raceIds.map((rid) => raceName.get(rid)).filter(Boolean) : races.map((r) => r.name),
+        // Rincian per jenis: kategori + jumlah peserta di jenis tsb.
+        raceBreakdown: (t.raceIds.length ? races.filter((r) => t.raceIds.includes(r.id)) : races).map((r) => ({
+          raceId: r.id,
+          raceName: r.name,
+          participants: (raceTypeCount.get(`${r.id}|${t.id}`) || new Set()).size,
+          categories: classes
+            .filter((c) => c.typeId === t.id)
+            .map((c) => ({ id: c.id, name: c.name, participants: (raceClassCount.get(`${r.id}|${c.id}`) || new Set()).size })),
+        })),
         categories: classes
           .filter((c) => c.typeId === t.id)
           .map((c) => ({ id: c.id, name: c.name, participants: (classCount.get(c.id) || new Set()).size })),
