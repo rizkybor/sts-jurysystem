@@ -21,6 +21,9 @@ import { ControlFlagIcon, StatusBadge, orienteeringStatus } from "@/components/O
 
 const POLL_MS = 20000;
 const RECENT_COUNT = 10;
+// Auto-play ganti filter Type Event (National → World Ranking, berputar; tanpa "All")
+const ROTATE_OPTIONS = [5, 10, 15, 30];
+const ROTATE_DEFAULT = 10;
 
 const STATUS_TEXT = { OK: "OK", MP: "MP", DNF: "DNF", NO_START: "No Start", DSQ: "DSQ", DNS: "DNS" };
 const STATUS_HINT = {
@@ -106,6 +109,10 @@ export default function OrienteeringLiveDetail() {
   const [error, setError] = useState("");
   const [raceId, setRaceId] = useState(null);
   const [typeId, setTypeId] = useState("all");
+  // Kategori yg difokuskan ("" = semua papan) + auto-play rotasi kategori
+  const [focusClassId, setFocusClassId] = useState("");
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [rotateSec, setRotateSec] = useState(ROTATE_DEFAULT);
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState(null); // { row, cls } utk pop-up split
   const [flashKeys, setFlashKeys] = useState(new Set());
@@ -185,6 +192,66 @@ export default function OrienteeringLiveDetail() {
     if (all.some((c) => c.total > 0)) all = all.filter((c) => c.total > 0);
     return typeId === "all" ? all : all.filter((c) => c.typeId === typeId);
   }, [race, typeId]);
+
+  // Fokus kategori yg sudah tidak ada (ganti jenis/type) -> kembali ke semua
+  useEffect(() => {
+    if (focusClassId && !classes.some((c) => c.classId === focusClassId)) setFocusClassId("");
+  }, [classes, focusClassId]);
+
+  // Auto-play: berputar di antara Type Event yang ada di jenis ini (mis.
+  // National Event, World Ranking Event) tiap rotateSec detik — "All" TIDAK
+  // ikut diputar. Hanya aktif kalau Type > 1. Jeda selama pop-up split
+  // terbuka.
+  // Timer bergantung pada DAFTAR id slide (string), bukan objek `types`,
+  // supaya refresh data (polling / socket tiap kartu SI dibaca) tidak
+  // me-reset hitungan mundur slide yg sedang tampil.
+  const typeSlides = useMemo(() => (types.length > 1 ? types.map((t) => t.id) : []), [types]);
+  const typeSlidesKey = typeSlides.join("|");
+  const typeSlidesRef = useRef(typeSlides);
+  typeSlidesRef.current = typeSlides;
+  useEffect(() => {
+    if (!autoPlay) return;
+    if (typeSlidesRef.current.length < 2) {
+      setAutoPlay(false);
+      return;
+    }
+    if (detail) return;
+    const t = setTimeout(() => {
+      const cur = typeSlidesRef.current;
+      const i = cur.indexOf(typeId);
+      setTypeId(cur[(i + 1) % cur.length]);
+    }, rotateSec * 1000);
+    return () => clearTimeout(t);
+  }, [autoPlay, typeSlidesKey, typeId, rotateSec, detail]);
+
+  // Mencari peserta = mode manual (auto-play berhenti)
+  useEffect(() => {
+    if (query.trim()) setAutoPlay(false);
+  }, [query]);
+
+  // Pilihan manual (Type / kategori) menghentikan auto-play
+  const pickType = (tid) => {
+    setAutoPlay(false);
+    setTypeId(tid);
+  };
+  const pickClass = (cid) => {
+    setAutoPlay(false);
+    setFocusClassId(cid);
+  };
+  const toggleAutoPlay = () => {
+    if (autoPlay) {
+      setAutoPlay(false);
+    } else {
+      // auto-play menampilkan semua kategori dari Type yg sedang tampil;
+      // kalau sedang di "All", langsung mulai dari Type pertama
+      setFocusClassId("");
+      if (!typeSlides.includes(typeId)) setTypeId(typeSlides[0]);
+      setAutoPlay(true);
+    }
+  };
+  const shownClasses = focusClassId ? classes.filter((c) => c.classId === focusClassId) : classes;
+  const slideIndex = typeSlides.indexOf(typeId);
+  const typeLabel = typeId === "all" ? "All" : types.find((t) => t.id === typeId)?.name || "";
 
   const q = query.trim().toLowerCase();
   const match = useCallback(
@@ -284,11 +351,14 @@ export default function OrienteeringLiveDetail() {
               <h1 className="mt-0.5 text-base sm:text-xl font-bold text-white tracking-tight truncate">{ev.name}</h1>
             </div>
             {isFull && <div className="hidden md:block text-2xl font-bold tabular-nums text-white">{fmtClock(now)}</div>}
+            {/* Full Screen khusus desktop: layar >= 1024px DAN pointer mouse
+                (pointer:fine) — tablet (termasuk iPad landscape) & HP tidak
+                menampilkan tombol ini. */}
             <button
               type="button"
               onClick={toggleFull}
               title={isFull ? "Exit Full Screen (Esc)" : "Full Screen"}
-              className="flex-none inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white text-xs font-semibold transition"
+              className="hidden [@media(min-width:1024px)_and_(pointer:fine)]:inline-flex flex-none items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white text-xs font-semibold transition"
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 {isFull ? (
@@ -349,33 +419,139 @@ export default function OrienteeringLiveDetail() {
           </div>
         )}
 
-        {/* ===== Filter ringkas ===== */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          {types.length > 1 &&
-            [{ id: "all", name: "All" }, ...types].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTypeId(t.id)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition ${
-                  typeId === t.id
-                    ? "bg-emerald-600 text-white"
-                    : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100"
-                }`}
-              >
-                {t.name}
-              </button>
-            ))}
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search runner…"
-            className={`ml-auto w-full sm:w-60 px-3.5 py-2 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
-              "bg-white border border-gray-200"
-            }`}
-          />
+        {/* ===== Filter Type Event + Auto-play ===== */}
+        <div className="mb-4 rounded-xl bg-white ring-1 ring-gray-200/70 shadow-sm overflow-hidden">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 px-3 py-2.5">
+            {typeSlides.length > 1 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto -mx-3 px-3 lg:mx-0 lg:px-0 min-w-0">
+                {[{ id: "all", name: "All" }, ...types].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => pickType(t.id)}
+                    aria-pressed={typeId === t.id}
+                    className={`shrink-0 h-8 px-3 rounded-lg text-[11px] font-semibold whitespace-nowrap transition ${
+                      typeId === t.id
+                        ? "bg-emerald-600 text-white"
+                        : "bg-gray-50 text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+              {/* Auto-play (ganti Type Event) */}
+              {typeSlides.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={toggleAutoPlay}
+                    aria-label={autoPlay ? "Stop auto-play" : "Start auto-play"}
+                    className={`inline-flex items-center gap-1.5 h-8 pl-2 pr-3 rounded-lg text-[11px] font-bold transition ${
+                      autoPlay ? "bg-red-500 text-white hover:bg-red-600" : "bg-emerald-600 text-white hover:bg-emerald-700"
+                    }`}
+                  >
+                    {autoPlay ? (
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" aria-hidden="true">
+                        <rect x="6" y="5" width="4" height="14" rx="1" />
+                        <rect x="14" y="5" width="4" height="14" rx="1" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" aria-hidden="true">
+                        <path d="M8 5v14l11-7L8 5Z" />
+                      </svg>
+                    )}
+                    {autoPlay ? "Stop" : "Auto-play"}
+                  </button>
+                  <div className="inline-flex p-0.5 rounded-lg bg-gray-100" role="group" aria-label="Auto-play interval">
+                    {ROTATE_OPTIONS.map((sec) => (
+                      <button
+                        key={sec}
+                        type="button"
+                        onClick={() => setRotateSec(sec)}
+                        aria-pressed={rotateSec === sec}
+                        className={`h-7 px-2 rounded-md text-[11px] font-semibold tabular-nums transition ${
+                          rotateSec === sec ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                        }`}
+                      >
+                        {sec}s
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search runner…"
+                className="w-full sm:w-60 h-8 px-3.5 rounded-lg text-xs bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+            </div>
+          </div>
+
+          {/* progres slide auto-play */}
+          {autoPlay && slideIndex >= 0 && (
+            <div className="flex items-center gap-3 px-3 pb-2.5">
+              <span className="text-[10px] font-semibold text-emerald-700 tabular-nums whitespace-nowrap">
+                {detail ? "Paused" : "Auto-play"} · {typeLabel} · {slideIndex + 1}/{typeSlides.length}
+              </span>
+              <span className="relative flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
+                {!detail && (
+                  <span
+                    key={`${typeId}|${rotateSec}`}
+                    className="ori-progress absolute inset-y-0 left-0 bg-emerald-500 rounded-full"
+                    style={{ animationDuration: `${rotateSec}s` }}
+                  />
+                )}
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* ===== Filter kategori (manual) ===== */}
+        {classes.length > 1 && (
+          <div className="mb-4 rounded-xl bg-white ring-1 ring-gray-200/70 shadow-sm overflow-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 px-3 py-2.5">
+              <div className="flex gap-1.5 overflow-x-auto -mx-3 px-3 lg:mx-0 lg:px-0 lg:flex-wrap flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => pickClass("")}
+                  aria-pressed={!focusClassId}
+                  className={`shrink-0 h-8 px-3 rounded-lg text-[11px] font-semibold whitespace-nowrap transition ${
+                    !focusClassId ? "bg-emerald-600 text-white" : "bg-gray-50 text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  All categories
+                </button>
+                {classes.map((c) => {
+                  const active = focusClassId === c.classId;
+                  return (
+                    <button
+                      key={c.classId}
+                      type="button"
+                      onClick={() => pickClass(c.classId)}
+                      aria-pressed={active}
+                      className={`shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-semibold whitespace-nowrap transition ${
+                        active
+                          ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500"
+                          : "bg-gray-50 text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100"
+                      }`}
+                    >
+                      {c.className}
+                      <span className={`tabular-nums font-medium ${active ? "text-emerald-600" : "text-gray-400"}`}>
+                        {c.finished}/{c.total}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && <p className="mb-3 text-[11px] text-red-500">Connection problem — showing the latest data.</p>}
 
@@ -385,8 +561,16 @@ export default function OrienteeringLiveDetail() {
             No categories / results yet for {race?.name || "this race"}.
           </div>
         ) : (
-          <div className={`grid gap-4 ${isFull ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"}`}>
-            {classes.map((c) => (
+          <div
+            className={`grid gap-4 ${
+              focusClassId
+                ? "grid-cols-1 max-w-3xl mx-auto"
+                : isFull
+                ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+                : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+            }`}
+          >
+            {shownClasses.map((c) => (
               <ClassBoard
                 key={c.classId}
                 cls={c}
@@ -414,6 +598,11 @@ export default function OrienteeringLiveDetail() {
           100% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
         }
         .ori-flash { animation: ori-flash-kf 1.4s ease-out 3; }
+        @keyframes ori-progress-kf {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        .ori-progress { animation-name: ori-progress-kf; animation-timing-function: linear; animation-fill-mode: forwards; }
         @keyframes ori-marquee-kf {
           from { transform: translateX(0); }
           to { transform: translateX(-50%); }
